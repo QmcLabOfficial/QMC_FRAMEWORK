@@ -243,7 +243,7 @@ print("Rapport :", result["generated_files"]["html"])
 - **Fractional Gates** (RX/RZZ natives) · **Gen3 Turbo** · **Dynamic Circuits**
 - **Error Mitigation** : M3, ZNE, Twirling, DD, PEA
 - **Transpilation parallèle multi-CPU + cache** (lots identiques réutilisés)
-- **Multi-job avec reprise** · **QDNA-ID** (signature QPU) · **Cryptographie réelle**
+- **Multi-job avec reprise** · **Cryptographie réelle** (AES-GCM / HKDF / ZK) · **Modules externes** chargés à la demande
 
 ---
 
@@ -265,6 +265,9 @@ fw.run_multi_job_session(jobs=[...])          # multi-job + reprise
 fw.audit_accounts(window_days=30)             # audit multi-comptes
 fw.estimate_eplg(); fw.estimate_clops()       # addons IBM (M3/EPLG/CLOPS/Trotter)
 fw.last_job_id                                # ID du dernier job soumis
+
+module = fw.load_module("nom")                # charge un module externe (brevets fournis séparément)
+module.run(...)                               # QMCModuleNotAvailableError si non disponible
 ```
 
 > **Hiérarchie (v2.7.1, linéarisée)** : `QMCFrameworkBase → QMCFrameworkExtended → QMCFramework`,
@@ -298,18 +301,26 @@ python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-sim      # exécution AerSi
 
 ---
 
-## 🔒 Brevets associés
+## 🔒 Modules propriétaires (brevets)
 
-| Référence | Nom | Description |
-|-----------|-----|-------------|
-| FR2514352 | QMC Core | Chiffrement quantique IQP #P-hard |
-| FR2514504 | QMC Biometric | Dérivation biométrique quantique |
-| FR2514363 | QMC Shield | Migration matérielle clés quantiques |
-| FR2514509 | QAEE | Estimation d'Amplitude Adaptative |
-| FR2514682 | QGP | Quantum Genesis Protocol |
-| FR2515002 | QDNA-ID | Authentification QPU par signature bruit |
-| FR2515103 | QRPM | Quantum Random Permutation Module |
-| FR2515682 | QMC SIP | Quantum Secure Identity Protocol |
+Les implémentations brevetées **ne sont pas incluses** dans ce framework public : leur
+fonctionnement n'est **jamais exposé** dans le code. Elles sont distribuées comme **modules
+externes**, chargés **à la demande** via `fw.load_module("<nom>")` (dossier `qmc_modules/`,
+emplacement surchargé par `QMC_MODULES_PATH`) et fournis séparément aux clients autorisés.
+En l'absence du module, le framework lève `QMCModuleNotAvailableError`.
+
+| Référence | Module (fourni séparément) |
+|-----------|----------------------------|
+| FR2514352 | QMC Core |
+| FR2514504 | QMC Biometric |
+| FR2514363 | QMC Shield |
+| FR2514509 | QAEE |
+| FR2514682 | QGP |
+| FR2515002 | QDNA-ID |
+| FR2515103 | QRPM |
+| FR2515682 | QMC SIP |
+
+> Contrat d'un module et template d'interface : voir [`qmc_modules/README.md`](qmc_modules/README.md).
 
 ---
 

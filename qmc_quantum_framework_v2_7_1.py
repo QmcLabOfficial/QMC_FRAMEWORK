@@ -5,7 +5,7 @@
 ║                      QMC QUANTUM TESTING FRAMEWORK v2.7.1                            ║
 ║                           QMC Research Lab - 2026                                    ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
-║  Framework réutilisable et EXTENSIBLE pour tous les tests quantiques des brevets QMC ║
+║  Framework réutilisable et EXTENSIBLE pour tous les tests quantiques QMC             ║
 ║                                                                                      ║
 ║  ████████████████████████████████████████████████████████████████████████████████    ║
 ║  █  CHANGELOG v2.7.1 (2026-05) - AUDIT COMPLET : 68 CORRECTIFS + CRYPTO RÉEL  █    ║
@@ -19,7 +19,7 @@
 ║    - QPE : suppression du swap parasite en tête de la QFT inverse (phases fausses).  ║
 ║    - Téléportation : corrections X/Z désormais CONDITIONNELLES (if_test) au lieu     ║
 ║      d'inconditionnelles — le protocole était détruit (Bob ~50%).                    ║
-║    - SWAP test, encodage d'amplitude, oracle Deutsch-Jozsa, QAEE, Bell σ, tests      ║
+║    - SWAP test, encodage d'amplitude, oracle Deutsch-Jozsa, Bell σ, tests            ║
 ║      NIST, CompressionAnalyzer, QuantumAdvantage : métriques/circuits corrigés.      ║
 ║                                                                                      ║
 ║  ▓ CRYPTOGRAPHIE RÉELLE (remplace les démos « snake-oil ») :                         ║
@@ -555,12 +555,8 @@
 ║  │  - Stream processing    │  - Performance scoring   │  - Offline validation      │ ║
 ║  └─────────────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                                      ║
-║  Brevets supportés:                                                                  ║
-║  - FR2514264: QMC Core (IQP Encryption) - PLUGIN READY                               ║
-║  - FR2514352: QMC Biometric            - PLUGIN READY                                ║
-║  - FR2514363: QMC Shield               - PLUGIN READY                                ║
-║  - FR2514504: QGP (Quantum Genesis)    - PLUGIN READY                                ║
-║  - FR2514509: QAEE (Amplitude Est.)    - PLUGIN READY                                ║
+║  Modules propriétaires (brevets) : fournis séparément, NON inclus ici.               ║
+║  Chargés à la demande via load_module('<nom>')  (cf. QMC_MODULES_PATH).              ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
 
 ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -603,7 +599,7 @@
 │   - Archives JSON pour reproductibilité                                                │
 │   - Analyse de calibration en temps réel                                               │
 │   - Budget QPU et alertes                                                              │
-│   - Outils spécifiques brevets QMC (QDNA-ID, etc.)                                     │
+│   - Extensible via modules externes (load_module à la demande)                         │
 │                                                                                         │
 │ ═══════════════════════════════════════════════════════════════════════════════════    │
 │ 📜 RÈGLE #4: LES 18 NOUVEAUX OUTILS v2.5.23 SONT DES HELPERS                           │
@@ -1055,35 +1051,18 @@
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ 🔐 MODULES CRYPTOGRAPHIQUES (Brevets QMC)                                               │
+│ 🧩 MODULES EXTERNES (chargés à la demande)                                               │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                         │
-│ QMC CORE (FR2514264) - Chiffrement IQP:                                                 │
-│   from qmc_quantum_framework_v2_5_14 import QMCCoreModule                               │
-│   qmc = QMCCoreModule(framework=fw)                                                     │
-│   ciphertext = qmc.encrypt(plaintext, qpu_key)                                          │
-│   plaintext = qmc.decrypt(ciphertext, qpu_key)                                          │
+│ Les modules métier / propriétaires ne sont PAS inclus dans ce                           │
+│ fichier. Ils sont fournis séparément et chargés à la demande :                          │
 │                                                                                         │
-│ QMC BIOMETRIC (FR2514504) - Authentification biométrique:                               │
-│   from qmc_quantum_framework_v2_5_14 import QMCBiometricModule                          │
-│   bio = QMCBiometricModule(framework=fw)                                                │
-│   template = bio.enroll(biometric_data)                                                 │
-│   verified = bio.verify(biometric_data, template)                                       │
+│   module = fw.load_module('<nom>')      # ex: 'qmc_core'                                │
+│   result = module.run(...)                                                              │
 │                                                                                         │
-│ QMC SHIELD (FR2514363) - Protection de données:                                         │
-│   from qmc_quantum_framework_v2_5_14 import QMCShieldModule                             │
-│   shield = QMCShieldModule(framework=fw)                                                │
-│   protected = shield.protect(data)                                                      │
-│                                                                                         │
-│ QGP - Quantum Genesis Protocol (FR2514504):                                             │
-│   from qmc_quantum_framework_v2_5_14 import QGPModule                                   │
-│   qgp = QGPModule(framework=fw)                                                         │
-│   genesis_key = qgp.generate()                                                          │
-│                                                                                         │
-│ QAEE - Quantum Amplitude Estimation Engine (FR2514509):                                 │
-│   from qmc_quantum_framework_v2_5_14 import QAEEModule                                  │
-│   qaee = QAEEModule(framework=fw)                                                       │
-│   estimate = qaee.estimate(oracle_circuit)                                              │
+│ Emplacement : dossier 'qmc_modules/' à côté du framework,                               │
+│ surchargé par la variable d'environnement QMC_MODULES_PATH.                             │
+│ Si le module est absent : QMCModuleNotAvailableError.                                   │
 │                                                                                         │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -2197,14 +2176,13 @@
 │ ✅ GARDER NOS IMPLÉMENTATIONS (valeur unique QMC):                                      │
 │ ════════════════════════════════════════════════════════════════════════════════════    │
 │                                                                                         │
-│   ✅ IQPBuilder             → Circuits #P-hard pour cryptographie (brevet)              │
+│   ✅ IQPBuilder             → Circuits #P-hard (primitive générique)                    │
 │   ✅ DynamicTopology        → Sélection qubits basée sur calibration live               │
 │   ✅ AutoReportGenerator    → Rapports HTML IBM Carbon complets                         │
 │   ✅ ExecutionArchive       → Archive JSON complète pour reproductibilité               │
-│   ✅ QDNAIDEngine           → Authentification QPU par bruit 8D (brevet)                │
 │   ✅ BatchManager           → Gestion multi-comptes avec rotation                       │
 │   ✅ BudgetManager          → Suivi budget QPU mensuel                                  │
-│   ✅ Modules brevets        → QMC Core, Shield, Biometric, QGP, QAEE                    │
+│   ✅ Modules externes       → chargés à la demande (load_module, brevets séparés)       │
 │                                                                                         │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -2252,7 +2230,7 @@
 │   print(dry_run.display(result))  # Affichage ASCII du résultat                         │
 │                                                                                         │
 │ ▶ CampaignManager - Campagnes d'expériences paramétriques                              │
-│   campaign = CampaignManager(fw, "QDNA_Validation")                                     │
+│   campaign = CampaignManager(fw, "Demo_Validation")                                     │
 │   campaign.add_variation("n_qubits", [50, 75, 100])                                     │
 │   campaign.add_variation("depth", [5, 10, 15])                                          │
 │   campaign.set_circuit_builder(my_builder_func)                                         │
@@ -3486,8 +3464,6 @@ __version__ = "2.7.1"
 __author__ = "QMC Research Lab"
 __license__ = "Proprietary"
 __date__ = "2026-01-26"
-__qdna_version__ = "4.5.0-PATENT-COMPLIANT"
-__qdna_patent__ = "FR2514504"
 
 FRAMEWORK_BANNER = """
 ╔═══════════════════════════════════════════════════════════════════════════╗
@@ -3496,7 +3472,7 @@ FRAMEWORK_BANNER = """
 ║                                                                           ║
 ║  ⚡ v2.6.0 OPTIMIZATIONS: Fractional Gates | Gen3 Turbo | PEA Mitigation  ║
 ║  🔌 PLUGIN SYSTEM    🔧 CIRCUIT BUILDERS    🧪 EXPERIMENT ENGINE           ║
-║  🔐 QDNA-ID v4.5     (Patent FR2514504 - QPU Authentication)              ║
+║  🧩 MODULES EXTERNES (chargés à la demande — load_module / QMC_MODULES_PAT║
 ║  📊 Auto-Reports     📦 Smart Dependencies   🎨 Advanced Visualizations   ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 """.format(version=__version__)
@@ -7092,15 +7068,19 @@ class QMCCalibrationError(QMCException):
         )
 
 
-class QMCQDNAError(QMCException):
-    """Erreur dans le module QDNA-ID."""
-    def __init__(self, message: str, operation: str = None, **kwargs):
+class QMCModuleNotAvailableError(QMCException):
+    """[v2.7.1] Module demandé non disponible (script externe absent ou invalide).
+
+    Les modules propriétaires (brevets) ne sont PAS inclus dans ce framework :
+    ils sont distribués séparément et chargés à la demande depuis le dossier des
+    modules (voir la variable d'environnement QMC_MODULES_PATH)."""
+    def __init__(self, message: str, module: str = None, **kwargs):
         super().__init__(
             message=message,
             code="QMC-600",
-            details={'operation': operation},
-            recoverable=kwargs.get('recoverable', True),
-            suggestion="Vérifiez la configuration QDNA-ID"
+            details={'module': module},
+            recoverable=kwargs.get('recoverable', False),
+            suggestion=kwargs.get('suggestion', "Placez le script du module dans le dossier des modules (QMC_MODULES_PATH).")
         )
 
 
@@ -7408,12 +7388,10 @@ class LogLevel(Enum):
 
 
 class ProjectType(Enum):
-    """Types de projets/brevets"""
-    QMC_CORE = "qmc_core"
-    QMC_BIOMETRIC = "qmc_biometric"
-    QMC_SHIELD = "qmc_shield"
-    QGP = "qgp"
-    QAEE = "qaee"
+    """Types de projets (catégories génériques)."""
+    GENERAL = "general"
+    BENCHMARK = "benchmark"
+    RESEARCH = "research"
     CUSTOM = "custom"
 
 
@@ -8051,13 +8029,11 @@ class PluginRegistry:
         self._analyzers['randomness'] = RandomnessAnalyzer
         self._analyzers['compression'] = CompressionAnalyzer
         
-        # QMC Modules - v2.3.1
-        self._modules['qmc_core'] = QMCCoreModule
-        self._modules['qmc_shield'] = QMCShieldModule
-        self._modules['qmc_biometric'] = QMCBiometricModule
-        self._modules['qgp'] = QGPModule
-        self._modules['qaee'] = QAEEModule
-        
+        # [v2.7.1] Modules propriétaires (brevets) : NON inclus dans ce fichier.
+        # Ils sont distribués comme scripts externes et chargés à la demande depuis
+        # le dossier des modules (voir _load_external_module / QMC_MODULES_PATH).
+        # Seuls les modules génériques v2.4.0 (enregistrés ci-dessous) sont intégrés.
+
         PluginRegistry._builtins_registered = True
         
         # Enregistrer les plugins v2.4.0 (appelé après pour les classes définies plus tard)
@@ -8132,9 +8108,62 @@ class PluginRegistry:
                 self._log(f"Analyzer registered: {name}")
                 return
     
+    @staticmethod
+    def get_modules_dir() -> Path:
+        """[v2.7.1] Dossier des modules externes (propriétaires/brevets).
+
+        Par défaut : sous-dossier 'qmc_modules' à côté de ce fichier.
+        Surchargé par la variable d'environnement QMC_MODULES_PATH.
+        """
+        override = os.environ.get('QMC_MODULES_PATH')
+        if override:
+            return Path(override)
+        try:
+            base = Path(__file__).resolve().parent
+        except NameError:
+            base = Path.cwd()
+        return base / 'qmc_modules'
+
+    def _load_external_module(self, name: str) -> Optional[Type['QMCModule']]:
+        """[v2.7.1] Charge dynamiquement un module externe ``<modules_dir>/<name>.py``.
+
+        Les modules propriétaires (brevets) ne sont PAS inclus dans ce framework :
+        ils sont fournis séparément et chargés à la demande. Le fichier doit définir
+        une sous-classe de QMCModule. Retourne la classe (mise en cache dans le
+        registre) ou None si le fichier est absent/invalide.
+        """
+        import importlib.util
+        import re as _re
+        # Nom de module sûr (évite la traversée de chemin)
+        if not name or not _re.match(r'^[A-Za-z0-9_]+$', name):
+            return None
+        module_file = self.get_modules_dir() / f"{name}.py"
+        if not module_file.is_file():
+            return None
+        try:
+            spec = importlib.util.spec_from_file_location(f"qmc_module_{name}", str(module_file))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        except Exception as e:
+            self._log(f"Echec chargement module externe '{name}': {e}", LogLevel.ERROR)
+            return None
+        # Trouver la sous-classe QMCModule définie DANS ce fichier
+        for obj in vars(mod).values():
+            if (inspect.isclass(obj) and issubclass(obj, QMCModule)
+                    and obj is not QMCModule and obj.__module__ == mod.__name__):
+                self._modules[name] = obj
+                self._log(f"Module externe charge: {name} ({obj.__name__})")
+                return obj
+        self._log(f"Aucune sous-classe QMCModule trouvee dans {module_file}", LogLevel.WARN)
+        return None
+
     def get_module(self, name: str) -> Optional[Type['QMCModule']]:
         self._ensure_builtins_registered()
-        return self._modules.get(name)
+        cls = self._modules.get(name)
+        if cls is not None:
+            return cls
+        # [v2.7.1] Fallback : module externe (script séparé) chargé à la demande.
+        return self._load_external_module(name)
     
     def get_circuit_builder(self, name: str) -> Optional[Type['CircuitBuilder']]:
         self._ensure_builtins_registered()
@@ -8222,7 +8251,7 @@ class QMCModule(ABC):
     """
     Classe de base pour les modules QMC (Core, Shield, Biometric, etc.)
     
-    Chaque module représente un brevet/fonctionnalité complète.
+    Chaque module représente une fonctionnalité complète.
     """
     
     _abstract = True
@@ -8251,7 +8280,7 @@ class QMCModule(ABC):
     
     @classmethod
     def get_patent_ref(cls) -> str:
-        """Référence du brevet associé"""
+        """Référence/identifiant optionnel du module (vide par défaut)"""
         return ""
     
     @classmethod
@@ -10449,237 +10478,6 @@ class ProtocolTester:
     def _log(self, msg: str, level: LogLevel = LogLevel.INFO):
         if self.logger:
             self.logger.log(msg, level, section='PROTOCOL')
-    
-    def test_qmc_core_encryption(self, 
-                                  plaintext: bytes,
-                                  n_qubits: int = 50,
-                                  iqp_depth: int = 10,
-                                  shots: int = 8192) -> Dict:
-        """
-        Test du protocole QMC Core (encryption IQP).
-        
-        [v2.7.1] CHIFFREMENT RÉEL. La sortie quantique sert de SOURCE D'ENTROPIE ;
-        la clé en est dérivée par HKDF-SHA256 (RFC 5869) puis les données sont
-        chiffrées avec AES-256-GCM (NIST SP 800-38D), chiffrement authentifié avec
-        nonce aléatoire par message. Remplace l'ancien XOR à clé répétée (démo
-        non sécurisée). Le test vérifie le cycle complet ET la détection
-        d'altération (intégrité GCM).
-
-        Args:
-            plaintext: Données à chiffrer
-            n_qubits: Nombre de qubits
-            iqp_depth: Profondeur du circuit IQP
-            shots: Nombre de shots
-
-        Returns:
-            Résultats du test incluant succès encryption/decryption + tamper-test
-        """
-        self._log(f"Testing QMC Core encryption: {len(plaintext)} bytes, {n_qubits}Q")
-
-        results = {
-            'protocol': 'qmc_core_encryption',
-            'security_level': 'AES-256-GCM + HKDF-SHA256',  # [v2.7.1] crypto réelle
-            'note': 'Quantum output used as entropy source; key via HKDF; AEAD via AES-256-GCM',
-            'plaintext_size': len(plaintext),
-            'n_qubits': n_qubits,
-            'iqp_depth': iqp_depth,
-            'steps': [],
-        }
-        
-        # Step 1: Generate IQP circuit
-        self._log("Step 1: Generating IQP circuit")
-        builder = IQPBuilder(self.framework.topology, self.logger)
-        circuit = builder.build(n_qubits, depth=iqp_depth, add_measurements=True)
-        
-        results['steps'].append({
-            'name': 'circuit_generation',
-            'status': 'success',
-            'circuit_depth': circuit.depth(),
-        })
-        
-        # Step 2: Execute on QPU
-        self._log("Step 2: Executing on QPU")
-        transpiled = self.framework.transpile_circuits([circuit])
-        qpu_results = self.framework.run_on_qpu(transpiled, shots)
-        
-        if not qpu_results:
-            results['steps'].append({'name': 'qpu_execution', 'status': 'failed'})
-            results['success'] = False
-            return results
-        
-        counts = qpu_results[0].get('counts', {})
-        results['steps'].append({
-            'name': 'qpu_execution',
-            'status': 'success',
-            'unique_states': len(counts),
-            'total_shots': sum(counts.values()),
-        })
-        
-        # Step 3: Dériver une clé AES-256 depuis l'entropie quantique (HKDF)
-        self._log("Step 3: Deriving AES-256 key via HKDF-SHA256 from quantum entropy")
-        ikm = QMCQuantumCrypto.quantum_seed_from_counts(counts)
-        salt = secrets.token_bytes(16)
-        key = QMCQuantumCrypto.hkdf_sha256(ikm, length=32, salt=salt,
-                                           info=b"QMC-core-encryption-AES256GCM")
-        # Min-entropie réelle de la SOURCE quantique brute (NIST SP 800-90B, par bit)
-        raw_bits = QMCQuantumCrypto.raw_bits_from_counts(counts)
-        min_ent_per_bit = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
-        source_min_entropy_bits = round(min_ent_per_bit * len(raw_bits), 2)
-
-        results['steps'].append({
-            'name': 'key_derivation',
-            'status': 'success',
-            'kdf': 'HKDF-SHA256',
-            'key_bits': 256,
-            'source_min_entropy_bits_per_bit': round(min_ent_per_bit, 4),
-            'source_min_entropy_bits_total': source_min_entropy_bits,
-        })
-
-        # Step 4: Chiffrement authentifié AES-256-GCM (nonce aléatoire, AAD = métadonnées)
-        self._log("Step 4: Encrypting with AES-256-GCM (authenticated)")
-        aad = f"QMC|{n_qubits}Q|{iqp_depth}d".encode()
-        enc = QMCQuantumCrypto.aead_encrypt(key, plaintext, aad=aad)
-        ciphertext = enc['ciphertext']
-
-        results['steps'].append({
-            'name': 'encryption',
-            'status': 'success',
-            'ciphertext_size': len(ciphertext),
-            'method': 'AES-256-GCM',
-            'nonce_hex': enc['nonce'].hex(),
-        })
-        results['ciphertext_hash'] = hashlib.sha256(ciphertext).hexdigest()[:32]
-
-        # Step 5: Déchiffrement + vérification d'intégrité
-        self._log("Step 5: Decrypting and verifying authentication tag")
-        decrypted = QMCQuantumCrypto.aead_decrypt(key, enc['nonce'], ciphertext, aad=aad)
-        decryption_success = decrypted == plaintext
-
-        # Step 5b: Test d'ALTÉRATION — un ciphertext modifié DOIT être rejeté
-        tamper_detected = False
-        try:
-            tampered = bytearray(ciphertext)
-            tampered[0] ^= 0x01
-            QMCQuantumCrypto.aead_decrypt(key, enc['nonce'], bytes(tampered), aad=aad)
-        except Exception:
-            tamper_detected = True  # InvalidTag attendu : l'intégrité fonctionne
-
-        results['steps'].append({
-            'name': 'decryption',
-            'status': 'success' if decryption_success else 'failed',
-            'match': decryption_success,
-            'tamper_detected': tamper_detected,
-        })
-
-        # Final result : le test ne réussit que si le cycle ET l'intégrité sont OK
-        results['success'] = bool(decryption_success and tamper_detected)
-        results['quantum_entropy_bits'] = source_min_entropy_bits
-
-        self._log(f"Protocol test {'PASSED' if results['success'] else 'FAILED'}")
-
-        self._results['qmc_core_encryption'] = results
-        return results
-    
-    def test_qmc_authentication(self,
-                                identity_data: bytes,
-                                n_qubits: int = 50,
-                                threshold: float = 0.8) -> Dict:
-        """
-        Test du protocole d'authentification QMC.
-        
-        Simule l'enregistrement et la vérification d'identité.
-        """
-        self._log(f"Testing QMC authentication: {len(identity_data)} bytes identity")
-        
-        results = {
-            'protocol': 'qmc_authentication',
-            'identity_size': len(identity_data),
-            'n_qubits': n_qubits,
-            'threshold': threshold,
-            'steps': [],
-        }
-        
-        # [v2.7.1] AUTHENTIFICATION RÉELLE : challenge-response HMAC-SHA256.
-        # L'ancien protocole ré-exécutait un circuit quantique NON-DÉTERMINISTE et
-        # comparait les distributions par fidélité — statistiquement toujours en
-        # échec dès ~12-15 qubits (deux échantillons finis d'un support 2^n se
-        # recouvrent en ~shots/2^n). Modèle correct : le matériel quantique sert de
-        # SOURCE D'ENTROPIE à l'ENRÔLEMENT pour dériver une clé secrète K
-        # (HKDF, liée à l'identité). L'authentification est ensuite un
-        # challenge-response HMAC standard : déterministe, sûr, toujours OK pour le
-        # légitime et toujours rejeté pour l'imposteur.
-        results['security_level'] = 'HMAC-SHA256 challenge-response + HKDF (quantum-seeded)'
-        results['method'] = 'hmac_challenge_response'
-
-        # Step 1: Enrôlement — entropie quantique -> clé K liée à l'identité
-        self._log("Step 1: Enrollment - quantum entropy -> HKDF key bound to identity")
-        seed = int.from_bytes(hashlib.sha256(identity_data).digest()[:4], 'big')
-        builder = IQPBuilder(self.framework.topology, self.logger)
-        circuit = builder.build(n_qubits, depth=5, use_random_angles=True,
-                                seed=seed, add_measurements=True)
-        transpiled = self.framework.transpile_circuits([circuit])
-        template_results = self.framework.run_on_qpu(transpiled, shots=4096)
-
-        if not template_results:
-            results['success'] = False
-            results['error'] = 'Template generation failed'
-            return results
-
-        template_counts = template_results[0].get('counts', {})
-        ikm = QMCQuantumCrypto.quantum_seed_from_counts(template_counts)
-        # Sel public d'enrôlement ; l'identité est liée via le paramètre `info`.
-        enroll_salt = secrets.token_bytes(16)
-        K_enroll = QMCQuantumCrypto.hkdf_sha256(
-            ikm, length=32, salt=enroll_salt,
-            info=b"QMC-auth|" + hashlib.sha256(identity_data).digest())
-        # Min-entropie de la source quantique (NIST SP 800-90B)
-        raw_bits = QMCQuantumCrypto.raw_bits_from_counts(template_counts)
-        min_ent = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
-        results['steps'].append({
-            'name': 'enrollment',
-            'status': 'success',
-            'template_states': len(template_counts),
-            'kdf': 'HKDF-SHA256',
-            'source_min_entropy_per_bit': round(min_ent, 4),
-        })
-
-        # Step 2: Vérification (identité légitime) — challenge-response HMAC
-        self._log("Step 2: Verification (legitimate) - HMAC challenge-response")
-        challenge = secrets.token_bytes(32)
-        response = QMCQuantumCrypto.hmac_sha256(K_enroll, challenge)   # prouveur
-        auth_success = QMCQuantumCrypto.hmac_verify(K_enroll, challenge, response)  # vérifieur
-        results['steps'].append({
-            'name': 'verification_same',
-            'status': 'success' if auth_success else 'failed',
-            'authenticated': bool(auth_success),
-        })
-
-        # Step 3: Rejet (imposteur) — clé dérivée d'une identité différente
-        self._log("Step 3: Rejection (impostor) - different identity key")
-        fake_identity = secrets.token_bytes(max(1, len(identity_data)))
-        # L'imposteur ne possède pas l'entropie d'enrôlement : on simule sa
-        # meilleure tentative (clé dérivée de sa propre identité).
-        K_impostor = QMCQuantumCrypto.hkdf_sha256(
-            secrets.token_bytes(32), length=32, salt=enroll_salt,
-            info=b"QMC-auth|" + hashlib.sha256(fake_identity).digest())
-        fake_response = QMCQuantumCrypto.hmac_sha256(K_impostor, challenge)
-        rejection_success = not QMCQuantumCrypto.hmac_verify(K_enroll, challenge, fake_response)
-        results['steps'].append({
-            'name': 'verification_fake',
-            'status': 'success' if rejection_success else 'failed',
-            'rejected': bool(rejection_success),
-        })
-
-        # Succès global : le légitime passe ET l'imposteur est rejeté
-        results['success'] = bool(auth_success and rejection_success)
-        results['rejection_tested'] = True
-        # `threshold` conservé pour compat mais NON utilisé (HMAC est binaire)
-        results['threshold_note'] = 'threshold ignored: HMAC verification is binary'
-
-        self._log(f"Authentication test {'PASSED' if results['success'] else 'FAILED'}")
-
-        self._results['qmc_authentication'] = results
-        return results
     
     def test_bell_key_agreement(self, n_pairs: int = 10, shots: int = 8192) -> Dict:
         """
@@ -16395,7 +16193,7 @@ class QMCFrameworkBase:
     - Data pipeline pour transformations
     
     Usage:
-        fw = QMCFramework(project="QMC_CORE", backend_name="ibm_fez")
+        fw = QMCFramework(project="DEMO", backend_name="ibm_fez")
         fw.initialize(RunMode.QPU, config)
         fw.connect()
         fw.analyze_calibration()
@@ -22726,14 +22524,22 @@ class QMCFrameworkBase:
         
         module_cls = self._registry.get_module(name)
         if module_cls is None:
-            raise ValueError(f"Module '{name}' not found. Available: {self._registry.list_modules()}")
+            modir = self._registry.get_modules_dir()
+            raise QMCModuleNotAvailableError(
+                f"Module '{name}' non disponible. Les modules propriétaires (brevets) sont "
+                f"fournis séparément et chargés à la demande : placez le script '{name}.py' "
+                f"dans '{modir}' (ou définissez QMC_MODULES_PATH). "
+                f"Modules intégrés disponibles : {self._registry.list_modules()}",
+                module=name,
+            )
         
         module = module_cls(self)
         module.initialize(config)
         
         self._loaded_modules[name] = module
-        self.logger.info(f"Loaded module: {name} v{module.get_version()}")
-        
+        if self.logger:
+            self.logger.info(f"Loaded module: {name} v{module.get_version()}")
+
         return module
     
     def get_circuit_builder(self, name: str) -> CircuitBuilder:
@@ -22862,385 +22668,6 @@ class QMCFrameworkBase:
 
 
 # =============================================================================
-# QMC MODULES - IMPLEMENTATIONS
-# =============================================================================
-
-class QMCCoreModule(QMCModule):
-    """
-    Module QMC Core - Encryption basée sur IQP
-    
-    Brevet: FR2514264
-    """
-    
-    @classmethod
-    def get_name(cls) -> str:
-        return "qmc_core"
-    
-    @classmethod
-    def get_version(cls) -> str:
-        return "1.0.0"
-    
-    @classmethod
-    def get_description(cls) -> str:
-        return "QMC Core encryption using IQP circuits - Patent FR2514264"
-    
-    @classmethod
-    def get_patent_ref(cls) -> str:
-        return "FR2514264"
-    
-    def run(self, plaintext: bytes = None, n_qubits: int = 50,
-            iqp_depth: int = 10, shots: int = 8192, **kwargs) -> Dict:
-        """
-        Exécute le protocole d'encryption QMC Core.
-        """
-        self._log(f"Running QMC Core: {n_qubits}Q, depth={iqp_depth}")
-        
-        if plaintext is None:
-            plaintext = b"QMC Test Message"
-        
-        # Use protocol tester
-        results = self.framework.protocol.test_qmc_core_encryption(
-            plaintext=plaintext,
-            n_qubits=n_qubits,
-            iqp_depth=iqp_depth,
-            shots=shots
-        )
-        
-        self._results = results
-        return results
-
-
-class QMCShieldModule(QMCModule):
-    """
-    Module QMC Shield - Long-term data protection
-    
-    [v2.5.11] Clarification des modes:
-    - mode='stress': Test multi-profondeur sur les mêmes données (défaut)
-    - mode='chain': Vrai chaining où chaque couche chiffre le ciphertext précédent
-    
-    Brevet: FR2514363
-    """
-    
-    @classmethod
-    def get_name(cls) -> str:
-        return "qmc_shield"
-    
-    @classmethod
-    def get_version(cls) -> str:
-        return "1.1.0"  # [v2.5.11] Version bump pour nouvelle API
-    
-    @classmethod
-    def get_description(cls) -> str:
-        return "QMC Shield for long-term quantum-safe encryption - Patent FR2514363"
-    
-    @classmethod
-    def get_patent_ref(cls) -> str:
-        return "FR2514363"
-    
-    def run(self, data: bytes = None, n_layers: int = 3,
-            n_qubits: int = 50, shots: int = 8192,
-            mode: str = 'stress', **kwargs) -> Dict:
-        """
-        Exécute le protocole QMC Shield avec couches multiples.
-        
-        [v2.5.11] Deux modes disponibles:
-        - 'stress': Test multi-profondeur indépendant (chaque couche = même plaintext)
-        - 'chain': Vrai chaining (chaque couche chiffre le hash du ciphertext précédent)
-        
-        Args:
-            data: Données à protéger
-            n_layers: Nombre de couches de protection
-            n_qubits: Qubits par couche
-            shots: Shots par exécution
-            mode: 'stress' ou 'chain'
-        """
-        self._log(f"Running QMC Shield: {n_layers} layers, {n_qubits}Q, mode={mode}")
-        
-        results = {
-            'protocol': f'qmc_shield_{mode}',  # [v2.5.11] Nom explicite
-            'mode': mode,
-            'n_layers': n_layers,
-            'layers': [],
-        }
-        
-        # Données initiales
-        current_data = data or b"Sensitive long-term data"
-        results['original_data_hash'] = hashlib.sha256(current_data).hexdigest()[:16]
-        
-        for layer in range(n_layers):
-            self._log(f"Processing layer {layer + 1}/{n_layers}")
-            
-            layer_result = self.framework.protocol.test_qmc_core_encryption(
-                plaintext=current_data,
-                n_qubits=n_qubits,
-                iqp_depth=5 + layer * 2,  # Increasing depth
-                shots=shots
-            )
-            
-            layer_info = {
-                'layer': layer + 1,
-                'success': layer_result.get('success', False),
-                'entropy': layer_result.get('quantum_entropy_bits', 0),
-                'input_hash': hashlib.sha256(current_data).hexdigest()[:16],
-            }
-            
-            # [v2.5.11] Mode chaining: utiliser le ciphertext hash comme nouvelle entrée
-            if mode == 'chain' and layer_result.get('ciphertext_hash'):
-                # Le ciphertext hash devient l'entrée de la couche suivante
-                current_data = layer_result['ciphertext_hash'].encode('utf-8')
-                layer_info['output_hash'] = layer_result['ciphertext_hash'][:16]
-            
-            results['layers'].append(layer_info)
-            
-            # Arrêter si une couche échoue
-            if not layer_info['success']:
-                self._log(f"Layer {layer + 1} failed, stopping", LogLevel.WARN)
-                break
-        
-        results['success'] = all(l['success'] for l in results['layers'])
-        results['total_layers_completed'] = len([l for l in results['layers'] if l['success']])
-        
-        self._results = results
-        return results
-
-
-class QMCBiometricModule(QMCModule):
-    """
-    Module QMC Biometric - Quantum biometric authentication
-    
-    Brevet: FR2514352
-    """
-    
-    @classmethod
-    def get_name(cls) -> str:
-        return "qmc_biometric"
-    
-    @classmethod
-    def get_version(cls) -> str:
-        return "1.0.0"
-    
-    @classmethod
-    def get_description(cls) -> str:
-        return "QMC Biometric authentication system - Patent FR2514352"
-    
-    @classmethod
-    def get_patent_ref(cls) -> str:
-        return "FR2514352"
-    
-    def run(self, identity_data: bytes = None, n_qubits: int = 50,
-            threshold: float = 0.8, **kwargs) -> Dict:
-        """
-        Exécute le protocole d'authentification biométrique.
-        """
-        self._log(f"Running QMC Biometric: {n_qubits}Q, threshold={threshold}")
-        
-        if identity_data is None:
-            identity_data = secrets.token_bytes(64)  # Simulated biometric hash
-        
-        results = self.framework.protocol.test_qmc_authentication(
-            identity_data=identity_data,
-            n_qubits=n_qubits,
-            threshold=threshold
-        )
-        
-        self._results = results
-        return results
-
-
-class QGPModule(QMCModule):
-    """
-    Module QGP - Quantum Genesis Protocol for certificates
-    
-    Brevet: FR2514504
-    """
-    
-    @classmethod
-    def get_name(cls) -> str:
-        return "qgp"
-    
-    @classmethod
-    def get_version(cls) -> str:
-        return "1.0.0"
-    
-    @classmethod
-    def get_description(cls) -> str:
-        return "Quantum Genesis Protocol for digital certificates - Patent FR2514504"
-    
-    @classmethod
-    def get_patent_ref(cls) -> str:
-        return "FR2514504"
-    
-    def run(self, certificate_data: Dict = None, n_qubits: int = 50,
-            shots: int = 8192, **kwargs) -> Dict:
-        """
-        Génère un certificat quantique QGP.
-        """
-        self._log(f"Running QGP certificate generation: {n_qubits}Q")
-        
-        cert_data = certificate_data or {
-            'subject': 'Test Entity',
-            'issuer': 'QMC CA',
-            'validity': '2025-2035',
-        }
-        
-        # Generate quantum fingerprint
-        cert_bytes = json.dumps(cert_data, sort_keys=True).encode()
-        
-        results = {
-            'protocol': 'qgp',
-            'certificate': cert_data,
-            'steps': [],
-        }
-        
-        # Step 1: Generate quantum randomness
-        builder = self.framework.get_circuit_builder('iqp')
-        circuit = builder.build(n_qubits, depth=10)
-        
-        transpiled = self.framework.transpile_circuits([circuit])
-        qpu_results = self.framework.run_on_qpu(transpiled, shots)
-        
-        if qpu_results:
-            counts = qpu_results[0].get('counts', {})
-            
-            # Analyze randomness quality
-            analyzer = self.framework.get_analyzer('randomness')
-            randomness = analyzer.analyze(counts, n_qubits)
-            
-            results['steps'].append({
-                'name': 'quantum_fingerprint_generation',
-                'status': 'success',
-                'randomness_quality': randomness.get('quality_score', 0),
-            })
-            
-            # Generate certificate ID from quantum output
-            quantum_bytes = self._counts_to_bytes(counts)
-            cert_id = hashlib.sha256(cert_bytes + quantum_bytes).hexdigest()[:32]
-            
-            results['certificate_id'] = cert_id
-            results['quantum_certified'] = True
-            results['success'] = randomness.get('crypto_suitable', False)
-        else:
-            results['success'] = False
-            results['error'] = 'Quantum execution failed'
-        
-        self._results = results
-        return results
-    
-    def _counts_to_bytes(self, counts: CountsType) -> bytes:
-        bit_list = []
-        for bitstring, count in sorted(counts.items(), key=lambda x: -x[1]):
-            # [v2.7.1 FIX] Strip register-separator spaces (IBM counts may format
-            # multi-register bitstrings as "010 110") to avoid int(' ') ValueError.
-            clean_bits = bitstring.replace(' ', '')
-            bit_list.extend([int(b) for b in clean_bits] * count)
-        
-        byte_array = []
-        for i in range(0, len(bit_list), 8):
-            byte_val = sum(bit_list[i+j] << (7-j) for j in range(min(8, len(bit_list)-i)))
-            byte_array.append(byte_val)
-        
-        return bytes(byte_array)
-
-
-class QAEEModule(QMCModule):
-    """
-    Module QAEE - Quantum Amplitude Estimation Engine
-    
-    Brevet: FR2514509
-    """
-    
-    @classmethod
-    def get_name(cls) -> str:
-        return "qaee"
-    
-    @classmethod
-    def get_version(cls) -> str:
-        return "1.0.0"
-    
-    @classmethod
-    def get_description(cls) -> str:
-        return "Quantum Amplitude Estimation Engine for financial applications - Patent FR2514509"
-    
-    @classmethod
-    def get_patent_ref(cls) -> str:
-        return "FR2514509"
-    
-    def run(self, target_amplitude: float = 0.3, precision_qubits: int = 4,
-            n_qubits: int = 50, shots: int = 8192, **kwargs) -> Dict:
-        """
-        Exécute l'estimation d'amplitude quantique.
-        """
-        self._log(f"Running QAEE: target_amp={target_amplitude}, precision={precision_qubits}Q")
-        
-        results = {
-            'protocol': 'qaee',
-            'target_amplitude': target_amplitude,
-            'precision_qubits': precision_qubits,
-            'steps': [],
-        }
-
-        # [v2.7.1 FIX] Le circuit construit est un GHZ qui n'encode JAMAIS
-        # target_amplitude: il n'effectue donc PAS d'estimation d'amplitude.
-        # sqrt(P(|0...0>)) ~ sqrt(0.5) pour un GHZ, sans rapport avec la cible.
-        # Plutôt que de prétendre faussement estimer une amplitude, on relabelle
-        # honnêtement la sortie comme une DÉMONSTRATION GHZ et on marque
-        # amplitude_estimation_valid=False. (Une vraie estimation d'amplitude
-        # nécessiterait un opérateur A encodant a=target, suivi d'une QPE sur
-        # l'opérateur de Grover Q = A S_0 A^-1 S_psi.)
-        builder = self.framework.get_circuit_builder('ghz')
-        circuit = builder.build(n_qubits)
-
-        results['amplitude_estimation_valid'] = False
-        results['note'] = (
-            'GHZ demonstration only: this routine prepares a GHZ state and does '
-            'NOT encode or estimate target_amplitude. No genuine amplitude '
-            'estimation (no A-operator + Grover/QPE) is performed; '
-            'target_amplitude is reported for reference only.'
-        )
-
-        transpiled = self.framework.transpile_circuits([circuit])
-        qpu_results = self.framework.run_on_qpu(transpiled, shots)
-
-        if qpu_results:
-            counts = qpu_results[0].get('counts', {})
-
-            # Mesure de la population GHZ |0...0> (diagnostic, PAS une amplitude estimée)
-            total = sum(counts.values())
-            target_state = '0' * n_qubits
-            target_count = counts.get(target_state, 0)
-
-            # [v2.5.13] Protection contre division par zéro
-            if total <= 0:
-                results['success'] = False
-                results['error'] = 'No counts received from QPU (total=0)'
-                self._results = results
-                return results
-
-            # sqrt(P(|0...0>)) du GHZ: diagnostic uniquement, ne PAS comparer à la cible
-            ghz_zero_population = target_count / total
-            ghz_zero_amplitude = float(np.sqrt(ghz_zero_population))
-
-            results['ghz_zero_population'] = round(ghz_zero_population, 6)
-            results['ghz_zero_amplitude'] = round(ghz_zero_amplitude, 6)
-            # [v2.7.1 FIX] le 'succès' porte sur la préparation GHZ, pas sur
-            # une estimation d'amplitude (qui n'a pas lieu).
-            results['success'] = True
-
-            results['steps'].append({
-                'name': 'ghz_demonstration',
-                'status': 'success',
-                'ghz_zero_population': results['ghz_zero_population'],
-                'amplitude_estimation_valid': False,
-            })
-        else:
-            results['success'] = False
-            results['error'] = 'Quantum execution failed'
-
-        self._results = results
-        return results
-
-
-# =============================================================================
 # CLI v2.0
 # =============================================================================
 
@@ -23264,7 +22691,7 @@ def main():
 ║  python qmc_framework_v2.py --quick-test ghz --qubits 50      ║
 ║                                                               ║
 ║  # Run module (QMC Core)                                      ║
-║  python qmc_framework_v2.py --module qmc_core --qubits 50     ║
+║  python qmc_framework_v2.py --module <name>   --qubits 50     ║
 ║                                                               ║
 ║  # Run benchmark suite                                        ║
 ║  python qmc_framework_v2.py --benchmark                       ║
@@ -26279,7 +25706,7 @@ class QuantumSignatureBuilder(CircuitBuilder):
     """
     Constructeur de circuits pour signatures numériques quantiques.
     
-    Brevet PCT - Claims 31-34:
+    Référence brevet retirée (primitive générique)
     - Signature basée sur IQP avec paramètres dérivés du hash du message
     - Taille de signature indépendante de la longueur du message
     - Vérification par batch via exécution combinée
@@ -26466,7 +25893,7 @@ class ZKPBuilder(CircuitBuilder):
     """
     Constructeur de circuits pour preuves à divulgation nulle quantiques.
     
-    Brevet PCT - Claims 35-38:
+    Référence brevet retirée (primitive générique)
     - Protocole Sigma à 3 phases: Commitment → Challenge → Response
     - Preuves de connaissance de clé secrète
     - Range proofs et set membership
@@ -26769,7 +26196,7 @@ class TimeLockBuilder(CircuitBuilder):
     """
     Constructeur de circuits pour chiffrement temporel.
     
-    Brevet PCT - Claims 45-46, paragraphes 70-73:
+    Référence brevet retirée (primitive générique)
     - Forward time-lock: Déchiffrement impossible AVANT une date
     - Expiring time-lock: Déchiffrement impossible APRÈS une date
     - Exploite la dérive de calibration du processeur quantique
@@ -27089,7 +26516,7 @@ class ObliviousTransferBuilder(CircuitBuilder):
     """
     Constructeur de circuits pour Oblivious Transfer quantique.
     
-    Brevet PCT - Claims 43-44:
+    Référence brevet retirée (primitive générique)
     - 1-of-2 OT: Le receveur choisit 1 message parmi 2 sans révéler son choix
     - 1-of-N OT: Extension à N messages
     - Le sender ne sait pas quel message a été choisi
@@ -28979,7 +28406,7 @@ class HoneypotAnalyzer(Analyzer):
     """
     Analyseur de circuits honeypot pour détection d'intrusion.
     
-    Brevet PCT - Claims 74-75:
+    Référence brevet retirée (primitive générique)
     - Génère des circuits decoy avec signatures distinctives
     - Détecte les tentatives d'accès non autorisé
     - Alerte en cas d'exécution de circuits honeypot
@@ -29512,7 +28939,7 @@ class ThresholdCryptoModule(QMCModule):
     """
     Module de cryptographie à seuil quantique K-of-N.
     
-    Brevet PCT - Claim 41:
+    Référence brevet retirée (primitive générique)
     - Shamir Secret Sharing avec génération quantique
     - K parties parmi N peuvent reconstruire le secret
     - Protection quantique du partage
@@ -29528,11 +28955,11 @@ class ThresholdCryptoModule(QMCModule):
     
     @classmethod
     def get_description(cls) -> str:
-        return "K-of-N Threshold Quantum Cryptography - PCT Claim 41"
+        return "K-of-N Threshold Quantum Cryptography"
     
     @classmethod
     def get_patent_ref(cls) -> str:
-        return "PCT-Claim-41"
+        return ""
     
     def run(self, secret: bytes = None, k: int = 3, n: int = 5,
             n_qubits: int = 50, shots: int = 8192, **kwargs) -> Dict:
@@ -29611,7 +29038,7 @@ class ThresholdCryptoModule(QMCModule):
 class QuantumSignatureModule(QMCModule):
     """
     Module de signatures numériques quantiques.
-    Brevet PCT - Claims 31-34
+    Référence brevet retirée (primitive générique)
     """
     
     @classmethod
@@ -29624,11 +29051,11 @@ class QuantumSignatureModule(QMCModule):
     
     @classmethod
     def get_description(cls) -> str:
-        return "Quantum Digital Signatures - PCT Claims 31-34"
+        return "Quantum Digital Signatures"
     
     @classmethod
     def get_patent_ref(cls) -> str:
-        return "PCT-Claims-31-34"
+        return ""
     
     def run(self, message: bytes = None, private_key: bytes = None,
             n_qubits: int = 50, shots: int = 8192, **kwargs) -> Dict:
@@ -29676,7 +29103,7 @@ class QuantumSignatureModule(QMCModule):
 class ZKPModule(QMCModule):
     """
     Module de preuves à divulgation nulle quantiques.
-    Brevet PCT - Claims 35-38
+    Référence brevet retirée (primitive générique)
     """
     
     @classmethod
@@ -29689,11 +29116,11 @@ class ZKPModule(QMCModule):
     
     @classmethod
     def get_description(cls) -> str:
-        return "Quantum Zero-Knowledge Proofs - PCT Claims 35-38"
+        return "Quantum Zero-Knowledge Proofs"
     
     @classmethod
     def get_patent_ref(cls) -> str:
-        return "PCT-Claims-35-38"
+        return ""
     
     def run(self, secret: bytes = None, proof_type: str = 'knowledge',
             n_qubits: int = 50, shots: int = 8192, **kwargs) -> Dict:
@@ -29904,7 +29331,7 @@ class MultiPlatformOrchestrator:
 class QuantumMLOptimizer:
     """
     Optimiseur de circuits par Machine Learning.
-    Brevet PCT - paragraphe 25
+    Référence brevet retirée (primitive générique)
     """
     
     def __init__(self, logger: 'Logger' = None):
@@ -31774,634 +31201,6 @@ class CircuitCostEstimator:
 
 
 # =============================================================================
-# QDNA-ID MODULE - QUANTUM DEVICE NOISE AUTHENTICATION (Patent FR2514504)
-# =============================================================================
-# [v4.5] Aligné sur brevet INPI FR2514504 - Revendications 2, 3, 4
-
-QDNA_ALL_CIRCUIT_TYPES = ['ghz', 'iqp', 'bell', 'random', 'qft', 'cluster']
-
-# [BREVET Rev.3] 6 types de circuits par défaut (pas 4!)
-QDNA_DEFAULT_CIRCUIT_TYPES = ['ghz', 'iqp', 'bell', 'random', 'qft', 'cluster']
-
-# [BREVET Rev.4] Poids du score composite: w₁=0.35, w₂=0.35, w₃=0.20, w₄=0.10
-QDNA_SCORING_WEIGHTS = {'distribution': 0.35, 'ratios': 0.35, 'cross_region': 0.20, 'temporal': 0.10}
-
-# Nonce minimum 256 bits (32 bytes) pour challenge-response [BREVET Rev.9]
-QDNA_NONCE_BYTES = 32
-
-
-@dataclass
-class QDNACircuitSignature:
-    """Signature d'un type de circuit QDNA-ID."""
-    circuit_type: str
-    entropy: float = 0.0
-    n_states: int = 0
-    top_states: List[Tuple[str, float]] = field(default_factory=list)
-    fidelity: float = 0.0
-    xeb_score: float = 0.0
-    distribution_hash: str = ""
-
-
-@dataclass
-class QDNARegionFingerprint8D:
-    """Fingerprint 8D d'une région QDNA-ID."""
-    region_id: int
-    qubits: List[int] = field(default_factory=list)
-    n_qubits: int = 0
-    t1_ratios: Dict[str, float] = field(default_factory=dict)
-    t2_ratios: Dict[str, float] = field(default_factory=dict)
-    readout_ratios: Dict[str, float] = field(default_factory=dict)
-    gate_error_ratios: Dict[str, float] = field(default_factory=dict)
-    circuit_signatures: Dict[str, QDNACircuitSignature] = field(default_factory=dict)
-    entropy_vector: List[float] = field(default_factory=list)
-    fidelity_vector: List[float] = field(default_factory=list)
-    execution_timestamp: str = ""
-    calibration_snapshot: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class QDNATemporalFingerprint:
-    """Fingerprint TEMPORAL 8D complet QDNA-ID."""
-    version: str = "4.1.0"
-    backend: str = ""
-    timestamp: str = ""
-    calibration_id: str = ""
-    n_regions: int = 0
-    total_qubits: int = 0
-    total_ratios: int = 0
-    circuit_types: List[str] = field(default_factory=list)
-    regions: List[QDNARegionFingerprint8D] = field(default_factory=list)
-    cross_region_correlations: Dict[str, float] = field(default_factory=dict)
-    cross_region_entropy_ratios: Dict[str, float] = field(default_factory=dict)
-    cross_region_fidelity_ratios: Dict[str, float] = field(default_factory=dict)
-    temporal_snapshot: Dict[str, Any] = field(default_factory=dict)
-    composite_hash: str = ""
-    global_stats: Dict[str, Any] = field(default_factory=dict)
-    
-    def compute_hash(self) -> str:
-        data = {'backend': self.backend, 'regions': [{'qubits': r.qubits, 't1_ratios': r.t1_ratios, 't2_ratios': r.t2_ratios, 'readout_ratios': r.readout_ratios, 'gate_error_ratios': r.gate_error_ratios, 'entropy_vector': r.entropy_vector} for r in self.regions], 'cross_correlations': self.cross_region_correlations, 'temporal': self.temporal_snapshot}
-        self.composite_hash = hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
-        return self.composite_hash
-    
-    def get_security_level(self) -> str:
-        return f"10^{self.total_ratios}"
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {'version': self.version, 'backend': self.backend, 'timestamp': self.timestamp, 'calibration_id': self.calibration_id, 'n_regions': self.n_regions, 'total_qubits': self.total_qubits, 'total_ratios': self.total_ratios, 'circuit_types': self.circuit_types, 'composite_hash': self.composite_hash, 'security_level': self.get_security_level(), 'regions': [{'region_id': r.region_id, 'qubits': r.qubits, 'n_qubits': r.n_qubits, 't1_ratios': r.t1_ratios, 't2_ratios': r.t2_ratios, 'readout_ratios': r.readout_ratios, 'gate_error_ratios': r.gate_error_ratios, 'circuit_signatures': {k: {'entropy': v.entropy, 'n_states': v.n_states, 'fidelity': v.fidelity, 'xeb_score': v.xeb_score, 'distribution_hash': v.distribution_hash} for k, v in r.circuit_signatures.items()}, 'entropy_vector': r.entropy_vector, 'fidelity_vector': r.fidelity_vector, 'execution_timestamp': r.execution_timestamp} for r in self.regions], 'cross_region_correlations': self.cross_region_correlations, 'cross_region_entropy_ratios': self.cross_region_entropy_ratios, 'cross_region_fidelity_ratios': self.cross_region_fidelity_ratios, 'temporal_snapshot': self.temporal_snapshot, 'global_stats': self.global_stats}
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'QDNATemporalFingerprint':
-        fp = cls(version=data.get('version', '4.1.0'), backend=data.get('backend', ''), timestamp=data.get('timestamp', ''), calibration_id=data.get('calibration_id', ''), n_regions=data.get('n_regions', 0), total_qubits=data.get('total_qubits', 0), total_ratios=data.get('total_ratios', 0), circuit_types=data.get('circuit_types', []), composite_hash=data.get('composite_hash', ''), cross_region_correlations=data.get('cross_region_correlations', {}), cross_region_entropy_ratios=data.get('cross_region_entropy_ratios', {}), cross_region_fidelity_ratios=data.get('cross_region_fidelity_ratios', {}), temporal_snapshot=data.get('temporal_snapshot', {}), global_stats=data.get('global_stats', {}))
-        for r_data in data.get('regions', []):
-            region = QDNARegionFingerprint8D(region_id=r_data.get('region_id', 0), qubits=r_data.get('qubits', []), n_qubits=r_data.get('n_qubits', 0), t1_ratios=r_data.get('t1_ratios', {}), t2_ratios=r_data.get('t2_ratios', {}), readout_ratios=r_data.get('readout_ratios', {}), gate_error_ratios=r_data.get('gate_error_ratios', {}), entropy_vector=r_data.get('entropy_vector', []), fidelity_vector=r_data.get('fidelity_vector', []), execution_timestamp=r_data.get('execution_timestamp', ''))
-            for ctype, sig_data in r_data.get('circuit_signatures', {}).items():
-                region.circuit_signatures[ctype] = QDNACircuitSignature(circuit_type=ctype, entropy=sig_data.get('entropy', 0), n_states=sig_data.get('n_states', 0), fidelity=sig_data.get('fidelity', 0), xeb_score=sig_data.get('xeb_score', 0), distribution_hash=sig_data.get('distribution_hash', ''))
-            fp.regions.append(region)
-        return fp
-
-
-@dataclass
-class QDNAVerificationResult:
-    """Résultat de vérification QDNA-ID."""
-    challenge_id: str = ""
-    authenticated: bool = False
-    confidence: float = 0.0
-    distribution_score: float = 0.0
-    ratio_score: float = 0.0
-    cross_region_score: float = 0.0
-    temporal_score: float = 0.0
-    region_results: List[Dict[str, Any]] = field(default_factory=list)
-    regions_passed: int = 0
-    total_regions: int = 0
-    circuits_matched: int = 0
-    total_circuits: int = 0
-    final_score: float = 0.0
-    threshold: float = 0.0
-    drift_detected: bool = False
-    drift_magnitude: float = 0.0
-    drift_details: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {'challenge_id': self.challenge_id, 'authenticated': self.authenticated, 'confidence': self.confidence, 'scores': {'distribution': self.distribution_score, 'ratio': self.ratio_score, 'cross_region': self.cross_region_score, 'temporal': self.temporal_score, 'final': self.final_score}, 'threshold': self.threshold, 'regions_passed': self.regions_passed, 'total_regions': self.total_regions, 'region_results': self.region_results}
-
-
-@dataclass
-class QDNADriftAnalysis:
-    """Analyse de dérive QDNA-ID."""
-    fingerprint1_hash: str = ""
-    fingerprint2_hash: str = ""
-    time_delta_seconds: float = 0.0
-    ratio_stability: float = 0.0
-    entropy_stability: float = 0.0
-    same_device: bool = True
-    confidence: float = 0.0
-    recommendation: str = ""
-
-
-class QDNAIDEngine:
-    """Moteur QDNA-ID intégré (Patent FR2514504)."""
-    
-    DRY_RUN_SHOTS = 100
-    MIN_QUBITS_PER_REGION = 5
-    
-    def __init__(self, framework):
-        self.fw = framework
-        self.logger = framework.logger
-        self.n_regions = 6
-        self.circuit_types = QDNA_DEFAULT_CIRCUIT_TYPES.copy()
-        self.max_qubits = None
-        self._fingerprints: Dict[str, QDNATemporalFingerprint] = {}
-        self.base_threshold = 0.50
-        self.region_bonus = 0.03
-        self.circuit_bonus = 0.02
-    
-    def _log(self, msg: str, level: str = "INFO"):
-        if self.logger: self.logger.log(msg, level=level, section='QDNA-ID')
-    
-    def discover_regions(self, n_regions: int = None, max_qubits: int = None) -> List[List[int]]:
-        n_regions = n_regions or self.n_regions
-        topo = self.fw.topology
-        adjacency = {}
-        for q1, q2 in topo._coupling_map:
-            adjacency.setdefault(q1, []).append(q2)
-            adjacency.setdefault(q2, []).append(q1)
-        usable_qubits = []
-        for q in range(self.fw.backend.num_qubits):
-            if q not in topo.faulty_qubits:
-                errors = topo._qubit_errors.get(q, {})
-                score = 0.4 * (1.0 - min(1.0, errors.get('readout', 0.5) * 10)) + 0.3 * min(1.0, errors.get('t1', 0.0001) / 200) + 0.3 * min(1.0, errors.get('t2', 0.0001) / 150)
-                usable_qubits.append((q, score))
-        usable_qubits.sort(key=lambda x: -x[1])
-        if max_qubits: usable_qubits = usable_qubits[:max_qubits]
-        target_per_region = max(10, len(usable_qubits) // n_regions)
-        regions, used = [], set()
-        for _ in range(n_regions):
-            start = next((q for q, _ in usable_qubits if q not in used), None)
-            if not start: break
-            region, queue, visited = [], [start], {start}
-            while queue and len(region) < target_per_region:
-                current = queue.pop(0)
-                if current not in used and current not in topo.faulty_qubits:
-                    region.append(current)
-                    for n in adjacency.get(current, []):
-                        if n not in visited and n not in used:
-                            visited.add(n); queue.append(n)
-            if len(region) >= self.MIN_QUBITS_PER_REGION:
-                regions.append(region); used.update(region)
-        return regions
-    
-    def _build_single_circuit(self, ctype: str, n_qubits: int):
-        try:
-            if ctype == 'ghz': return self.fw.get_circuit_builder('ghz').build(n_qubits, add_measurements=True)
-            elif ctype == 'iqp': return self.fw.get_circuit_builder('iqp').build(n_qubits, depth=8, use_random_angles=False, add_measurements=True)
-            elif ctype == 'bell': return self.fw.get_circuit_builder('bell').build(add_measurements=True)
-            elif ctype == 'random': return self.fw.get_circuit_builder('random').build(min(n_qubits, 15), depth=8, seed=42, add_measurements=True)
-            elif ctype == 'qft': return self.fw.get_circuit_builder('qft').build(min(n_qubits, 10), add_measurements=True)
-            elif ctype == 'cluster': return self.fw.get_circuit_builder('cluster').build(min(n_qubits, 15), add_measurements=True)
-        except: pass
-        return None
-    
-    def _build_all_circuits(self, regions, circuit_types=None):
-        circuit_types = circuit_types or self.circuit_types
-        circuits, circuit_map = [], []
-        for idx, qubits in enumerate(regions):
-            for ctype in circuit_types:
-                c = self._build_single_circuit(ctype, len(qubits))
-                if c: circuits.append(c); circuit_map.append((idx, ctype))
-        return circuits, circuit_map
-    
-    def _compute_circuit_signature(self, ctype: str, counts: Dict[str, int]) -> QDNACircuitSignature:
-        total = sum(counts.values())
-        entropy = -sum((c/total) * math.log2(c/total) for c in counts.values() if c > 0)
-        sorted_counts = sorted(counts.items(), key=lambda x: -x[1])[:10]
-        top_states = [(s, c/total) for s, c in sorted_counts]
-        fidelity = 0.0
-        if ctype == 'ghz' and counts:
-            n_bits = len(list(counts.keys())[0])
-            fidelity = (counts.get('0' * n_bits, 0) + counts.get('1' * n_bits, 0)) / total
-        n_states = len(counts)
-        # [v2.7.1 FIX] xeb_score over the FULL distribution (top-10 only biased it toward 1.0).
-        xeb_score = (sum(1 for c in counts.values() if (c / total) > 1.5 / n_states) / n_states) if n_states else 0
-        # [v2.7.1 FIX] Hash a QUANTIZED probability distribution (probs rounded to 3 decimals)
-        # so the signature is stable across runs with different absolute shot counts.
-        # Raw integer counts never matched across runs. MD5 marked non-security explicitly.
-        quantized = sorted(((s, round(c / total, 3)) for s, c in counts.items()), key=lambda x: x[0])[:100]
-        dist_hash = hashlib.md5(
-            json.dumps(quantized, sort_keys=True).encode(), usedforsecurity=False
-        ).hexdigest()[:16]
-        return QDNACircuitSignature(circuit_type=ctype, entropy=entropy, n_states=n_states, top_states=top_states, fidelity=fidelity, xeb_score=xeb_score, distribution_hash=dist_hash)
-    
-    def enroll(self, n_regions: int = 6, shots: int = 4096, circuit_types: List[str] = None, skip_dry_run: bool = False, max_qubits: int = None) -> Optional[QDNATemporalFingerprint]:
-        """Enrollment MEGA-BATCH - génère un fingerprint 8D unique."""
-        circuit_types = circuit_types or self.circuit_types
-        self._log("=" * 60); self._log(f"QDNA-ID ENROLLMENT - {n_regions} regions"); self._log("=" * 60)
-        regions_qubits = self.discover_regions(n_regions, max_qubits)
-        if not regions_qubits: self._log("ERROR: No regions!"); return None
-        self._log(f"Discovered {len(regions_qubits)} regions, {sum(len(r) for r in regions_qubits)} qubits")
-        all_circuits, circuit_map = self._build_all_circuits(regions_qubits, circuit_types)
-        self._log(f"Built {len(all_circuits)} circuits")
-        if not skip_dry_run and all_circuits:
-            self._log("Dry run..."); self.fw.run_on_qpu(circuits=[all_circuits[0]], shots=self.DRY_RUN_SHOTS, save_counts=False, auto_transpile=True)
-        self._log("MEGA-BATCH execution...")
-        exec_start = datetime.now()
-        results = self.fw.run_on_qpu(circuits=all_circuits, shots=shots, save_counts=True, auto_transpile=True)
-        self._log(f"Complete in {(datetime.now() - exec_start).total_seconds():.1f}s")
-        topo = self.fw.topology
-        fingerprint = QDNATemporalFingerprint(backend=self.fw.backend.name, timestamp=datetime.now().isoformat(), calibration_id=getattr(topo, '_calibration_id', 'unknown'), n_regions=len(regions_qubits), total_qubits=sum(len(r) for r in regions_qubits), circuit_types=circuit_types.copy())
-        region_fps = {}
-        for idx, qubits in enumerate(regions_qubits):
-            rfp = QDNARegionFingerprint8D(region_id=idx, qubits=qubits, n_qubits=len(qubits), execution_timestamp=exec_start.isoformat())
-            for i, q1 in enumerate(qubits):
-                for q2 in qubits[i+1:]:
-                    e1, e2 = topo._qubit_errors.get(q1, {}), topo._qubit_errors.get(q2, {})
-                    key = f"{q1}_{q2}"
-                    # D1: T1 ratios
-                    if e2.get('t1', 0.0001) > 0: rfp.t1_ratios[key] = e1.get('t1', 0.0001) / e2.get('t1', 0.0001)
-                    # D2: T2 ratios
-                    if e2.get('t2', 0.0001) > 0: rfp.t2_ratios[key] = e1.get('t2', 0.0001) / e2.get('t2', 0.0001)
-                    # D3: Readout ratios
-                    if e2.get('readout', 0.05) > 0: rfp.readout_ratios[key] = e1.get('readout', 0.05) / e2.get('readout', 0.05)
-                    # D4: Gate error ratios [BREVET Rev.2 - Ajouté v4.5]
-                    edge_key, edge_key_rev = (q1, q2), (q2, q1)
-                    err1 = topo._edge_errors.get(edge_key, {}).get('cx_error') or topo._edge_errors.get(edge_key, {}).get('ecr_error', 0.01)
-                    err2 = topo._edge_errors.get(edge_key_rev, {}).get('cx_error') or topo._edge_errors.get(edge_key_rev, {}).get('ecr_error', 0.01)
-                    if err1 and err2 and err2 > 0: rfp.gate_error_ratios[key] = err1 / err2
-            rfp.calibration_snapshot = {'mean_t1': sum(topo._qubit_errors.get(q, {}).get('t1', 0) for q in qubits) / max(1, len(qubits)), 'mean_t2': sum(topo._qubit_errors.get(q, {}).get('t2', 0) for q in qubits) / max(1, len(qubits)), 'mean_readout': sum(topo._qubit_errors.get(q, {}).get('readout', 0) for q in qubits) / max(1, len(qubits))}
-            region_fps[idx] = rfp
-        for i, (idx, ctype) in enumerate(circuit_map):
-            if i < len(results) and results[i] and results[i].get('counts'):
-                region_fps[idx].circuit_signatures[ctype] = self._compute_circuit_signature(ctype, results[i]['counts'])
-        for rfp in region_fps.values():
-            for ctype in circuit_types:
-                sig = rfp.circuit_signatures.get(ctype)
-                rfp.entropy_vector.append(sig.entropy if sig else 0.0)
-                rfp.fidelity_vector.append(sig.fidelity if sig else 0.0)
-        fingerprint.regions = list(region_fps.values())
-        for r in fingerprint.regions: fingerprint.total_ratios += len(r.t1_ratios) + len(r.t2_ratios) + len(r.readout_ratios) + len(r.gate_error_ratios)
-        for i, r1 in enumerate(fingerprint.regions):
-            for j, r2 in enumerate(fingerprint.regions[i+1:], start=i+1):
-                key = f"r{i}_r{j}"
-                for ctype in circuit_types:
-                    s1, s2 = r1.circuit_signatures.get(ctype), r2.circuit_signatures.get(ctype)
-                    if s1 and s2 and s2.entropy > 0: fingerprint.cross_region_entropy_ratios[f"{key}_{ctype}"] = s1.entropy / s2.entropy
-                if r1.calibration_snapshot and r2.calibration_snapshot:
-                    t1_1, t1_2 = r1.calibration_snapshot.get('mean_t1', 1), r2.calibration_snapshot.get('mean_t1', 1)
-                    if t1_2 > 0: fingerprint.cross_region_correlations[f"{key}_t1"] = t1_1 / t1_2
-        all_t1 = [e.get('t1', 0) for e in topo._qubit_errors.values() if e.get('t1')]
-        all_t2 = [e.get('t2', 0) for e in topo._qubit_errors.values() if e.get('t2')]
-        fingerprint.temporal_snapshot = {'capture_time': datetime.now().isoformat(), 'backend': self.fw.backend.name, 'mean_t1': sum(all_t1) / len(all_t1) if all_t1 else 0, 'mean_t2': sum(all_t2) / len(all_t2) if all_t2 else 0, 'n_faulty': len(topo.faulty_qubits)}
-        fingerprint.compute_hash()
-        self._fingerprints[fingerprint.backend] = fingerprint
-        try:
-            fp_path = self.fw.dir_manager.run_dir / f"qdna_fingerprint_{fingerprint.backend}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(fp_path, 'w', encoding='utf-8') as f: json.dump(fingerprint.to_dict(), f, indent=2, default=str)  # [v2.7.1 FIX] encoding
-            self._log(f"Saved: {fp_path}")
-        except Exception as e: self._log(f"Fingerprint save failed: {e}", level="WARNING")  # [v2.7.1 FIX] log instead of silent pass
-        self._log(f"ENROLLMENT COMPLETE - {fingerprint.total_ratios} ratios, Security: {fingerprint.get_security_level()}")
-        return fingerprint
-    
-    def verify(self, fingerprint: QDNATemporalFingerprint = None, shots: int = 4096) -> QDNAVerificationResult:
-        """Vérification MEGA-BATCH."""
-        if fingerprint is None: fingerprint = self._fingerprints.get(self.fw.backend.name)
-        if not fingerprint: return QDNAVerificationResult(challenge_id=secrets.token_hex(QDNA_NONCE_BYTES), authenticated=False)
-        challenge_id = secrets.token_hex(QDNA_NONCE_BYTES)  # [BREVET Rev.9] 256 bits minimum
-        self._log(f"VERIFICATION - Challenge: {challenge_id}")
-        result = QDNAVerificationResult(challenge_id=challenge_id, total_regions=fingerprint.n_regions, total_circuits=len(fingerprint.circuit_types))
-        regions_qubits = [r.qubits for r in fingerprint.regions]
-        all_circuits, circuit_map = self._build_all_circuits(regions_qubits, fingerprint.circuit_types)
-        verify_results = self.fw.run_on_qpu(circuits=all_circuits, shots=shots, save_counts=True, auto_transpile=True)
-        verify_sigs = {}
-        for i, (idx, ctype) in enumerate(circuit_map):
-            if i < len(verify_results) and verify_results[i] and verify_results[i].get('counts'):
-                if idx not in verify_sigs: verify_sigs[idx] = {}
-                verify_sigs[idx][ctype] = self._compute_circuit_signature(ctype, verify_results[i]['counts'])
-        regions_passed = 0
-        for idx, ref_region in enumerate(fingerprint.regions):
-            vsigs = verify_sigs.get(idx, {})
-            hellingers, matches = [], 0
-            for ctype in fingerprint.circuit_types:
-                ref_sig, ver_sig = ref_region.circuit_signatures.get(ctype), vsigs.get(ctype)
-                if ref_sig and ver_sig:
-                    if ref_sig.entropy > 0: hellingers.append(min(1.0, abs(ref_sig.entropy - ver_sig.entropy) / ref_sig.entropy))
-                    if ref_sig.distribution_hash == ver_sig.distribution_hash: matches += 1
-            topo = self.fw.topology
-            all_diffs = []
-            for key, ref_ratio in ref_region.t1_ratios.items():
-                parts = key.split('_')
-                if len(parts) == 2:
-                    q1, q2 = int(parts[0]), int(parts[1])
-                    ct1_1 = topo._qubit_errors.get(q1, {}).get('t1', 0.0001)
-                    ct1_2 = topo._qubit_errors.get(q2, {}).get('t1', 0.0001)
-                    if ct1_2 > 0: all_diffs.append(abs(ct1_1/ct1_2 - ref_ratio) / max(ref_ratio, 0.001))
-            ratio_sim = max(0, 1 - sum(all_diffs) / len(all_diffs)) if all_diffs else 0.0
-            avg_h = sum(hellingers) / len(hellingers) if hellingers else 1.0
-            region_score = (1 - avg_h) * 0.4 + ratio_sim * 0.6
-            passed = region_score > 0.5 and ratio_sim > 0.7
-            if passed: regions_passed += 1
-            result.region_results.append({'region_id': idx, 'hellinger': avg_h, 'ratio_similarity': ratio_sim, 'circuits_matched': matches, 'passed': passed})
-            result.circuits_matched += matches
-        result.regions_passed = regions_passed
-        all_h = [r['hellinger'] for r in result.region_results]
-        all_r = [r['ratio_similarity'] for r in result.region_results]
-        result.distribution_score = 1 - (sum(all_h) / len(all_h)) if all_h else 0
-        result.ratio_score = sum(all_r) / len(all_r) if all_r else 0
-        result.cross_region_score = 1.0
-        result.temporal_score = 1.0
-        base_score = QDNA_SCORING_WEIGHTS['distribution'] * result.distribution_score + QDNA_SCORING_WEIGHTS['ratios'] * result.ratio_score + QDNA_SCORING_WEIGHTS['cross_region'] * result.cross_region_score + QDNA_SCORING_WEIGHTS['temporal'] * result.temporal_score
-        result.final_score = min(1.0, base_score + self.region_bonus * regions_passed + self.circuit_bonus * (result.circuits_matched / max(1, result.total_circuits * result.total_regions)))
-        result.threshold = self.base_threshold - (0.10 if result.ratio_score > 0.95 else 0.0)
-        result.authenticated = result.final_score >= result.threshold and regions_passed >= max(1, fingerprint.n_regions // 2)
-        result.confidence = result.final_score
-        self._log(f"{'✓✓✓ AUTHENTICATED' if result.authenticated else '✗✗✗ NOT AUTHENTICATED'} - Score: {result.final_score:.2%}")
-        return result
-    
-    def compare_fingerprints(self, fp1: QDNATemporalFingerprint, fp2: QDNATemporalFingerprint) -> QDNADriftAnalysis:
-        """Analyse de dérive."""
-        analysis = QDNADriftAnalysis(fingerprint1_hash=fp1.composite_hash[:16], fingerprint2_hash=fp2.composite_hash[:16])
-        try: analysis.time_delta_seconds = abs((datetime.fromisoformat(fp2.timestamp) - datetime.fromisoformat(fp1.timestamp)).total_seconds())
-        except: pass
-        ratio_diffs = []
-        for r1, r2 in zip(fp1.regions, fp2.regions):
-            for key in r1.t1_ratios:
-                if key in r2.t1_ratios and r1.t1_ratios[key] > 0: ratio_diffs.append(abs(r1.t1_ratios[key] - r2.t1_ratios[key]) / r1.t1_ratios[key])
-        analysis.ratio_stability = 1 - (sum(ratio_diffs) / len(ratio_diffs)) if ratio_diffs else 1.0
-        entropy_diffs = []
-        for r1, r2 in zip(fp1.regions, fp2.regions):
-            for e1, e2 in zip(r1.entropy_vector, r2.entropy_vector):
-                if e1 > 0: entropy_diffs.append(abs(e1 - e2) / e1)
-        analysis.entropy_stability = 1 - (sum(entropy_diffs) / len(entropy_diffs)) if entropy_diffs else 1.0
-        analysis.same_device = fp1.backend == fp2.backend and analysis.ratio_stability > 0.80
-        analysis.confidence = (analysis.ratio_stability + analysis.entropy_stability) / 2
-        analysis.recommendation = "Same device - consistent" if analysis.same_device else "Different device OR drift"
-        return analysis
-    
-    def load_fingerprint(self, filepath: str) -> Optional[QDNATemporalFingerprint]:
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f: return QDNATemporalFingerprint.from_dict(json.load(f))  # [v2.7.1 FIX] encoding
-        except Exception as e: self._log(f"Load error: {e}"); return None
-    
-    def get_stored_fingerprint(self, backend: str = None) -> Optional[QDNATemporalFingerprint]:
-        return self._fingerprints.get(backend or self.fw.backend.name)
-    
-    def run_with_qdna_fingerprint(self, user_circuits: List, shots: int = 4096,
-                                   n_qdna_regions: int = 2, 
-                                   qdna_circuit_types: List[str] = None,
-                                   include_verification: bool = False,
-                                   reference_fingerprint: 'QDNATemporalFingerprint' = None) -> Dict[str, Any]:
-        """
-        [BREVET FR2514504 §0081] MEGA-BATCH Piggyback Execution
-        
-        Exécute les circuits utilisateur avec les circuits QDNA-ID en piggyback,
-        garantissant que TOUS les circuits partagent le même état de calibration.
-        
-        À la fin du job, vous obtenez:
-        - Les résultats de vos circuits utilisateur
-        - Un fingerprint 8D complet du QPU utilisé
-        - (Optionnel) Une vérification d'authenticité
-        
-        Args:
-            user_circuits: Liste des circuits utilisateur à exécuter
-            shots: Nombre de shots par circuit
-            n_qdna_regions: Nombre de régions QDNA-ID (défaut: 2, max recommandé: 4)
-            qdna_circuit_types: Types de circuits QDNA (défaut: 6 types du brevet)
-            include_verification: Si True, vérifie contre un fingerprint de référence
-            reference_fingerprint: Fingerprint de référence pour vérification
-        
-        Returns:
-            {
-                'user_results': [...],           # Résultats des circuits utilisateur
-                'qdna_fingerprint': {...},       # Fingerprint 8D du QPU (dict)
-                'job_id': 'xxx',                 # ID unique du job MEGA-BATCH
-                'qpu_time_s': 12.5,              # Temps QPU réel
-                'mega_batch_info': {
-                    'total_circuits': 42,        # user + qdna
-                    'user_circuits': 6,
-                    'qdna_circuits': 36,
-                    'calibration_coherent': True # Tous sous même calibration
-                },
-                'authenticated': True/False,     # Si verification demandée
-                'verification_score': 0.95       # Score de matching
-            }
-        
-        Example:
-            # Exécuter vos circuits avec fingerprinting automatique
-            result = fw.qdna_engine.run_with_qdna_fingerprint(
-                user_circuits=[my_circuit1, my_circuit2],
-                shots=4096
-            )
-            
-            # Récupérer vos résultats
-            my_results = result['user_results']
-            
-            # Récupérer le fingerprint du QPU
-            fingerprint = result['qdna_fingerprint']
-            print(f"QPU Hash: {fingerprint['composite_hash'][:16]}...")
-        """
-        qdna_circuit_types = qdna_circuit_types or QDNA_DEFAULT_CIRCUIT_TYPES
-        
-        self._log("=" * 70)
-        self._log("QDNA-ID MEGA-BATCH PIGGYBACK EXECUTION")
-        self._log(f"[BREVET FR2514504 §0081] Intégration circuits signature au calcul client")
-        self._log("=" * 70)
-        
-        # === ÉTAPE 1: Découvrir les régions QDNA-ID ===
-        regions_qubits = self.discover_regions(n_qdna_regions, max_qubits=None)
-        if not regions_qubits:
-            self._log("ERROR: Impossible de découvrir des régions QDNA-ID", level="ERROR")
-            return {'error': 'No QDNA regions discovered', 'user_results': None}
-        
-        self._log(f"Discovered {len(regions_qubits)} QDNA regions ({sum(len(r) for r in regions_qubits)} qubits)")
-        
-        # === ÉTAPE 2: Construire les circuits QDNA-ID ===
-        qdna_circuits, qdna_circuit_map = self._build_all_circuits(regions_qubits, qdna_circuit_types)
-        self._log(f"Built {len(qdna_circuits)} QDNA-ID circuits ({len(qdna_circuit_types)} types × {len(regions_qubits)} regions)")
-        
-        # === ÉTAPE 3: Combiner user_circuits + qdna_circuits en MEGA-BATCH ===
-        user_circuits = user_circuits if isinstance(user_circuits, list) else [user_circuits]
-        n_user = len(user_circuits)
-        n_qdna = len(qdna_circuits)
-        
-        # Ordre: [user_circuits..., qdna_circuits...]
-        mega_batch = user_circuits + qdna_circuits
-        
-        self._log(f"MEGA-BATCH assembled: {n_user} user + {n_qdna} QDNA = {len(mega_batch)} total circuits")
-        
-        # === ÉTAPE 4: Exécution MEGA-BATCH unique (cohérence temporelle garantie) ===
-        exec_start = datetime.now()
-        self._log("Executing MEGA-BATCH on QPU...")
-        
-        all_results = self.fw.run_on_qpu(
-            circuits=mega_batch, 
-            shots=shots, 
-            save_counts=True, 
-            auto_transpile=True
-        )
-        
-        exec_time = (datetime.now() - exec_start).total_seconds()
-        self._log(f"MEGA-BATCH complete in {exec_time:.1f}s")
-        
-        if not all_results:
-            self._log("ERROR: MEGA-BATCH execution failed", level="ERROR")
-            return {'error': 'MEGA-BATCH execution failed', 'user_results': None}
-        
-        # === ÉTAPE 5: Séparer les résultats ===
-        user_results = all_results[:n_user]
-        qdna_results = all_results[n_user:]
-        
-        # === ÉTAPE 6: Construire le fingerprint 8D ===
-        topo = self.fw.topology
-        fingerprint = QDNATemporalFingerprint(
-            backend=self.fw.backend.name,
-            timestamp=datetime.now().isoformat(),
-            calibration_id=getattr(topo, '_calibration_id', 'unknown'),
-            n_regions=len(regions_qubits),
-            total_qubits=sum(len(r) for r in regions_qubits),
-            circuit_types=qdna_circuit_types.copy()
-        )
-        
-        region_fps = {}
-        for idx, qubits in enumerate(regions_qubits):
-            rfp = QDNARegionFingerprint8D(
-                region_id=idx, 
-                qubits=qubits, 
-                n_qubits=len(qubits), 
-                execution_timestamp=exec_start.isoformat()
-            )
-            
-            # D1-D3: Ratios de calibration
-            for i, q1 in enumerate(qubits):
-                for q2 in qubits[i+1:]:
-                    e1, e2 = topo._qubit_errors.get(q1, {}), topo._qubit_errors.get(q2, {})
-                    key = f"{q1}_{q2}"
-                    if e2.get('t1', 0.0001) > 0:
-                        rfp.t1_ratios[key] = e1.get('t1', 0.0001) / e2.get('t1', 0.0001)
-                    if e2.get('t2', 0.0001) > 0:
-                        rfp.t2_ratios[key] = e1.get('t2', 0.0001) / e2.get('t2', 0.0001)
-                    if e2.get('readout', 0.05) > 0:
-                        rfp.readout_ratios[key] = e1.get('readout', 0.05) / e2.get('readout', 0.05)
-            
-            # D4: Gate error ratios (depuis les connexions 2Q)
-            for i, q1 in enumerate(qubits):
-                for q2 in qubits[i+1:]:
-                    edge_key = (q1, q2)
-                    edge_key_rev = (q2, q1)
-                    err1 = topo._edge_errors.get(edge_key, {}).get('cx_error', None)
-                    err2 = topo._edge_errors.get(edge_key_rev, {}).get('cx_error', None)
-                    if err1 is None:
-                        err1 = topo._edge_errors.get(edge_key, {}).get('ecr_error', 0.01)
-                    if err2 is None:
-                        err2 = topo._edge_errors.get(edge_key_rev, {}).get('ecr_error', 0.01)
-                    if err1 and err2 and err2 > 0:
-                        rfp.gate_error_ratios[f"{q1}_{q2}"] = err1 / err2
-            
-            rfp.calibration_snapshot = {
-                'mean_t1': sum(topo._qubit_errors.get(q, {}).get('t1', 0) for q in qubits) / max(1, len(qubits)),
-                'mean_t2': sum(topo._qubit_errors.get(q, {}).get('t2', 0) for q in qubits) / max(1, len(qubits)),
-                'mean_readout': sum(topo._qubit_errors.get(q, {}).get('readout', 0) for q in qubits) / max(1, len(qubits))
-            }
-            region_fps[idx] = rfp
-        
-        # D5-D6: Entropy et Fidelity vectors depuis les résultats QDNA
-        for i, (idx, ctype) in enumerate(qdna_circuit_map):
-            if i < len(qdna_results) and qdna_results[i] and qdna_results[i].get('counts'):
-                region_fps[idx].circuit_signatures[ctype] = self._compute_circuit_signature(ctype, qdna_results[i]['counts'])
-        
-        for rfp in region_fps.values():
-            for ctype in qdna_circuit_types:
-                sig = rfp.circuit_signatures.get(ctype)
-                rfp.entropy_vector.append(sig.entropy if sig else 0.0)
-                rfp.fidelity_vector.append(sig.fidelity if sig else 0.0)
-        
-        fingerprint.regions = list(region_fps.values())
-        
-        # Compter les ratios totaux
-        for r in fingerprint.regions:
-            fingerprint.total_ratios += len(r.t1_ratios) + len(r.t2_ratios) + len(r.readout_ratios) + len(r.gate_error_ratios)
-        
-        # D7: Corrélations inter-régions
-        for i, r1 in enumerate(fingerprint.regions):
-            for j, r2 in enumerate(fingerprint.regions[i+1:], start=i+1):
-                key = f"r{i}_r{j}"
-                for ctype in qdna_circuit_types:
-                    s1, s2 = r1.circuit_signatures.get(ctype), r2.circuit_signatures.get(ctype)
-                    if s1 and s2 and s2.entropy > 0:
-                        fingerprint.cross_region_entropy_ratios[f"{key}_{ctype}"] = s1.entropy / s2.entropy
-                if r1.calibration_snapshot and r2.calibration_snapshot:
-                    t1_1, t1_2 = r1.calibration_snapshot.get('mean_t1', 1), r2.calibration_snapshot.get('mean_t1', 1)
-                    if t1_2 > 0:
-                        fingerprint.cross_region_correlations[f"{key}_t1"] = t1_1 / t1_2
-        
-        # D8: Temporal snapshot
-        all_t1 = [e.get('t1', 0) for e in topo._qubit_errors.values() if e.get('t1')]
-        all_t2 = [e.get('t2', 0) for e in topo._qubit_errors.values() if e.get('t2')]
-        fingerprint.temporal_snapshot = {
-            'capture_time': datetime.now().isoformat(),
-            'backend': self.fw.backend.name,
-            'mean_t1': sum(all_t1) / len(all_t1) if all_t1 else 0,
-            'mean_t2': sum(all_t2) / len(all_t2) if all_t2 else 0,
-            'n_faulty': len(topo.faulty_qubits),
-            'mega_batch_job': True,
-            'user_circuits_count': n_user
-        }
-        
-        fingerprint.compute_hash()
-        self._fingerprints[fingerprint.backend] = fingerprint
-        
-        # === ÉTAPE 7: Vérification optionnelle ===
-        verification_result = None
-        if include_verification and reference_fingerprint:
-            verification_result = self.compare_fingerprints(reference_fingerprint, fingerprint)
-        
-        # === ÉTAPE 8: Sauvegarder le fingerprint ===
-        try:
-            fp_path = self.fw.dir_manager.run_dir / f"qdna_piggyback_{fingerprint.backend}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(fp_path, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
-                json.dump(fingerprint.to_dict(), f, indent=2, default=str)
-            self._log(f"Fingerprint saved: {fp_path}")
-        except Exception as e:
-            self._log(f"Save warning: {e}", level="WARNING")
-        
-        # === Rapport final ===
-        self._log("=" * 70)
-        self._log("MEGA-BATCH PIGGYBACK COMPLETE")
-        self._log(f"  User circuits: {n_user} → Results ready")
-        self._log(f"  QDNA circuits: {n_qdna} → Fingerprint generated")
-        self._log(f"  Total ratios:  {fingerprint.total_ratios}")
-        self._log(f"  Hash:          {fingerprint.composite_hash[:24]}...")
-        self._log(f"  Security:      {fingerprint.get_security_level()}")
-        self._log("=" * 70)
-        
-        # Récupérer le temps QPU si disponible
-        qpu_time = 0.0
-        if hasattr(self.fw, '_last_job_id') and self.fw._last_job_id:
-            try:
-                times = self.fw.get_job_execution_times(self.fw._last_job_id)
-                qpu_time = times.get('qpu_time_s', 0.0)
-            except:
-                pass
-        
-        return {
-            'user_results': user_results,
-            'qdna_fingerprint': fingerprint.to_dict(),
-            'fingerprint_hash': fingerprint.composite_hash,
-            'job_id': getattr(self.fw, '_last_job_id', 'unknown'),
-            'qpu_time_s': qpu_time,
-            'mega_batch_info': {
-                'total_circuits': len(mega_batch),
-                'user_circuits': n_user,
-                'qdna_circuits': n_qdna,
-                'qdna_regions': len(regions_qubits),
-                'qdna_circuit_types': qdna_circuit_types,
-                'calibration_coherent': True,  # MEGA-BATCH garantit ça
-                'total_ratios': fingerprint.total_ratios,
-                'security_level': fingerprint.get_security_level()
-            },
-            'authenticated': verification_result.same_device if verification_result else None,
-            'verification_score': verification_result.confidence if verification_result else None
-        }
-
-
-# =============================================================================
 # v2.5.16 - BATCH MANAGER INTELLIGENT
 # =============================================================================
 
@@ -34121,11 +32920,6 @@ class ExecutionArchive:
             'process_info': self._collect_process_info_v3(),
             
             # ═══════════════════════════════════════════════════════════
-            # SECTION 39: QDNA FINGERPRINT (si disponible)
-            # ═══════════════════════════════════════════════════════════
-            'qdna_fingerprint': self._collect_qdna_fingerprint_v3(),
-            
-            # ═══════════════════════════════════════════════════════════
             # SECTION 40: INTÉGRITÉ (checksums)
             # ═══════════════════════════════════════════════════════════
             'integrity': {
@@ -35509,42 +34303,6 @@ class ExecutionArchive:
         
         return proc
     
-    def _collect_qdna_fingerprint_v3(self) -> Dict:
-        """[v3.0] QDNA Fingerprint si disponible."""
-        qdna = {
-            'available': False,
-            'fingerprint_id': None,
-            'regions': [],
-            'global_metrics': {},
-        }
-        
-        if not self.framework:
-            return qdna
-        
-        # Chercher le fingerprint dans le framework
-        if hasattr(self.framework, 'qdna_fingerprint') and self.framework.qdna_fingerprint:
-            try:
-                fp = self.framework.qdna_fingerprint
-                qdna['available'] = True
-                qdna['fingerprint_id'] = getattr(fp, 'fingerprint_id', None)
-                
-                if hasattr(fp, 'regions'):
-                    for r in fp.regions[:20]:  # Limiter à 20 régions
-                        qdna['regions'].append({
-                            'region_id': getattr(r, 'region_id', None),
-                            'qubits': list(getattr(r, 'qubits', [])),
-                            'size': len(getattr(r, 'qubits', [])),
-                            'avg_2q_error': getattr(r, 'avg_2q_error', None),
-                        })
-                
-                if hasattr(fp, 'global_metrics'):
-                    qdna['global_metrics'] = fp.global_metrics
-                    
-            except Exception as e:
-                qdna['error'] = str(e)
-        
-        return qdna
-
     def _collect_dependencies_versions(self) -> Dict:
         # [v2.7.1 FIX] Initialize the result dict; it was used below (deps[...]) but
         # never created, raising NameError when collecting dependency versions.
@@ -41804,7 +40562,7 @@ HTMLDashboard = AutoReportGenerator
 
 
 # =============================================================================
-# FRAMEWORK v2.5.1 EXTENSION WITH QDNA-ID
+# FRAMEWORK v2.5.1 EXTENSION
 # =============================================================================
 
 class QMCFramework(QMCFrameworkExtended):
@@ -41866,7 +40624,7 @@ class QMCFramework(QMCFrameworkExtended):
     v2.5.2 - Pathfinding:
     - Algorithme DFS + backtracking pour chemins optimaux
     
-    v2.5.1 - QDNA-ID (Patent FR2514504):
+    v2.5.1 - (module déplacé en externe):
     - Fingerprint 8D unique du QPU
     
     v2.5.0 - Composants avancés:
@@ -41896,8 +40654,6 @@ class QMCFramework(QMCFrameworkExtended):
         self.notifications = NotificationManager(logger=self.logger)
         self.cost_estimator = CircuitCostEstimator(framework=self, logger=self.logger)
         
-        # === QDNA-ID v2.5.1 (Patent FR2514504) ===
-        self.qdna_engine = None  # Initialisé après connexion
         
         # === CIRCUIT OPTIMIZER v2.5.3 ===
         self.circuit_optimizer = None  # Chargé automatiquement après connect()
@@ -42312,8 +41068,6 @@ class QMCFramework(QMCFrameworkExtended):
         if result and hasattr(self, 'service'):
             self.recommender.service = self.service
             self.cost_estimator.framework = self
-            # Initialiser QDNA-ID après connexion
-            self.qdna_engine = QDNAIDEngine(self)
             
             # === v2.5.3: CHARGER AUTOMATIQUEMENT LA CALIBRATION ===
             if auto_load_calibration:
@@ -42530,110 +41284,6 @@ class QMCFramework(QMCFrameworkExtended):
                 self.logger.info(f"Circuit: depth={depth}, 2Q_gates={n_2q}")
         
         return transpiled
-    
-    # =========================================================================
-    # QDNA-ID METHODS (Patent FR2514504)
-    # =========================================================================
-    
-    def qdna_enroll(self, n_regions: int = 6, shots: int = 4096,
-                    circuit_types: List[str] = None, skip_dry_run: bool = False,
-                    max_qubits: int = None) -> Optional[QDNATemporalFingerprint]:
-        """
-        QDNA-ID Enrollment - Génère un fingerprint 8D unique pour le QPU.
-        
-        Exécute tous les circuits en MEGA-BATCH (1 seul job) pour garantir
-        la cohérence temporelle de calibration.
-        
-        Args:
-            n_regions: Nombre de régions (défaut: 6)
-            shots: Shots par circuit (défaut: 4096)
-            circuit_types: Types de circuits ['ghz', 'iqp', 'bell', 'random', 'qft', 'cluster']
-            skip_dry_run: Passer le dry run de validation
-            max_qubits: Limite maximale de qubits
-        
-        Returns:
-            QDNATemporalFingerprint: Fingerprint 8D unique ou None si échec
-        
-        Example:
-            fingerprint = fw.qdna_enroll(n_regions=6, shots=4096)
-            print(f"Security: {fingerprint.get_security_level()}")
-        """
-        if not self.qdna_engine:
-            self.qdna_engine = QDNAIDEngine(self)
-        return self.qdna_engine.enroll(n_regions, shots, circuit_types, skip_dry_run, max_qubits)
-    
-    def qdna_verify(self, fingerprint: QDNATemporalFingerprint = None,
-                    shots: int = 4096) -> QDNAVerificationResult:
-        """
-        QDNA-ID Verification - Vérifie l'authenticité du QPU.
-        
-        Compare l'état actuel du QPU avec un fingerprint de référence
-        via un score composite multi-dimensionnel.
-        
-        Args:
-            fingerprint: Fingerprint de référence (utilise le dernier si None)
-            shots: Shots pour la vérification
-        
-        Returns:
-            QDNAVerificationResult avec authenticated, confidence, scores détaillés
-        
-        Example:
-            result = fw.qdna_verify(fingerprint)
-            if result.authenticated:
-                print(f"✓ Authentifié: {result.confidence:.2%}")
-        """
-        if not self.qdna_engine:
-            self.qdna_engine = QDNAIDEngine(self)
-        return self.qdna_engine.verify(fingerprint, shots)
-    
-    def qdna_compare(self, fp1: QDNATemporalFingerprint,
-                     fp2: QDNATemporalFingerprint) -> QDNADriftAnalysis:
-        """
-        QDNA-ID Compare - Analyse de dérive entre deux fingerprints.
-        
-        Détecte si deux fingerprints proviennent du même QPU et
-        mesure la stabilité temporelle.
-        
-        Args:
-            fp1: Premier fingerprint
-            fp2: Deuxième fingerprint
-        
-        Returns:
-            QDNADriftAnalysis avec same_device, ratio_stability, recommendation
-        """
-        if not self.qdna_engine:
-            self.qdna_engine = QDNAIDEngine(self)
-        return self.qdna_engine.compare_fingerprints(fp1, fp2)
-    
-    def qdna_discover_regions(self, n_regions: int = 6,
-                              max_qubits: int = None) -> List[List[int]]:
-        """
-        QDNA-ID Region Discovery - Découvre les régions optimales.
-        
-        Utilise l'algorithme de découverte pondéré par qualité de calibration.
-        
-        Args:
-            n_regions: Nombre de régions cibles
-            max_qubits: Limite maximale de qubits
-        
-        Returns:
-            Liste de régions (chaque région est une liste de qubits)
-        """
-        if not self.qdna_engine:
-            self.qdna_engine = QDNAIDEngine(self)
-        return self.qdna_engine.discover_regions(n_regions, max_qubits)
-    
-    def qdna_load_fingerprint(self, filepath: str) -> Optional[QDNATemporalFingerprint]:
-        """Charge un fingerprint QDNA-ID depuis un fichier JSON."""
-        if not self.qdna_engine:
-            self.qdna_engine = QDNAIDEngine(self)
-        return self.qdna_engine.load_fingerprint(filepath)
-    
-    def qdna_get_fingerprint(self, backend: str = None) -> Optional[QDNATemporalFingerprint]:
-        """Récupère le fingerprint stocké pour un backend."""
-        if not self.qdna_engine:
-            return None
-        return self.qdna_engine.get_stored_fingerprint(backend)
     
     # =========================================================================
     # CIRCUIT OPTIMIZER v2.5.3 - Optimisation basée sur calibration
@@ -43034,7 +41684,7 @@ class SimulatorComparator:
     Comparateur automatique des résultats Simulateur vs QPU.
     
     Permet de valider que le bruit QPU n'altère pas significativement
-    les résultats attendus, essentiel pour les brevets QMC.
+    les résultats attendus, essentiel pour la reproductibilité QMC.
     
     Usage:
         comparator = SimulatorComparator(framework)
@@ -44100,7 +42750,7 @@ class CampaignManager:
     génération de rapports comparatifs.
     
     Usage:
-        campaign = CampaignManager(framework, "QDNA_Validation")
+        campaign = CampaignManager(framework, "Demo_Validation")
         campaign.add_variation("n_qubits", [50, 75, 100])
         campaign.add_variation("depth", [5, 10, 15])
         campaign.set_circuit_builder(my_circuit_builder)

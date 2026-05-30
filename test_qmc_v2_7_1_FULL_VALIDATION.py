@@ -27,7 +27,7 @@
 ║  │   └── TEST: progress bar + parallélisme local                                 ║
 ║  ├── [SECTION 6] Optimizers & Calculators                                        ║
 ║  ├── [SECTION 7] Error Mitigation                                                ║
-║  ├── [SECTION 8] QDNA Features                                                   ║
+║  ├── [SECTION 8] Modules externes (load_module à la demande)                     ║
 ║  ├── [SECTION 9] Exécution QPU (100 shots/circuit)                              ║
 ║  ├── [SECTION 10] Analyse des résultats                                          ║
 ║  └── [SECTION 11] Archive JSON v3.1                                              ║
@@ -1043,6 +1043,84 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
     return all_passed
 
 
+def test_v272_external_module_loader(fw, modules: Dict) -> bool:
+    """[v2.7.1] Valide le chargement des modules EXTERNES (brevets) à la demande.
+
+    Les implémentations brevetées ne sont plus dans le framework : elles sont
+    fournies comme scripts séparés et chargées via fw.load_module(). Ce test vérifie
+    que (1) aucune classe brevet n'est exposée, (2) l'interface QMCModule et l'erreur
+    dédiée subsistent, (3) un module externe se charge et s'exécute, (4) un module
+    absent lève QMCModuleNotAvailableError.
+    """
+    print_section("MODULES EXTERNES (CHARGEMENT À LA DEMANDE)", "🧩")
+    import tempfile
+    import pathlib
+    all_passed = True
+    try:
+        import qmc_quantum_framework_v2_7_1 as qm
+
+        # 1) Plus aucune classe brevet exposée dans le framework
+        gone = [c for c in ("QMCCoreModule", "QMCShieldModule", "QMCBiometricModule",
+                             "QGPModule", "QAEEModule", "QDNAIDEngine") if hasattr(qm, c)]
+        if not gone:
+            results.add("Aucune classe brevet exposée", "PASS", category="v2.7.1-modules")
+            print_test("Classes brevet retirées du framework", "PASS")
+        else:
+            results.add("Aucune classe brevet exposée", "FAIL", ",".join(gone), category="v2.7.1-modules")
+            print_test("Classes brevet retirées du framework", "FAIL", ",".join(gone))
+            all_passed = False
+
+        # 2) Interface + exception conservées
+        if hasattr(qm, "QMCModule") and hasattr(qm, "QMCModuleNotAvailableError"):
+            results.add("Interface QMCModule + erreur dédiée", "PASS", category="v2.7.1-modules")
+            print_test("QMCModule + QMCModuleNotAvailableError présents", "PASS")
+        else:
+            results.add("Interface QMCModule + erreur dédiée", "FAIL", category="v2.7.1-modules")
+            print_test("QMCModule + QMCModuleNotAvailableError présents", "FAIL")
+            all_passed = False
+
+        # 3) Chargement dynamique d'un module externe temporaire
+        tmp = tempfile.mkdtemp(prefix="qmc_mods_")
+        pathlib.Path(tmp, "demo_echo.py").write_text(
+            "from qmc_quantum_framework_v2_7_1 import QMCModule\n"
+            "class DemoEcho(QMCModule):\n"
+            "    @classmethod\n"
+            "    def get_name(cls): return 'demo_echo'\n"
+            "    def run(self, **kw): return {'success': True, 'echo': kw}\n",
+            encoding="utf-8")
+        os.environ["QMC_MODULES_PATH"] = tmp
+        mod = fw.load_module("demo_echo")
+        res = mod.run(x=7)
+        if res.get("success") and res.get("echo") == {"x": 7}:
+            results.add("load_module(externe).run()", "PASS", "demo_echo", category="v2.7.1-modules")
+            print_test("Chargement + exécution module externe", "PASS", "demo_echo")
+        else:
+            results.add("load_module(externe).run()", "FAIL", category="v2.7.1-modules")
+            print_test("Chargement + exécution module externe", "FAIL")
+            all_passed = False
+
+        # 4) Module absent -> QMCModuleNotAvailableError explicite
+        try:
+            fw.load_module("module_absent_xyz")
+            results.add("Erreur si module absent", "FAIL", "pas d'exception", category="v2.7.1-modules")
+            print_test("QMCModuleNotAvailableError si module absent", "FAIL")
+            all_passed = False
+        except qm.QMCModuleNotAvailableError:
+            results.add("Erreur si module absent", "PASS", category="v2.7.1-modules")
+            print_test("QMCModuleNotAvailableError si module absent", "PASS")
+
+        if all_passed:
+            print(f"\n    {Colors.GREEN}✅ Modules externes : chargement à la demande validé{Colors.END}")
+    except Exception as e:
+        results.add("v2.7.1 External Module Loader", "FAIL", str(e)[:50], category="v2.7.1-modules")
+        print_test("External Module Loader", "FAIL", str(e)[:60])
+        traceback.print_exc()
+        all_passed = False
+    finally:
+        os.environ.pop("QMC_MODULES_PATH", None)
+    return all_passed
+
+
 # ==============================================================================
 # IMPORT & AUTRES FONCTIONS (depuis test v2.6.3)
 # ==============================================================================
@@ -1363,7 +1441,10 @@ Exemples:
     
     # Tests v2.7.1 Parallel Transpilation (toujours exécutés)
     test_v271_parallel_transpilation(fw, modules)
-    
+
+    # [v2.7.1] Chargeur de modules externes (brevets fournis séparément)
+    test_v272_external_module_loader(fw, modules)
+
     # Note: les autres sections (Builders, Analyzers, etc.) seraient ici
     # Pour simplifier, on inclut juste le Multi-Job dans cette version
     

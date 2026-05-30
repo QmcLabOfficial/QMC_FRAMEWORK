@@ -45,3 +45,10 @@ nul
 # === Audit / artefacts internes (optionnel) ===
 qmc_audit/_*.py
 qmc_audit/_*.txt
+
+# === Modules propriétaires (brevets) — JAMAIS dans le dépôt public ===
+# Les modules externes sont fournis séparément sur demande. On versionne
+# uniquement la documentation du dossier et le template d'interface.
+qmc_modules/*.py
+!qmc_modules/README.md
+!qmc_modules/_module_template.py.template

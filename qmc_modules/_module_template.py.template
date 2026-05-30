@@ -1,0 +1,62 @@
+# -*- coding: utf-8 -*-
+"""
+Template de module externe QMC.
+
+Pour créer un module :
+  1. Copiez ce fichier en `<nom>.py` dans ce dossier (ou dans QMC_MODULES_PATH).
+  2. Renvoyez exactement `<nom>` depuis get_name().
+  3. Implémentez run(). Utilisez self.framework pour accéder à toute l'API publique.
+
+Chargement côté client :
+    module = fw.load_module("<nom>")
+    result = module.run(...)
+
+NOTE : ce fichier porte l'extension `.py.template` — il n'est donc PAS chargeable
+tel quel par load_module(). Renommez-le en `<nom>.py` pour l'activer.
+"""
+# Le framework injecte QMCModule dans le namespace d'exécution du module au moment
+# du chargement ; pour le confort de l'IDE/typage, on peut aussi l'importer :
+try:
+    from qmc_quantum_framework_v2_7_1 import QMCModule
+except Exception:  # pragma: no cover - dépend du sys.path à l'exécution
+    QMCModule = object  # repli : la classe réelle est résolue au chargement
+
+
+class MonModule(QMCModule):
+    """Décrivez ici la fonctionnalité (sans révéler de détails sensibles en clair)."""
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "mon_module"          # DOIT correspondre au nom de fichier <nom>.py
+
+    @classmethod
+    def get_version(cls) -> str:
+        return "1.0.0"
+
+    @classmethod
+    def get_description(cls) -> str:
+        return "Module externe propriétaire (chargé à la demande)."
+
+    @classmethod
+    def get_patent_ref(cls) -> str:
+        return ""                     # référence interne — laissée vide côté public
+
+    def initialize(self, config=None):
+        # Optionnel : préparer l'état du module. Appelé par fw.load_module().
+        super().initialize(config)
+
+    def run(self, **kwargs) -> dict:
+        """
+        Logique principale du module. Doit retourner un dict.
+
+        Accès au framework via self.framework, par ex. :
+            circ = self.framework.build_circuit("ghz", n_qubits=5)
+            tqc  = self.framework.transpile_circuits([circ])
+            res  = self.framework.run_on_qpu(tqc, shots=4096)
+            # crypto générique disponible : QMCQuantumCrypto, QMCSigmaZK, QMCTimeLock
+        """
+        results = {"module": self.get_name(), "success": False}
+        # TODO: implémenter la logique propriétaire ici.
+        results["success"] = True
+        self._results = results
+        return results
