@@ -1,0 +1,47 @@
+# === SECRETS — NE JAMAIS COMMITER ===
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials.json
+
+# === Sorties générées par le framework ===
+qmc_runs/
+reports/
+exports/
+qpu_test_output/
+.qmc_cache/
+*.html
+*.json.gz
+session_*.json
+checkpoint_*.json
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === OS / éditeurs ===
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+nul
+
+# === Audit / artefacts internes (optionnel) ===
+qmc_audit/_*.py
+qmc_audit/_*.txt

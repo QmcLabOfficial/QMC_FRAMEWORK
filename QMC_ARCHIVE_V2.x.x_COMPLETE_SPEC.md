@@ -1,14 +1,48 @@
 # QMC Archive JSON v3.1 - SPÉCIFICATION COMPLÈTE
 
+> **Produit par** : QMC Quantum Framework **v2.7.1** (classe `ExecutionArchive`).
+> Le **format d'archive reste v3.1.0** (rétro-compatible) ; v2.7.1 ajoute la compression par défaut,
+> des écritures atomiques, la redaction des secrets et quelques nouveaux champs (voir « Mise à jour v2.7.1 »).
+
 ## Informations Générales
 
 | Attribut | Valeur |
 |----------|--------|
-| **Version** | `3.1.0` |
+| **Schema version** | `3.1.0` |
 | **Format** | `QMC_EXECUTION_ARCHIVE_V3` |
 | **Min Parser** | `3.0.0` |
+| **Framework** | `2.7.1` (champ `_schema.framework_version`) |
 | **Sections** | 41 |
-| **Taille typique** | 100-800 KB |
+| **Compression** | **gzip par défaut** → fichier `archive_*.json.gz` (`compress=True`, ~80 % plus petit) |
+| **Taille typique** | 100-800 KB (non compressé) · ~20-160 KB (gzip) |
+
+---
+
+## 🆕 Mise à jour v2.7.1 (ce qui change vs v2.6.x)
+
+Le **schéma d'archive est inchangé (v3.1.0, 41 sections)** : tout parser v3.x reste compatible. Les évolutions
+v2.7.1 portent sur la **production** de l'archive et l'**enrichissement** de certaines sections.
+
+### Production de l'archive
+| Évolution | Détail |
+|-----------|--------|
+| **Compression par défaut** | `ExecutionArchive(compress=True)` → fichier **`.json.gz`** (gzip). Pour du JSON brut : `compress=False`. |
+| **Écritures atomiques** | Tous les JSON (archive, session, rapports) sont écrits via `temp + fsync + os.replace` → pas de fichier corrompu en cas de crash. |
+| **Permissions restrictives** | Fichiers sensibles en `0o600`, répertoires de run en `0o700` (POSIX). |
+| **Redaction des secrets** | Tokens IBM/QMC masqués dans `session_logs`, `environment_vars` et tout message — voir `_redact_secrets`. |
+| **`framework_version`** | `_schema.framework_version` et `metadata.framework_version` = **`2.7.1`**. |
+| **`integrity.circuits_hash`** | Couvre désormais **TOUS** les circuits (auparavant les 20 premiers). |
+
+### Sections enrichies (nouveaux champs)
+| Section | Nouveaux champs v2.7.1 |
+|---------|------------------------|
+| **§22 `results[]`** | `result_type` (`"sampler"`/`"estimator"`) ; pour multi-registres : `register_counts` + `primary_register` (plus de fusion par sommation) ; pour Estimator multi-observables : `expectation_value` (scalaire **ou liste**) + `expectation_values`, `std_errors`, `n_observables`. *(Tous les champs additionnels du résultat sont préservés.)* |
+| **Calibration interne (`NoiseAnalyzer`)** | Le résumé de calibration peuple désormais réellement `gate_2q` `{mean, min, max, count}` (erreur 2-qubits) — auparavant absent, ce qui rendait l'estimation EPLG constante. *(La §9 `gates_calibration` exposait déjà `avg/min/max_2q_error`.)* |
+| **§32 `analysis_results.randomness`** | Les espaces séparateurs de registres ne sont plus comptés comme bits ; ajout de `n_qubits` ; ratios `ones/zeros/balance` corrigés. |
+| **Analyzers (FidelityAnalyzer / XEBAnalyzer)** | Barres d'erreur : `std_error` + `ci_95` (fidélité) ; `xeb_stderr`, `xeb_ci95`, `xeb_normalized_stderr` (XEB). `quantum_signature` ne passe à `true` que si la borne inférieure de l'IC reste > 0. |
+
+> ⚠️ **Note crypto** : le champ `quantum_entropy_bits` (protocoles QMC) reflète désormais une **min-entropie**
+> réelle (NIST SP 800-90B) ; les primitives crypto sont réelles (AES-256-GCM/HKDF, ZKP, RSW) en v2.7.1.
 
 ---
 
@@ -72,7 +106,7 @@ archive.json
     "format": "QMC_EXECUTION_ARCHIVE_V3",
     "min_parser_version": "3.0.0",
     "created_by": "QMC Framework",
-    "framework_version": "2.6.0",
+    "framework_version": "2.7.1",
     "spec_url": "https://docs.qmc-lab.com/archive-schema/v3"
   }
 }
@@ -103,10 +137,10 @@ archive.json
     "created_at": "2026-01-23T17:40:35.123456",
     "completed_at": "2026-01-23T17:41:33.456789",
     "duration_seconds": 58.33,
-    "framework_version": "2.6.0",
+    "framework_version": "2.7.1",
     "user": "chistelle",
     "hostname": "WORKSTATION-01",
-    "tags": ["validation", "full_test", "v2.6.0"]
+    "tags": ["validation", "full_test", "v2.7.1"]
   }
 }
 ```
@@ -233,13 +267,13 @@ archive.json
 {
   "dependencies": {
     "qiskit_core": {
-      "qiskit": "1.3.2",
-      "qiskit-ibm-runtime": "0.34.0",
-      "qiskit-aer": "0.15.1",
+      "qiskit": "2.4.1",
+      "qiskit-ibm-runtime": "0.47.0",
+      "qiskit-aer": "0.17.2",
       "qiskit-ibm-provider": null
     },
     "ibm_addons": {
-      "mthree": "2.7.0",
+      "mthree": "2.8.0",
       "qiskit-aqc-tensor": "0.0.4",
       "qiskit-addon-mpf": "0.2.0",
       "qiskit-addon-obp": "0.1.0",
@@ -258,7 +292,7 @@ archive.json
       "requests": "2.31.0"
     },
     "all_installed": {
-      "qiskit": "1.3.2",
+      "qiskit": "2.4.1",
       "numpy": "1.26.4"
     }
   }
@@ -1004,7 +1038,7 @@ archive.json
   "job_metadata": {
     "job_id": "d5pq99pdgvjs73dc3scg",
     "session_id": null,
-    "tags": ["QMC_FULL_VALIDATION", "v2.6.0"],
+    "tags": ["QMC_FULL_VALIDATION", "v2.7.1"],
     "primitive": "sampler",
     "primitive_version": 2,
     "program_id": "sampler",
@@ -1082,6 +1116,47 @@ archive.json
 | `top_10` | array | 10 résultats les plus fréquents |
 | `fidelity` | float | Fidélité calculée (si applicable) |
 | `metadata` | object | Métadonnées IBM |
+
+### Champs additionnels v2.7.1
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `result_type` | string | `"sampler"` (counts) ou `"estimator"` (valeurs propres) |
+| `register_counts` | object | *(multi-registres)* `{nom_registre: {bitstring: count}}` — registres exposés **séparément** (plus de fusion par sommation) |
+| `primary_register` | string | *(multi-registres)* nom du registre primaire retenu pour `counts` |
+| `expectation_value` | float \| array | *(estimator)* valeur propre — **scalaire** (1 observable) ou **liste** (multi-observables) |
+| `expectation_values` | array[float] | *(estimator multi-obs)* une valeur par observable |
+| `std_errors` | array[float] | *(estimator multi-obs)* erreur-type par observable |
+| `n_observables` | int | *(estimator multi-obs)* nombre d'observables |
+
+**Exemple — résultat Estimator multi-observables :**
+```json
+{
+  "index": 0,
+  "result_type": "estimator",
+  "expectation_value": [0.812, -0.044, 0.501],
+  "expectation_values": [0.812, -0.044, 0.501],
+  "std_error": [0.006, 0.005, 0.007],
+  "std_errors": [0.006, 0.005, 0.007],
+  "n_observables": 3,
+  "shots": 4096,
+  "counts": {}, "num_outcomes": 0, "probabilities": {}, "top_10": []
+}
+```
+
+**Exemple — résultat multi-registres (Sampler) :**
+```json
+{
+  "index": 0,
+  "result_type": "sampler",
+  "primary_register": "meas",
+  "counts": {"00": 510, "11": 490},
+  "register_counts": {
+    "meas": {"00": 510, "11": 490},
+    "anc":  {"0": 1000}
+  }
+}
+```
 
 ---
 
@@ -1408,8 +1483,8 @@ Si erreur:
       "transpiler_seed": 67890
     },
     "exact_versions": {
-      "qiskit": "1.3.2",
-      "qiskit-ibm-runtime": "0.34.0",
+      "qiskit": "2.4.1",
+      "qiskit-ibm-runtime": "0.47.0",
       "numpy": "1.26.4",
       "scipy": "1.14.1"
     },
@@ -1605,9 +1680,12 @@ import json
 from pathlib import Path
 
 def parse_qmc_archive(filepath: str) -> dict:
-    """Parse une archive QMC v3.x"""
-    
-    with open(filepath, 'r', encoding='utf-8') as f:
+    """Parse une archive QMC v3.x (supporte .json ET .json.gz — gzip par défaut en v2.7.1)."""
+    import gzip
+
+    # [v2.7.1] Les archives sont compressées (.json.gz) par défaut : ouvrir en conséquence.
+    opener = gzip.open if str(filepath).endswith('.gz') else open
+    with opener(filepath, 'rt', encoding='utf-8') as f:
         archive = json.load(f)
     
     # Vérifier la version
@@ -1746,6 +1824,19 @@ if __name__ == '__main__':
 ---
 
 ## Changelog
+
+### Framework v2.7.1 (2026-05) — schéma inchangé (v3.1.0)
+- **Compression gzip par défaut** (`compress=True`) → fichiers `archive_*.json.gz` (~80 % plus petit).
+- **Écritures atomiques** (temp + fsync + `os.replace`) et **permissions** `0o600`/`0o700`.
+- **Redaction des secrets** (tokens masqués) dans `session_logs` / `environment_vars` / messages.
+- `_schema.framework_version` / `metadata.framework_version` = **`2.7.1`**.
+- `integrity.circuits_hash` couvre **tous** les circuits (auparavant 20).
+- `results[]` enrichis : `result_type`, `register_counts`/`primary_register` (multi-registres, plus de fusion),
+  `expectation_value` scalaire/liste + `expectation_values`/`std_errors`/`n_observables` (Estimator multi-obs).
+- `analysis_results.randomness` : séparateurs de registres ignorés, `n_qubits` ajouté, ratios corrigés.
+- Calibration interne : `gate_2q` réellement peuplé (consommé par EPLG) ; analyzers avec barres d'erreur
+  (`ci_95`, `xeb_stderr`/`xeb_ci95`).
+- Cryptographie réelle (AES-256-GCM/HKDF, ZKP, RSW) et min-entropie NIST pour les protocoles QMC.
 
 ### v3.1.0 (2026-01-23)
 - Ajout de 11 nouvelles sections (29-39)

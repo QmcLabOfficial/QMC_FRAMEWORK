@@ -2,10 +2,212 @@
 # -*- coding: utf-8 -*-
 """
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║                      QMC QUANTUM TESTING FRAMEWORK v2.6.2                            ║
+║                      QMC QUANTUM TESTING FRAMEWORK v2.7.1                            ║
 ║                           QMC Research Lab - 2026                                    ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
 ║  Framework réutilisable et EXTENSIBLE pour tous les tests quantiques des brevets QMC ║
+║                                                                                      ║
+║  ████████████████████████████████████████████████████████████████████████████████    ║
+║  █  CHANGELOG v2.7.1 (2026-05) - AUDIT COMPLET : 68 CORRECTIFS + CRYPTO RÉEL  █    ║
+║  ████████████████████████████████████████████████████████████████████████████████    ║
+║                                                                                      ║
+║  Version issue d'un AUDIT COMPLET multi-agents de v2.7.0 (111 agents, 251 findings, ║
+║  68 bugs confirmés). Tous les correctifs sont consignés en détail dans               ║
+║  qmc_audit/CHANGELOG_v2_7_1.md et qmc_audit/AUDIT_REPORT_v2_7_0.md.                  ║
+║                                                                                      ║
+║  ▓ CORRECTION QUANTIQUE (CRITIQUE) :                                                 ║
+║    - QPE : suppression du swap parasite en tête de la QFT inverse (phases fausses).  ║
+║    - Téléportation : corrections X/Z désormais CONDITIONNELLES (if_test) au lieu     ║
+║      d'inconditionnelles — le protocole était détruit (Bob ~50%).                    ║
+║    - SWAP test, encodage d'amplitude, oracle Deutsch-Jozsa, QAEE, Bell σ, tests      ║
+║      NIST, CompressionAnalyzer, QuantumAdvantage : métriques/circuits corrigés.      ║
+║                                                                                      ║
+║  ▓ CRYPTOGRAPHIE RÉELLE (remplace les démos « snake-oil ») :                         ║
+║    - Chiffrement : AES-256-GCM authentifié + HKDF-SHA256 (clé dérivée de l'entropie  ║
+║      quantique), nonce aléatoire par message (remplace le XOR à clé répétée).        ║
+║    - Authentification : challenge-response HMAC-SHA256 (remplace la comparaison de    ║
+║      distributions statistiquement toujours en échec).                              ║
+║    - ZKP : protocole Sigma de Schnorr non-interactif (Fiat-Shamir) AVEC vérificateur ║
+║      réel (complétude/justesse/zéro-divulgation) ; range proof par décomposition     ║
+║      binaire (commitments de Pedersen) sans fuite de la valeur.                     ║
+║    - Time-lock : puzzle RSW (carrés répétés mod N) — contrainte de temps séquentiel  ║
+║      réelle, reproductible et décodable.                                            ║
+║    - QRNG : préservation de l'ordre des shots + extracteur SHA-256/von Neumann +     ║
+║      estimation de min-entropie (NIST SP 800-90B, most-common-value).               ║
+║                                                                                      ║
+║  ▓ SÉCURITÉ : exfiltration de jeton corrigée (allowlist https+hôte sur l'upload      ║
+║    d'archive et les webhooks), XSS stocké corrigé (échappement HTML central),        ║
+║    nettoyage des identifiants temporaires, masquage de jeton renforcé, WebDashboard  ║
+║    restreint à son répertoire, allowlist du parseur .env.                           ║
+║                                                                                      ║
+║  ▓ INTÉGRITÉ / FACTURATION QPU : _process_results (shots réels, fusion de registres  ║
+║    corrigée, EstimatorV2 multi-observables), cohérence _last_job_id (reprise de      ║
+║    session + anti-double-facturation), écritures JSON atomiques (temp+rename).       ║
+║                                                                                      ║
+║  ▓ API PUBLIQUE : classe canonique QMCFramework + __all__ (fin de fichier) — ║
+║    `from qmc_quantum_framework_v2_7_1 import QMCFramework` renvoie enfin la classe    ║
+║    complète (m3, cache, recommender, addons…).                                       ║
+║                                                                                      ║
+║  ▓ FIABILITÉ : addons IBM réparés (EPLG, M3 nearest_probability, VF2 ErrorMap,        ║
+║    cache de transpilation sensible aux paramètres), JobScheduler verrouillé +        ║
+║    vérification de file réelle, vérification du final_status du monitor,             ║
+║    normalisation du statut de job, Logger thread-local, et nombreux correctifs de    ║
+║    robustesse (gardes anti-crash, pagination, etc.). Voir le CHANGELOG détaillé.     ║
+║                                                                                      ║
+║  ████████████████████████████████████████████████████████████████████████████████    ║
+║  █  CHANGELOG v2.7.0 (2026-01) - MULTI-JOB + PARALLEL TRANSPILE (MAJOR)      █    ║
+║  ████████████████████████████████████████████████████████████████████████████████    ║
+║                                                                                      ║
+║  🚀 NOUVELLE FONCTIONNALITÉ MAJEURE: MULTI-JOB SESSION WITH AUTO-RESUME             ║
+║  ─────────────────────────────────────────────────────────────────────────────────── ║
+║  Exécutez N jobs QPU en séquence avec reprise automatique en cas de crash.          ║
+║  Plus jamais de perte de temps QPU due à une interruption réseau ou système!        ║
+║                                                                                      ║
+║  [NEW] CLASSES DE GESTION:                                                           ║
+║        - MultiJobSession: Gestion complète de l'état d'une session multi-jobs       ║
+║        - MultiJobSessionStatus: Constantes de statut (PENDING, RUNNING, COMPLETED)  ║
+║        - find_session_file(): Recherche de session par ID (complet ou partiel)      ║
+║                                                                                      ║
+║  [NEW] fw.run_multi_job_session() - MÉTHODE PRINCIPALE:                             ║
+║        - jobs=[{"circuits":..., "shots":..., "label":...}, ...]                     ║
+║        - resume_session_id="SESSION_XXX" pour reprendre une session                 ║
+║        - session_name="custom_prefix" pour personnaliser l'ID                       ║
+║        - archive_project="uuid" pour upload vers QMC Archive (TOUS les jobs)        ║
+║        - Confirmation UNIQUE au début (pas job par job)                             ║
+║        - Chaque job = archive + upload + rapport (standard run_on_qpu)              ║
+║                                                                                      ║
+║  [NEW] REPRISE INTELLIGENTE:                                                         ║
+║        - Détection automatique des jobs RUNNING via IBM Quantum API                 ║
+║        - Attente et récupération des jobs soumis avant le crash                     ║
+║        - Vérification du compte IBM (skip RUNNING si compte différent)              ║
+║        - Skip automatique des jobs déjà COMPLETED                                   ║
+║        - Sauvegarde session.json après CHAQUE job terminé                           ║
+║                                                                                      ║
+║  [NEW] fw.list_sessions() et fw.print_sessions_list():                              ║
+║        - Liste toutes les sessions disponibles dans qmc_runs/                       ║
+║        - Affichage formaté avec statut, progression, temps QPU                      ║
+║                                                                                      ║
+║  [NEW] TABLEAU D'ÉTAT VISUEL EN TEMPS RÉEL:                                         ║
+║        - ✅ DONE: Job terminé avec succès                                           ║
+║        - 🔄 RUN: Job en cours d'exécution sur IBM                                   ║
+║        - 📤 SUBM: Job soumis, en attente                                            ║
+║        - ⏳ PEND: Job en attente d'exécution                                        ║
+║        - ❌ FAIL: Job échoué                                                        ║
+║        - ⏭️ SKIP: Job ignoré (compte différent)                                     ║
+║                                                                                      ║
+║  [NEW] FICHIER SESSION session_XXX.json:                                            ║
+║        - Sauvegardé dans le dossier de sortie avec les archives                     ║
+║        - Contient: session_id, jobs[], statuts, ibm_job_ids, qpu_times             ║
+║        - Métadonnées custom préservées pour analyse finale                          ║
+║        - Estimation temps QPU basée sur formule IBM                                 ║
+║                                                                                      ║
+║  [NEW] MODE COLLECTION DE CIRCUITS POUR RAPPORT UNIFIÉ:                             ║
+║        - fw.start_circuit_collection(max_circuits=500): Démarre la collection       ║
+║        - fw.stop_circuit_collection(): Arrête et génère rapport avec TOUS circuits  ║
+║        - fw.get_collected_circuits_count(): Nombre de circuits collectés            ║
+║        - fw.is_collecting_circuits(): Vérifie si collection active                  ║
+║        - Permet d'avoir UN rapport HTML avec tous les circuits de la session        ║
+║        - Compatible avec Multi-Job et scripts existants (TFD v3.3.0)                ║
+║        - Sauvegarde automatique run_context + résultats pour rapport complet        ║
+║                                                                                      ║
+║  [NEW] PARALLEL TRANSPILATION + PROGRESS BAR:                                       ║
+║        - transpile_circuits(): transpilation multi-CPU via ProcessPoolExecutor       ║
+║        - Barre de progression temps réel avec ETA (carriage return inline)          ║
+║        - Mode parallel='auto': parallèle si ≥4 circuits et pas de pré-layout       ║
+║        - Mode parallel='always': forcer le parallélisme                             ║
+║        - Mode parallel='never': désactiver (utile pour debug)                       ║
+║        - n_workers=N: contrôle du nombre de workers CPU                             ║
+║        - Fallback automatique vers séquentiel si pickle échoue                      ║
+║        - VF2PostLayout appliqué après parallélisation (thread principal)            ║
+║        - Gain typique: 2-6x sur machines multi-cœurs                               ║
+║                                                                                      ║
+║  [FIX] transpile_parallel(): Méthode était un STUB (ProcessPoolExecutor importé    ║
+║        mais jamais utilisé, exécution séquentielle déguisée). Maintenant délègue   ║
+║        à transpile_circuits(parallel='always') pour vrai parallélisme multi-CPU.   ║
+║                                                                                      ║
+║  [FIX] MultiJobSession.create_new(): auto_transpile, archive_projects et           ║
+║        archive_notes n'étaient PAS préservés dans job_entry. Conséquence:          ║
+║        run_multi_job_session() ignorait auto_transpile=False des jobs scripts       ║
+║        et retranspilait systématiquement (double transpilation + gel VF2 156Q).    ║
+║                                                                                      ║
+║  [FIX] _generate_circuit_images(): Dessinait TOUS les circuits même >100Q avec     ║
+║        matplotlib (30-90s par circuit 156Q). Nouveau seuil: skip dessin si          ║
+║        >40Q ou depth>200, ajoute métadonnées sans image. Évite gel silencieux       ║
+║        de 5-15 minutes dans la génération de rapport HTML post-job.                ║
+║                                                                                      ║
+║  [FIX] _collect_circuits_v3() + _collect_circuits_info(): qasm2_dumps() prenait    ║
+║        5-30s par circuit 156Q × 20 appels (10 orig + 10 transpiled). Skip QASM     ║
+║        pour circuits >40Q. Aussi: gate counting via count_ops() au lieu de          ║
+║        itération sur circuit.data (O(n_gates) → O(n_gate_types)).                  ║
+║                                                                                      ║
+║  [UX] Post-traitement: ajout de logs "📦 Post-traitement en cours...",              ║
+║       "📊 Génération du rapport HTML..." et "📦 Archive: collecte des données"      ║
+║       pour que l'utilisateur sache que le framework travaille après Job terminé.    ║
+║                                                                                      ║
+║  [FIX] _monitor_job_with_animation(): Méthode DÉPRÉCIÉE (530 lignes supprimées).   ║
+║        Pas de reconnexion auto, pas de timeout/appel status(), pas de mise à jour   ║
+║        file d'attente. Remplacée par shim de 15 lignes → _monitor_job_with_reconnect║
+║        run_on_qpu() utilise TOUJOURS _monitor_job_with_reconnect (robuste).         ║
+║        Toggle QMC_ROBUST_MONITORING supprimé — plus de fallback vers l'ancien.      ║
+║                                                                                      ║
+║  [NEW] fw.run_estimator(): Pipeline COMPLET pour EstimatorV2 (comme run_on_qpu).   ║
+║        Confirmation obligatoire, checkpoint, monitoring robuste, rescue save,       ║
+║        archive QMC 34 sections, upload QMC Archive, rapport HTML.                   ║
+║                                                                                      ║
+║  [SEC] get_sampler_v2() et get_estimator_v2() BLOQUÉS: raise QMCExecutionError.    ║
+║        L'accès direct aux primitives IBM contournait TOUTE la sécurité du          ║
+║        framework (archive, monitoring, rescue, checkpoint, upload).                  ║
+║        Remplacé par: fw.run_on_qpu() (Sampler) et fw.run_estimator() (Estimator).  ║
+║                                                                                      ║
+║  [NEW] ISA AUTO-DETECTION: transpile_circuits() détecte automatiquement si les     ║
+║        circuits sont déjà ISA-compatibles (portes natives + coupling_map) et       ║
+║        skip la transpilation. Filet de sécurité contre la double transpilation     ║
+║        même si auto_transpile=True est passé par erreur sur circuits ISA.          ║
+║                                                                                      ║
+║  [FIX] AutoReportGenerator: Circuits manquants dans rapport HTML                    ║
+║        - Bug: n_circuits calculé depuis circuits_details (souvent vide)             ║
+║        - Fix: Utilise directement _transpiled_circuits ou _collected_circuits       ║
+║        - Maintenant tous les circuits sont affichés dans le rapport                 ║
+║                                                                                      ║
+║  [FIX] stop_circuit_collection: Rapport unifié incomplet (manquait calibration)     ║
+║        - Bug: run_context minimal sans données backend/shots/job_id                 ║
+║        - Fix: Récupère _last_run_context avec toutes les données du dernier job     ║
+║        - Fix: Agrège tous les résultats de _collection_results                      ║
+║        - Maintenant le rapport unifié contient TOUTES les sections (1-11)           ║
+║                                                                                      ║
+║  [FIX] _collect_circuits_details: Section 4 (Transpiled Circuits) vide              ║
+║        - Bug: Cherchait dans report/circuits.json (souvent vides)                   ║
+║        - Fix: Utilise mêmes sources que _generate_circuit_images()                  ║
+║        - Extrait n_qubits, depth, gates_2q depuis les circuits Qiskit               ║
+║                                                                                      ║
+║  [FIX] _collect_transpilation_data: Section 3 (Transpilation Quality) vide          ║
+║        - Bug: Dépendait uniquement de _last_transpilation_stats (souvent vide)      ║
+║        - Fix: Calcule métriques depuis circuits si stats absentes                   ║
+║        - Score heuristique basé sur profondeur moyenne                              ║
+║                                                                                      ║
+║  [FIX] Upload Archive: Correction envoi project_ids via form_data                   ║
+║        - json.dumps() pour sérialisation correcte de l'array                        ║
+║        - Affichage "(N project(s))" corrigé dans les logs                           ║
+║                                                                                      ║
+║  CHANGELOG v2.6.3 (2026-01-26) - QMC ACCOUNTS AUDIT MODULE:                         ║
+║  ─────────────────────────────────────────────────────────────────────────────────── ║
+║  [NEW] QMC ACCOUNTS AUDIT: Audit complet multi-comptes IBM Quantum intégré          ║
+║        - QMCJobDataCollector: collecte jobs de TOUS les comptes configurés          ║
+║        - QMCAuditHTMLReportGenerator: rapports HTML style IBM Carbon Design System  ║
+║        - Graphiques Chart.js: usage, timeline 14j, statuts, backends                ║
+║  [NEW] Fonctions globales d'audit:                                                   ║
+║        - get_all_ibm_accounts_from_env(): auto-détection comptes depuis .env        ║
+║        - run_accounts_audit(): point d'entrée principal avec rapports HTML/JSON     ║
+║        - Patterns supportés: IBM_API_KEY_<LABEL>, IBM_API_KEY_ACTIVE_<LABEL>        ║
+║  [NEW] Méthodes QMCFramework pour audit:                                             ║
+║        - fw.audit_accounts(): lance audit via instance framework                     ║
+║        - fw.list_ibm_accounts(): liste comptes configurés dans .env                  ║
+║  [NEW] GESTION COMPTES INACCESSIBLES:                                                ║
+║        - Détection erreurs: AUTH_FAILED, TIMEOUT, NETWORK, UNKNOWN                   ║
+║        - Affichage clair: "⚠️ INACCESSIBLE - Clé API invalide ou expirée"           ║
+║        - Champs: accessible, error_type, error_message dans résultats               ║
+║        - HTML: ligne rouge avec message d'erreur explicite                           ║
+║        - Console: 🔴 COMPTE: ⚠️ INACCESSIBLE (pas "0 minutes" trompeur)             ║
 ║                                                                                      ║
 ║  CHANGELOG v2.6.2 (2026-01-26) - QMC ARCHIVE MANAGER INTEGRATION:                   ║
 ║  ─────────────────────────────────────────────────────────────────────────────────── ║
@@ -232,7 +434,7 @@
 ║        - CLI: --recover-job JOB_ID, --list-jobs                                      ║
 ║  [NEW] Monitoring robuste ACTIVÉ PAR DÉFAUT (timeout 45s + reconnexion auto)         ║
 ║        - Évite blocage si VPN/réseau coupé pendant un job                            ║
-║        - Désactiver: QMC_ROBUST_MONITORING=false (non recommandé)                    ║
+║        - [v2.7.0] TOUJOURS actif — toggle QMC_ROBUST_MONITORING supprimé            ║
 ║  [NEW] _safe_get_job_result() avec timeout 120s sur job.result()                     ║
 ║  [NEW] run_on_qpu_batched(): Multi-job pour grandes expériences (>100 circuits)      ║
 ║  [NEW] check_dependencies(): Vérifie les packages pip au démarrage (--check-deps)    ║
@@ -419,7 +621,7 @@
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ 📦 CLASSE PRINCIPALE: QMCFramework (alias: QMCFrameworkV2_4)                            │
+│ 📦 CLASSE PRINCIPALE: QMCFramework (classe concrete)                            │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                         │
 │ INSTANCIATION:                                                                          │
@@ -1044,7 +1246,168 @@
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ 🔧 UTILITAIRES DISPONIBLES                                                              │
+│ 🔄 v2.7.0 - MULTI-JOB SESSION MANAGER (MAJOR UPDATE!)                                   │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                         │
+│ ⚠️ NOUVELLE FONCTIONNALITÉ MAJEURE pour expériences multi-configurations               │
+│                                                                                         │
+│ PROBLÈME RÉSOLU:                                                                        │
+│   Quand vous lancez plusieurs jobs QPU (ex: multi_seed × opt_levels = 6 jobs),         │
+│   si le réseau tombe, le script crash, ou le PC plante → TOUT EST PERDU!               │
+│   Les archives individuelles sont sauvées mais l'analyse finale est impossible.        │
+│                                                                                         │
+│ SOLUTION v2.7.0:                                                                        │
+│   run_multi_job_session() sauvegarde l'état après CHAQUE job dans session.json.        │
+│   En cas de crash, reprendre avec resume_session_id et continuer où on en était!       │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 📤 USAGE - NOUVEAU RUN:                                                                 │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   results = fw.run_multi_job_session(                                                   │
+│       jobs=[                                                                            │
+│           {"circuits": circuits_off_42, "shots": 2048, "label": "OFF_seed42"},         │
+│           {"circuits": circuits_on_42, "shots": 2048, "label": "ON_seed42"},           │
+│           {"circuits": circuits_off_1042, "shots": 2048, "label": "OFF_seed1042"},     │
+│           {"circuits": circuits_on_1042, "shots": 2048, "label": "ON_seed1042"},       │
+│       ],                                                                                │
+│       output_dir="qmc_runs/TFD_experiment_20260129",  # Optionnel                       │
+│       session_name="TFD_p30",                         # Préfixe custom optionnel        │
+│       archive_project="41dbecd1-bbc8-4270-...",       # Upload tous jobs vers ce projet │
+│   )                                                                                     │
+│                                                                                         │
+│   # À l'écran: confirmation UNIQUE pour TOUS les jobs                                   │
+│   # ╔════════════════════════════════════════════════════════════════════════════════╗  │
+│   # ║  🚀 NOUVELLE SESSION MULTI-JOB                                                 ║  │
+│   # ║  Session: SESSION_20260129_143022_abc123                                       ║  │
+│   # ║  Nombre total de jobs: 4                                                       ║  │
+│   # ║  Temps QPU estimé: ~84.0s (1.4 min)                                            ║  │
+│   # ╚════════════════════════════════════════════════════════════════════════════════╝  │
+│   # Confirmer l'exécution de 4 job(s) sur ibm_fez? [y/N] >                              │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 🔄 USAGE - REPRISE APRÈS CRASH:                                                        │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   # Si crash pendant job 3, reprendre:                                                  │
+│   results = fw.run_multi_job_session(                                                   │
+│       jobs=jobs_with_circuits,  # Fournir les circuits pour jobs PENDING                │
+│       resume_session_id="SESSION_20260129_143022_abc123"                               │
+│   )                                                                                     │
+│                                                                                         │
+│   # Le framework:                                                                       │
+│   # 1. Charge session.json                                                              │
+│   # 2. Vérifie si job RUNNING → attend sa fin via IBM API                              │
+│   # 3. Skip les jobs COMPLETED                                                          │
+│   # 4. Continue avec les jobs PENDING                                                   │
+│   # 5. Confirmation UNIQUE pour les jobs restants                                       │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 📋 STRUCTURE DU RETOUR:                                                                 │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   results = {                                                                           │
+│       "session_id": "SESSION_20260129_143022_abc123",                                   │
+│       "session_file": "/path/to/session_SESSION_xxx.json",                              │
+│       "status": "COMPLETED",  # ou "PARTIAL", "FAILED", "CANCELLED"                     │
+│       "total_jobs": 4,                                                                  │
+│       "completed_jobs": 4,                                                              │
+│       "failed_jobs": 0,                                                                 │
+│       "total_qpu_seconds": 84.5,                                                        │
+│       "total_time_seconds": 320.5,  # Temps réel (incl. queue)                          │
+│       "results": [                   # Liste des résultats par job                      │
+│           {"job_index": 0, "label": "OFF_seed42", "results": [...], "qpu_seconds": 21},│
+│           {"job_index": 1, "label": "ON_seed42", "results": [...], "qpu_seconds": 21}, │
+│           ...                                                                           │
+│       ],                                                                                │
+│       "jobs": [...]  # Détails de session.json                                          │
+│   }                                                                                     │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 📂 FICHIER session.json:                                                               │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   {                                                                                     │
+│       "session_id": "SESSION_20260129_143022_abc123",                                   │
+│       "created_at": "2026-01-29T14:30:22",                                              │
+│       "status": "IN_PROGRESS",                                                          │
+│       "backend": "ibm_fez",                                                             │
+│       "ibm_account": "QMCLAB",                                                          │
+│       "total_jobs": 4,                                                                  │
+│       "jobs": [                                                                         │
+│           {                                                                             │
+│               "index": 0,                                                               │
+│               "label": "OFF_seed42",                                                    │
+│               "status": "COMPLETED",                                                    │
+│               "ibm_job_id": "d5t5vjkcqoec73djc9d0",                                     │
+│               "qpu_seconds": 21.0,                                                      │
+│               "archive_path": "qmc_runs/.../archive_xxx.json",                          │
+│               "metadata": {"seed": 42, "type": "OFF"}  # Custom metadata                │
+│           },                                                                            │
+│           {"index": 1, "status": "RUNNING", "ibm_job_id": "d5t607..."},                │
+│           {"index": 2, "status": "PENDING"},                                            │
+│           {"index": 3, "status": "PENDING"}                                             │
+│       ]                                                                                 │
+│   }                                                                                     │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 🔧 PARAMÈTRES DE CHAQUE JOB:                                                           │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   job_config = {                                                                        │
+│       # OBLIGATOIRE                                                                     │
+│       "circuits": [...],         # Liste de QuantumCircuit                              │
+│                                                                                         │
+│       # OPTIONNELS                                                                      │
+│       "shots": 2048,             # Défaut: 4096                                         │
+│       "label": "mon_job",        # Défaut: job_000, job_001, ...                        │
+│       "auto_transpile": True,    # Défaut: True                                         │
+│       "archive_projects": [...], # Override archive_project global                      │
+│       "archive_notes": "...",    # Notes custom pour cet upload                         │
+│       "metadata": {...},         # Métadonnées custom (sauvées dans session.json)       │
+│   }                                                                                     │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ 📋 LISTER LES SESSIONS EXISTANTES:                                                     │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   fw.print_sessions_list()  # Affiche tableau formaté                                   │
+│   sessions = fw.list_sessions()  # Retourne list[dict]                                  │
+│                                                                                         │
+│   # ╔══════════════════════════════════════════════════════════════════════════════╗    │
+│   # ║  SESSION ID                            │ STATUS │ JOBS  │ QPU    │ BACKEND  ║    │
+│   # ╠══════════════════════════════════════════════════════════════════════════════╣    │
+│   # ║  SESSION_20260129_143022_abc123        │ ✅ COMP │ 4/4   │ 84.5s  │ ibm_fez  ║    │
+│   # ║  SESSION_20260128_201009_def456        │ 🔄 PROG │ 2/6   │ 42.0s  │ ibm_fez  ║    │
+│   # ╚══════════════════════════════════════════════════════════════════════════════╝    │
+│                                                                                         │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│ ⚠️ POINTS IMPORTANTS:                                                                   │
+│ ════════════════════════════════════════════════════════════════════════════════════    │
+│                                                                                         │
+│   1. LES CIRCUITS NE SONT PAS SAUVÉS dans session.json (pas sérialisables)             │
+│      → Pour reprendre, il faut refournir les circuits pour les jobs PENDING            │
+│      → Utilisez les métadonnées pour reconstruire si nécessaire                        │
+│                                                                                         │
+│   2. CHAQUE JOB = run_on_qpu() STANDARD                                                │
+│      → Archive JSON générée pour chaque job                                            │
+│      → Upload vers QMC Archive pour chaque job                                         │
+│      → Rapport HTML généré pour chaque job                                             │
+│                                                                                         │
+│   3. CONFIRMATION UNIQUE                                                               │
+│      → Pas de auto_confirm par job, une seule confirmation au début                    │
+│      → Le paramètre auto_confirm=True skip la confirmation (DÉCONSEILLÉ)               │
+│                                                                                         │
+│   4. COMPTE IBM DIFFÉRENT                                                              │
+│      → Si vous reprenez avec un compte différent, les jobs RUNNING sont ignorés        │
+│      → Message d'avertissement affiché                                                  │
+│                                                                                         │
+│   5. ESTIMATION TEMPS QPU                                                              │
+│      → Basée sur formule IBM: 2 + 0.00035 × circuits × shots par job                   │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                         │
 │ CLASSES UTILITAIRES:                                                                    │
@@ -1099,14 +1462,13 @@
 │                                                                                         │
 │ PROBLÈME: Si VPN/réseau coupé pendant un job, le script peut bloquer indéfiniment      │
 │                                                                                         │
-│ SOLUTION 1 - Monitoring robuste (ACTIVÉ PAR DÉFAUT depuis v2.5.21):                     │
-│   # Désactiver si besoin (non recommandé):                                              │
-│   QMC_ROBUST_MONITORING=false                                                           │
+│ MONITORING ROBUSTE (TOUJOURS ACTIF depuis v2.7.0):                                      │
 │   # - Timeout 45s par vérification de statut (évite blocage)                            │
 │   # - Reconnexion automatique après 5 échecs                                            │
 │   # - Message clair avec job_id si déconnexion                                          │
+│   # ⚠️ QMC_ROBUST_MONITORING supprimé en v2.7.0 — toujours robuste                     │
 │                                                                                         │
-│ SOLUTION 2 - Récupérer un job après déconnexion:                                        │
+│ SOLUTION - Récupérer un job après déconnexion:                                          │
 │   # Via CLI                                                                             │
 │   python qmc_framework.py --recover-job d58l911smlfc739jogmg                            │
 │   python qmc_framework.py --list-jobs                                                   │
@@ -1116,7 +1478,6 @@
 │   jobs = fw.list_recent_jobs(n=10, status_filter='DONE')                                │
 │                                                                                         │
 │ AUTRES VARIABLES D'ENVIRONNEMENT UTILES:                                                │
-│   QMC_ROBUST_MONITORING=true  # Monitoring avec timeout/reconnexion (défaut: true)      │
 │   QMC_GENERATE_REPORT=true    # Génère rapport HTML automatique (défaut: true)          │
 │   QMC_GENERATE_ARCHIVE=true   # Génère archive JSON automatique (défaut: true)          │
 │   QMC_AUTO_CONFIRM=false      # Confirmation avant envoi QPU (défaut: false)            │
@@ -1513,7 +1874,7 @@
 │ ════════════════════════════════════════════════════════════════════════════════════    │
 │                                                                                         │
 │ from qmc_quantum_framework_v2_5_16 import (                                             │
-│     QMCFrameworkV2_4 as QMCFramework,                                                   │
+│     QMCFramework,                                                   │
 │     RunMode,                                                                            │
 │ )                                                                                       │
 │                                                                                         │
@@ -2187,7 +2548,7 @@
 │ ════════════════════════════════════════════════════════════════════════════════════    │
 │                                                                                         │
 │ from qmc_quantum_framework_v2_6_0 import (                                              │
-│     QMCFrameworkV2_4 as QMCFramework,                                                   │
+│     QMCFramework,                                                   │
 │     QiskitVisualizationWrapper,                                                         │
 │     RuntimeErrorMitigationConfig,                                                       │
 │     RunMode,                                                                            │
@@ -2298,9 +2659,11 @@ import sys
 import time
 import signal
 import atexit
+import html  # [v2.7.1 FIX] for HTML/XSS escaping in generated reports
 import hashlib
 import argparse
 import traceback
+import subprocess  # [v2.7.1 FIX] used in check_dependencies auto-install path (subprocess.check_call / CalledProcessError)
 import csv
 import importlib
 import inspect
@@ -2314,9 +2677,20 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
-    List, Dict, Optional, Set, Tuple, Any, Callable, Union, 
-    Type, TypeVar, Generic, Iterator, Sequence, Protocol
+    List, Dict, Optional, Set, Tuple, Any, Callable, Union,
+    Type, TypeVar, Generic, Iterator, Sequence, Protocol, TYPE_CHECKING
 )
+if TYPE_CHECKING:  # pragma: no cover
+    # [v2.7.1 FIX] Imports UNIQUEMENT pour l'annotation de type (forward refs). Ce bloc
+    # n'est JAMAIS exécuté au runtime (TYPE_CHECKING==False) — aucun coût ni dépendance
+    # supplémentaire — mais il lie les noms pour les annotations chaînées (ex.
+    # -> 'QuantumCircuit') et fait taire les avertissements « undefined name » des linters.
+    from qiskit import QuantumCircuit
+    from qiskit.transpiler import Layout
+    from qiskit.providers import BackendV2
+    from qiskit_ibm_runtime import SamplerV2, EstimatorV2
+    from qiskit_ibm_runtime.utils.noise_learner_result import NoiseLearnerResult
+    from qiskit.transpiler.passes.layout.vf2_utils import ErrorMap
 from dataclasses import dataclass, field, asdict
 from enum import Enum, auto
 from contextlib import contextmanager
@@ -2332,6 +2706,48 @@ import functools
 import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
+
+
+# =============================================================================
+# [v2.7.1 FIX] Atomic JSON write helper (reliability/concurrency)
+# Writes to a temporary file then os.replace() onto the target so a crash or
+# concurrent reader never observes a partially written / truncated JSON file.
+# =============================================================================
+
+def _atomic_write_json(path, data, indent=2, ensure_ascii=False, cls=None):
+    """Atomically write `data` as JSON to `path`.
+
+    Serializes to `path` + '.tmp' and then atomically renames it onto `path`
+    using os.replace(). On any failure the temporary file is cleaned up so a
+    partial write is never left behind.
+    """
+    path = str(path)
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    tmp_path = path + '.tmp'
+    try:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii, cls=cls)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except (OSError, ValueError):
+                pass
+        # [v2.7.1] Permissions restrictives (propriétaire seul) : ces JSON peuvent contenir
+        # des métadonnées de session/credentials. Sans effet notable sous Windows, utile sous POSIX.
+        try:
+            os.chmod(tmp_path, 0o600)
+        except OSError:
+            pass
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 # =============================================================================
@@ -2390,6 +2806,38 @@ REQUIRED_PACKAGES = {
 # ATTENTION: mthree se nomme 'mthree' sur PyPI, pas 'qiskit-addon-mthree'!
 IBM_ADDONS_INSTALL_CMD = "pip install mthree qiskit-addon-aqc-tensor qiskit-addon-mpf qiskit-addon-obp qiskit-addon-sqd qiskit-addon-cutting"
 
+
+def _version_lt(installed: str, minimum: str) -> bool:
+    """
+    [v2.7.1 FIX] Compare two version strings numerically (tuple of int parts) so that
+    e.g. '0.45.0' is correctly seen as < '0.450.0' and '2.10.0' > '2.9.0'. Used as the
+    fallback when the 'packaging' library is unavailable; previously a plain string
+    comparison was used, which is lexicographic and wrong (e.g. '0.9' > '0.45').
+    Returns True if `installed` is older than `minimum`. Falls back to string
+    comparison only if the versions cannot be parsed as dotted integers.
+    """
+    def _parse(v: str):
+        parts = []
+        for chunk in str(v).split('.'):
+            num = ''
+            for ch in chunk:
+                if ch.isdigit():
+                    num += ch
+                else:
+                    break
+            parts.append(int(num) if num else 0)
+        return tuple(parts)
+
+    try:
+        ti, tm = _parse(installed), _parse(minimum)
+        # Pad to equal length so (2, 3) and (2, 3, 0) compare as equal.
+        length = max(len(ti), len(tm))
+        ti = ti + (0,) * (length - len(ti))
+        tm = tm + (0,) * (length - len(tm))
+        return ti < tm
+    except Exception:
+        return str(installed) < str(minimum)
+
 def check_dependencies(auto_install: bool = False, verbose: bool = True) -> dict:
     """
     [v2.6.0] Vérifie que toutes les dépendances requises sont installées.
@@ -2411,7 +2859,7 @@ def check_dependencies(auto_install: bool = False, verbose: bool = True) -> dict
     
     if verbose:
         print("\n" + "═" * 72)
-        print("  📦 VÉRIFICATION DES DÉPENDANCES QMC FRAMEWORK v2.6.0")
+        print(f"  📦 VÉRIFICATION DES DÉPENDANCES QMC FRAMEWORK v{__version__}")
         print("═" * 72)
     
     categories = {"core": [], "viz": [], "util": [], "opt": [], "addons": []}
@@ -2466,7 +2914,8 @@ def check_dependencies(auto_install: bool = False, verbose: bool = True) -> dict
                     from packaging import version
                     status["outdated"] = version.parse(installed_ver) < version.parse(min_ver)
                 except ImportError:
-                    status["outdated"] = installed_ver < min_ver
+                    # [v2.7.1 FIX] numeric (tuple-of-int) compare instead of lexicographic string compare
+                    status["outdated"] = _version_lt(installed_ver, min_ver)
             else:
                 status["outdated"] = False
             
@@ -2534,7 +2983,11 @@ def check_dependencies(auto_install: bool = False, verbose: bool = True) -> dict
     # Packages manquants critiques
     critical_missing = [p for p, d, r in results["missing"] if r]
     outdated_pkgs = results["outdated"]
-    addons_missing = [p for p, d, r in results["missing"] if 'addon' in p.lower() or p == 'qiskit-addon-mthree']
+    # [v2.7.1 FIX] Classify addons by their actual REQUIRED_PACKAGES category (not by
+    # string-matching the pip name). 'mthree' is an IBM addon but its pip name has no
+    # 'addon' substring, so it was wrongly bucketed as optional. Use the addons category.
+    addon_pip_names = {status.get("pip_name") for _, status, _, _ in categories.get("addons", [])}
+    addons_missing = [p for p, d, r in results["missing"] if p in addon_pip_names]
     optional_missing = [p for p, d, r in results["missing"] if not r and p not in addons_missing]
     
     # Stocker le statut des addons
@@ -2685,7 +3138,8 @@ def ensure_dependencies():
                         if version.parse(installed_ver) < version.parse(min_ver):
                             outdated_packages.append((pkg_name, pip_name, installed_ver, min_ver, required))
                     except ImportError:
-                        if installed_ver < min_ver:
+                        # [v2.7.1 FIX] numeric (tuple-of-int) compare instead of lexicographic string compare
+                        if _version_lt(installed_ver, min_ver):
                             outdated_packages.append((pkg_name, pip_name, installed_ver, min_ver, required))
         except ImportError:
             # Package non installé
@@ -2799,7 +3253,9 @@ def ensure_dependencies():
         # Construire la commande de base
         pip_cmd = [sys.executable, "-m", "pip", "install"]
         
-        # Détecter si on est dans un environnement géré (Ubuntu/Debian)
+        # [v2.7.1] --break-system-packages n'est PLUS ajouté automatiquement : il
+        # peut corrompre le Python système (PEP 668). On le réserve à un opt-in
+        # explicite (QMC_PIP_BREAK_SYSTEM_PACKAGES=1) ; sinon on recommande un venv.
         try:
             check_result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--dry-run", "pip"],
@@ -2808,9 +3264,14 @@ def ensure_dependencies():
                 timeout=10
             )
             if "externally-managed-environment" in check_result.stderr:
-                pip_cmd.append("--break-system-packages")
-                print("  ℹ️  Environnement géré détecté, ajout de --break-system-packages")
-        except:
+                if os.environ.get("QMC_PIP_BREAK_SYSTEM_PACKAGES", "").lower() in ("true", "1", "yes"):
+                    pip_cmd.append("--break-system-packages")
+                    print("  ⚠️  Environnement géré + opt-in -> --break-system-packages (risqué)")
+                else:
+                    print("  ⚠️  Environnement Python géré (PEP 668) détecté.")
+                    print("     Recommandé : créez un venv (python -m venv .venv) puis réessayez,")
+                    print("     ou forcez avec QMC_PIP_BREAK_SYSTEM_PACKAGES=1 (peut casser le système).")
+        except Exception:
             pass
         
         pip_cmd.extend(packages)
@@ -3011,15 +3472,17 @@ def ensure_dependencies():
             print("\n")  # Nouvelle ligne propre
 
 
-# Vérification au chargement du module
-ensure_dependencies()
+# [v2.7.1 FIX] ensure_dependencies() moved to AFTER _load_qmc_env_config() so that
+# QMC_SKIP_DEP_CHECK / QMC_AUTO_INSTALL_DEPS placed in .env are honored (they were
+# previously ignored because the dep check ran before .env was loaded). See call site
+# right after _load_qmc_env_config() below.
 
 
 # =============================================================================
 # VERSION & METADATA
 # =============================================================================
 
-__version__ = "2.6.3"
+__version__ = "2.7.1"
 __author__ = "QMC Research Lab"
 __license__ = "Proprietary"
 __date__ = "2026-01-26"
@@ -3055,13 +3518,13 @@ FRAMEWORK_BANNER = """
 #   QMC_AUTO_INSTALL_DEPS=true  # Installe automatiquement les packages manquants
 #   QMC_SKIP_DEP_CHECK=true     # Désactive la vérification au chargement
 #
-# 🔒 MONITORING ROBUSTE (v2.5.21) - ACTIVÉ PAR DÉFAUT:
+# 🔒 MONITORING ROBUSTE (v2.7.0) - TOUJOURS ACTIF (plus de toggle):
 #
-#   QMC_ROBUST_MONITORING=false # Désactive le monitoring robuste (non recommandé)
-#                               # Par défaut: ACTIVÉ (true)
-#                               # - Timeout 45s par vérification de statut
-#                               # - Reconnexion auto après 5 échecs
-#                               # - Message clair si déconnexion
+#   # QMC_ROBUST_MONITORING supprimé en v2.7.0
+#   # Le monitoring robuste est TOUJOURS utilisé:
+#   # - Timeout 45s par vérification de statut
+#   # - Reconnexion auto après 5 échecs
+#   # - Message clair si déconnexion
 #
 # Par défaut: rapport=ON, archive=ON, confirmation=OBLIGATOIRE, dep_check=ON
 # Le code ne peut PAS modifier ces paramètres (ils sont ignorés).
@@ -3102,7 +3565,7 @@ def _load_qmc_env_config():
     env_file = Path('.env')
     if env_file.exists():
         try:
-            with open(env_file) as f:
+            with open(env_file, encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (avoid platform cp1252 mojibake on .env)
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#') and '=' in line:
@@ -3117,6 +3580,16 @@ def _load_qmc_env_config():
 
 # Charger la config au démarrage du module
 _load_qmc_env_config()
+
+# [v2.7.1] IMPORT PUR par défaut. Auparavant `ensure_dependencies()` s'exécutait
+# à CHAQUE import et pouvait lancer `pip install` (effet réseau/système, non
+# déterministe, incompatible CI/offline, prompt interactif). Désormais l'import ne
+# fait RIEN. L'auto-install (« drop-and-go ») reste disponible EXPLICITEMENT :
+#   • en CLI :  python qmc_quantum_framework_v2_7_1.py --install   (ou --check-deps)
+#   • via env :  QMC_AUTO_INSTALL_DEPS=1   (opt-in conscient, p.ex. dans un notebook)
+# La vérification non-installante reste accessible par check_dependencies(verbose=True).
+if os.environ.get("QMC_AUTO_INSTALL_DEPS", "").lower() in ("true", "1", "yes"):
+    ensure_dependencies()
 
 # Configuration globale (lue depuis .env)
 QMC_GENERATE_REPORT = _get_env_bool('QMC_GENERATE_REPORT', default=True)
@@ -3153,13 +3626,57 @@ QMC_SKIP_QPU_STATE_FETCH = _get_env_bool('QMC_SKIP_QPU_STATE_FETCH', default=Fal
 #   - En cas d'échec (3 tentatives), le framework continue sans bloquer
 # =============================================================================
 
-QMC_ARCHIVE_URL = os.environ.get('QMC_ARCHIVE_URL', 'http://localhost:4000').strip()
+QMC_ARCHIVE_URL = os.environ.get('QMC_ARCHIVE_URL', 'https://domupbdhvyusjshlwmld.supabase.co/functions/v1/upload').strip()
 QMC_ARCHIVE_TOKEN = os.environ.get('QMC_ARCHIVE_TOKEN', '').strip()
 QMC_ARCHIVE_UPLOAD = _get_env_bool('QMC_ARCHIVE_UPLOAD', default=True)
 
 # Parser les projets par défaut (UUIDs séparés par virgules)
 _raw_projects = os.environ.get('QMC_ARCHIVE_DEFAULT_PROJECTS', '').strip()
 QMC_ARCHIVE_DEFAULT_PROJECTS = [p.strip() for p in _raw_projects.split(',') if p.strip()]
+
+# [v2.7.1 FIX] Allowlist des hôtes autorisés pour l'upload (anti-exfiltration de token).
+# Par défaut: tout hôte se terminant par '.supabase.co' + hôtes ajoutés via
+# la variable d'environnement QMC_ARCHIVE_ALLOWED_HOSTS (séparés par virgules).
+_raw_allowed_hosts = os.environ.get('QMC_ARCHIVE_ALLOWED_HOSTS', '').strip()
+QMC_ARCHIVE_ALLOWED_HOSTS = [h.strip().lower() for h in _raw_allowed_hosts.split(',') if h.strip()]
+
+
+def _qmc_is_allowed_archive_host(host: str) -> bool:
+    """[v2.7.1 FIX] Vérifie qu'un hôte est autorisé pour l'upload d'archive.
+
+    Autorise tout hôte se terminant par '.supabase.co' (ou égal) ainsi que
+    tout hôte présent dans QMC_ARCHIVE_ALLOWED_HOSTS.
+    """
+    if not host:
+        return False
+    host = host.lower()
+    if host == 'supabase.co' or host.endswith('.supabase.co'):
+        return True
+    return host in QMC_ARCHIVE_ALLOWED_HOSTS
+
+
+def _paginate_service_jobs(service, page: int = 200, max_total: int = 5000, **filters):
+    """[v2.7.1 FIX R82] Pagine QiskitRuntimeService.jobs() via `skip=` jusqu'à
+    épuisement (borné par max_total), au lieu d'un unique appel limit=N qui
+    TRONQUAIT silencieusement les listings (budget QPU sur-estimé, jobs omis).
+    Repli sur un appel unique si la version installée ne supporte pas `skip=`.
+    """
+    filters.pop('limit', None)
+    filters.pop('skip', None)
+    out, skip = [], 0
+    try:
+        while len(out) < max_total:
+            batch = list(service.jobs(limit=page, skip=skip, **filters))
+            if not batch:
+                break
+            out.extend(batch)
+            if len(batch) < page:
+                break
+            skip += page
+        return out[:max_total]
+    except TypeError:
+        # `skip=` non supporté par cette version -> appel unique (comportement hérité)
+        return list(service.jobs(limit=max_total, **filters))
 
 
 # =============================================================================
@@ -3168,7 +3685,7 @@ QMC_ARCHIVE_DEFAULT_PROJECTS = [p.strip() for p in _raw_projects.split(',') if p
 
 class QMCArchiveUploader:
     """
-    Gestionnaire d'upload vers QMC Archive Manager.
+    Gestionnaire d'upload vers QMC Archive Manager (Supabase Edge Function).
     
     Cette classe gère l'upload automatique des archives JSON vers le cloud
     QMC Archive Manager après chaque exécution QPU.
@@ -3179,9 +3696,10 @@ class QMCArchiveUploader:
         - Génération automatique des notes (job_id + date)
         - Support multi-projets
         - Désactivation possible via .env ou paramètre
+        - Compatible Supabase Edge Functions
     
     Configuration (.env):
-        QMC_ARCHIVE_URL=http://localhost:4000
+        QMC_ARCHIVE_URL=https://xxx.supabase.co/functions/v1/upload
         QMC_ARCHIVE_TOKEN=qmc_your_token_here
         QMC_ARCHIVE_DEFAULT_PROJECTS=uuid1,uuid2
         QMC_ARCHIVE_UPLOAD=true
@@ -3214,13 +3732,15 @@ class QMCArchiveUploader:
         Initialise le gestionnaire d'upload.
         
         Args:
-            api_url: URL de l'API (défaut: QMC_ARCHIVE_URL ou localhost:4000)
+            api_url: URL de l'API Edge Function (défaut: QMC_ARCHIVE_URL)
             api_token: Token d'authentification (défaut: QMC_ARCHIVE_TOKEN)
             default_projects: Liste des UUIDs projets par défaut
             enabled: Force l'activation/désactivation (défaut: auto-détection)
             logger: Logger optionnel pour les messages
         """
-        self.api_url = (api_url or QMC_ARCHIVE_URL or 'http://localhost:4000').rstrip('/')
+        # URL par défaut: Edge Function Supabase
+        default_url = 'https://domupbdhvyusjshlwmld.supabase.co/functions/v1/upload'
+        self.api_url = (api_url or QMC_ARCHIVE_URL or default_url).rstrip('/')
         self.api_token = api_token or QMC_ARCHIVE_TOKEN
         self.default_projects = default_projects or QMC_ARCHIVE_DEFAULT_PROJECTS or []
         self.logger = logger
@@ -3285,9 +3805,9 @@ class QMCArchiveUploader:
                job_id: str = None,
                extra_info: Dict = None,
                max_retries: int = 3,
-               timeout: int = 30) -> Dict:
+               timeout: int = 300) -> Dict:
         """
-        Upload un fichier archive vers QMC Archive Manager.
+        Upload un fichier archive vers QMC Archive Manager (Supabase Edge Function).
         
         Args:
             file_path: Chemin vers le fichier JSON à uploader
@@ -3296,7 +3816,7 @@ class QMCArchiveUploader:
             job_id: Job ID IBM pour les notes auto-générées
             extra_info: Infos supplémentaires pour les notes
             max_retries: Nombre maximum de tentatives (défaut: 3)
-            timeout: Timeout par requête en secondes (défaut: 30)
+            timeout: Timeout par requête en secondes (défaut: 300 pour gros fichiers)
         
         Returns:
             Dict avec les résultats de l'upload:
@@ -3334,13 +3854,42 @@ class QMCArchiveUploader:
                 'error': f'File not found: {file_path}'
             }
         
-        # Déterminer les projets à utiliser
-        effective_projects = project_ids if project_ids is not None else self.default_projects
+        # Déterminer les projets à utiliser (avec fallback .env)
+        # Priorité: 1) project_ids explicites, 2) self.default_projects (.env), 3) liste vide
+        if project_ids is not None and len(project_ids) > 0:
+            effective_projects = project_ids
+            project_source = "paramètre explicite"
+        elif self.default_projects and len(self.default_projects) > 0:
+            effective_projects = self.default_projects
+            project_source = "QMC_ARCHIVE_DEFAULT_PROJECTS (.env)"
+        else:
+            effective_projects = []
+            project_source = "aucun (upload sans projet)"
         
         # Générer les notes si non fournies
         effective_notes = notes if notes else self._generate_default_notes(job_id, extra_info)
-        
-        # Préparer les headers
+
+        # [v2.7.1 FIX] Anti-exfiltration du token: exiger https + hôte en allowlist
+        # AVANT de placer le token dans l'en-tête Authorization.
+        # Reproduire le calcul d'URL effectif (cf. boucle ci-dessous).
+        from urllib.parse import urlparse
+        _effective_url = self.api_url
+        if '/functions/v1/' not in _effective_url and '/api/v1/' not in _effective_url:
+            _effective_url = f"{self.api_url}/api/v1/upload"
+        _parsed = urlparse(_effective_url)
+        if _parsed.scheme != 'https':
+            raise QMCSecurityError(
+                f"Upload refusé: schéma non sécurisé '{_parsed.scheme}' (https requis)",
+                operation="archive_upload"
+            )
+        if not _qmc_is_allowed_archive_host(_parsed.hostname or ''):
+            raise QMCSecurityError(
+                f"Upload refusé: hôte non autorisé '{_parsed.hostname}'. "
+                f"Ajoutez-le via QMC_ARCHIVE_ALLOWED_HOSTS.",
+                operation="archive_upload"
+            )
+
+        # Préparer les headers pour Supabase Edge Function
         headers = {
             'Authorization': f'Bearer {self.api_token}'
         }
@@ -3352,34 +3901,55 @@ class QMCArchiveUploader:
         for attempt in range(max_retries):
             self.upload_attempts = attempt + 1
             
-            # Import local de requests (évite de bloquer le framework si non installé)
+            # Import local de requests et json (évite de bloquer le framework si non installé)
             try:
                 import requests
+                import json
             except ImportError:
                 last_error = "requests package not installed. Install with: pip install requests"
                 break  # Sort de la boucle for immédiatement
             
             try:
-                # Préparer form_data avec tuple list (format requis par l'API)
-                form_data = []
-                
-                # Ajouter les project_ids
-                if effective_projects:
-                    for pid in effective_projects:
-                        form_data.append(('project_ids[]', pid))
-                
-                # Ajouter les notes
-                if effective_notes:
-                    form_data.append(('notes', effective_notes))
-                
-                # Ouvrir et envoyer le fichier
+                # [v2.6.3] Format simplifié pour Supabase Edge Function
+                # L'Edge Function attend le fichier + optionnellement project_ids et notes
                 with open(file_path, 'rb') as f:
                     files = {
                         'file': (file_path.name, f, 'application/json')
                     }
                     
+                    # Préparer les données du formulaire (project_ids et notes)
+                    form_data = {}
+                    
+                    # Ajouter les project_ids si fournis
+                    if effective_projects:
+                        # Format JSON array pour l'Edge Function
+                        form_data['project_ids'] = json.dumps(effective_projects)
+                    
+                    # Ajouter les notes si fournies
+                    if effective_notes:
+                        form_data['notes'] = effective_notes
+                    
+                    # [v2.7.0] Log clair pour diagnostiquer les project_ids
+                    if effective_projects and len(effective_projects) > 0:
+                        self._log(f"📤 Upload vers {len(effective_projects)} projet(s) [{project_source}]", 'info')
+                        # Afficher les UUIDs (tronqués pour lisibilité)
+                        for pid in effective_projects[:3]:  # Max 3 affichés
+                            self._log(f"   → {pid[:8]}...{pid[-4:]}", 'info')
+                        if len(effective_projects) > 3:
+                            self._log(f"   → ... et {len(effective_projects) - 3} autre(s)", 'info')
+                    else:
+                        self._log(f"⚠️ Upload SANS projet assigné [{project_source}]", 'warn')
+                        self._log(f"   💡 Définir QMC_ARCHIVE_DEFAULT_PROJECTS dans .env ou passer archive_projects=[]", 'info')
+                    
+                    # L'URL est directement l'Edge Function (pas de /api/v1/upload)
+                    # Le framework détecte si c'est une Edge Function Supabase
+                    upload_url = self.api_url
+                    if '/functions/v1/' not in upload_url and '/api/v1/' not in upload_url:
+                        # Ancien format local - ajouter le chemin
+                        upload_url = f"{self.api_url}/api/v1/upload"
+                    
                     response = requests.post(
-                        f"{self.api_url}/api/v1/upload",
+                        upload_url,
                         headers=headers,
                         files=files,
                         data=form_data if form_data else None,
@@ -3388,20 +3958,44 @@ class QMCArchiveUploader:
                 
                 # Analyser la réponse
                 if response.status_code in [200, 201]:
-                    result = response.json()
-                    task = result.get('task', {})
-                    
-                    self.upload_success = True
-                    self.last_upload_result = {
-                        'success': True,
-                        'task_id': task.get('id'),
-                        'filename': task.get('filename'),
-                        'projects_assigned': len(task.get('projectIds', [])),
-                        'attempts': self.upload_attempts,
-                        'error': None
-                    }
-                    
-                    return self.last_upload_result
+                    try:
+                        result = response.json()
+                        
+                        # [v2.6.3] Format de réponse flexible
+                        # Supabase Edge Function peut retourner différents formats
+                        task = result.get('task', result)
+                        task_id = task.get('id') or task.get('task_id') or result.get('id')
+                        filename = task.get('filename') or file_path.name
+                        projects = task.get('projectIds', task.get('projects', []))
+                        
+                        self.upload_success = True
+                        self.last_upload_result = {
+                            'success': True,
+                            'task_id': task_id,
+                            'filename': filename,
+                            # Utiliser les projets ENVOYÉS si la réponse n'en retourne pas
+                            'projects_assigned': len(projects) if isinstance(projects, list) and projects else (len(effective_projects) if effective_projects else 0),
+                            'projects_sent': len(effective_projects) if effective_projects else 0,
+                            'attempts': self.upload_attempts,
+                            'error': None,
+                            'response': result  # Réponse complète pour debug
+                        }
+                        
+                        return self.last_upload_result
+                        
+                    except Exception as e:
+                        # Réponse OK mais pas JSON - considéré comme succès
+                        self.upload_success = True
+                        self.last_upload_result = {
+                            'success': True,
+                            'task_id': None,
+                            'filename': file_path.name,
+                            'projects_assigned': 0,
+                            'attempts': self.upload_attempts,
+                            'error': None,
+                            'response_text': response.text[:200]
+                        }
+                        return self.last_upload_result
                 
                 elif response.status_code == 401:
                     # Token invalide - pas de retry
@@ -3417,7 +4011,7 @@ class QMCArchiveUploader:
                     # Autre erreur - retry possible
                     try:
                         error_data = response.json()
-                        last_error = error_data.get('message', f"HTTP {response.status_code}")
+                        last_error = error_data.get('message', error_data.get('error', f"HTTP {response.status_code}"))
                     except:
                         last_error = f"HTTP {response.status_code}: {response.text[:100]}"
             
@@ -3466,8 +4060,12 @@ class QMCArchiveUploader:
         if compact:
             # Format compact sur une ligne
             if result['success']:
-                projects_info = f"{result['projects_assigned']} projects" if result['projects_assigned'] else "no project"
-                print(f"[QMC Archive] ✅ Uploaded: {result['filename']} → Task {result['task_id'][:8]}... ({projects_info})")
+                # Priorité: projets assignés par le serveur, sinon projets envoyés
+                projects_count = result.get('projects_assigned', 0) or result.get('projects_sent', 0)
+                projects_info = f"{projects_count} project(s)" if projects_count else "no project"
+                task_id = result.get('task_id', 'unknown')
+                task_short = task_id[:8] if task_id else 'unknown'
+                print(f"[QMC Archive] ✅ Uploaded: {result['filename']} → Task {task_short}... ({projects_info})")
             else:
                 print(f"[QMC Archive] ❌ Failed after {result['attempts']} attempts: {result['error']}")
         else:
@@ -3479,7 +4077,9 @@ class QMCArchiveUploader:
             
             if result['success']:
                 print(f"║  📁 File: {result['filename'][:width-12]:<{width-12}} ║")
-                print(f"║  🔑 Task ID: {result['task_id']:<{width-14}} ║")
+                # [v2.7.1 FIX] task_id peut être None (succès sans JSON) -> str() pour éviter NoneType.__format__
+                _task_id_str = str(result['task_id']) if result.get('task_id') else 'unknown'
+                print(f"║  🔑 Task ID: {_task_id_str:<{width-14}} ║")
                 print(f"║  📂 Projects: {result['projects_assigned']} assigned{' ' * (width - 25)}║")
                 print(f"║  ✅ Status: SUCCESS (attempt {result['attempts']}/{3}){' ' * (width - 35)}║")
             else:
@@ -3498,9 +4098,13 @@ class QMCArchiveUploader:
         
         if self.last_upload_result:
             if self.last_upload_result['success']:
-                return f"QMC Archive: Uploaded (Task {self.last_upload_result['task_id'][:8]}...)"
+                # [v2.7.1 FIX] task_id peut être None (réponse 2xx sans JSON / sans id) -> éviter TypeError sur [:8]
+                _tid = self.last_upload_result.get('task_id')
+                return f"QMC Archive: Uploaded (Task {(str(_tid)[:8] + '...') if _tid else 'unknown'})"
             else:
-                return f"QMC Archive: Failed ({self.last_upload_result['error'][:30]}...)"
+                # [v2.7.1 FIX] error peut être None (ex: max_retries=0) -> éviter TypeError sur [:30]
+                _err = self.last_upload_result.get('error')
+                return f"QMC Archive: Failed ({(str(_err)[:30] + '...') if _err else 'unknown error'})"
         
         return "QMC Archive: Enabled (no upload yet)"
 
@@ -3520,6 +4124,543 @@ def get_archive_uploader(logger: 'Logger' = None) -> QMCArchiveUploader:
         _qmc_archive_uploader = QMCArchiveUploader(logger=logger)
     
     return _qmc_archive_uploader
+
+
+# =============================================================================
+# [v2.6.4] MULTI-JOB SESSION MANAGER
+# =============================================================================
+# Système de gestion de sessions multi-jobs avec reprise automatique
+# Permet d'exécuter plusieurs jobs QPU et de reprendre en cas de crash
+# =============================================================================
+
+class MultiJobSessionStatus:
+    """Constantes pour les statuts de session et jobs."""
+    # Session status
+    SESSION_PENDING = "PENDING"
+    SESSION_IN_PROGRESS = "IN_PROGRESS"
+    SESSION_COMPLETED = "COMPLETED"
+    SESSION_FAILED = "FAILED"
+    SESSION_PARTIAL = "PARTIAL"  # Certains jobs ont échoué
+    
+    # Job status
+    JOB_PENDING = "PENDING"
+    JOB_SUBMITTED = "SUBMITTED"  # Soumis mais pas encore confirmé
+    JOB_RUNNING = "RUNNING"
+    JOB_COMPLETED = "COMPLETED"
+    JOB_FAILED = "FAILED"
+    JOB_SKIPPED = "SKIPPED"  # Skippé car compte différent
+
+
+class MultiJobSession:
+    """
+    [v2.6.4] Gestionnaire de session multi-jobs avec reprise automatique.
+    
+    Cette classe permet de :
+    - Gérer l'exécution de plusieurs jobs QPU en séquence
+    - Sauvegarder l'état après chaque job dans un fichier JSON
+    - Reprendre une session interrompue
+    - Récupérer les jobs "RUNNING" via l'API IBM
+    - Vérifier la compatibilité du compte IBM au relancement
+    
+    Usage nouveau run:
+        session = MultiJobSession.create_new(
+            jobs=[
+                {"circuits": [...], "shots": 2048, "label": "job1", "metadata": {...}},
+                {"circuits": [...], "shots": 2048, "label": "job2", "metadata": {...}},
+            ],
+            output_dir="qmc_runs/...",
+            backend="ibm_fez",
+            ibm_account="QMCLAB"
+        )
+        session.save()
+    
+    Usage reprise:
+        session = MultiJobSession.load("qmc_runs/.../session_TFD_xxx.json")
+        remaining_jobs = session.get_pending_jobs()
+    """
+    
+    def __init__(self):
+        """Initialisation vide - utiliser create_new() ou load()."""
+        self.session_id = None
+        self.session_file = None
+        self.created_at = None
+        self.updated_at = None
+        self.status = MultiJobSessionStatus.SESSION_PENDING
+        
+        # Configuration
+        self.output_dir = None
+        self.backend = None
+        self.ibm_account = None
+        self.ibm_instance = None
+        
+        # Jobs
+        self.jobs = []
+        self.total_jobs = 0
+        
+        # Métriques
+        self.total_qpu_seconds = 0.0
+        self.estimated_qpu_seconds = 0.0
+    
+    @classmethod
+    def create_new(cls, jobs: List[Dict], output_dir: str, backend: str,
+                   ibm_account: str = None, ibm_instance: str = None,
+                   session_id: str = None) -> 'MultiJobSession':
+        """
+        Crée une nouvelle session multi-jobs.
+        
+        Args:
+            jobs: Liste de jobs, chaque job est un dict avec:
+                  - "circuits": Liste de circuits (ou référence)
+                  - "shots": Nombre de shots
+                  - "label": Label du job (pour identification)
+                  - "metadata": Dict avec métadonnées custom (optionnel)
+            output_dir: Dossier de sortie pour les archives
+            backend: Nom du backend IBM
+            ibm_account: Label du compte IBM utilisé
+            ibm_instance: Instance CRN IBM
+            session_id: ID de session (auto-généré si None)
+        
+        Returns:
+            Instance MultiJobSession initialisée
+        """
+        import hashlib
+        from datetime import datetime
+        
+        session = cls()
+        
+        # Générer session_id si non fourni
+        if session_id is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Hash court basé sur les paramètres
+            hash_input = f"{timestamp}_{backend}_{len(jobs)}_{id(jobs)}"
+            short_hash = hashlib.md5(hash_input.encode(), usedforsecurity=False).hexdigest()[:8]  # [v2.7.1 FIX] non-security MD5
+            session.session_id = f"SESSION_{timestamp}_{short_hash}"
+        else:
+            session.session_id = session_id
+        
+        session.created_at = datetime.now().isoformat()
+        session.updated_at = session.created_at
+        session.status = MultiJobSessionStatus.SESSION_PENDING
+        
+        session.output_dir = str(output_dir)
+        session.backend = backend
+        session.ibm_account = ibm_account
+        session.ibm_instance = ibm_instance
+        
+        # Initialiser les jobs
+        session.total_jobs = len(jobs)
+        session.jobs = []
+        
+        for idx, job_config in enumerate(jobs):
+            job_entry = {
+                "index": idx,
+                "label": job_config.get("label", f"job_{idx:03d}"),
+                "status": MultiJobSessionStatus.JOB_PENDING,
+                "shots": job_config.get("shots", 4096),
+                "circuits_count": job_config.get("circuits_count", len(job_config.get("circuits", []))),
+                "metadata": job_config.get("metadata", {}),
+                
+                # [v2.7.0 FIX] Paramètres run_on_qpu transmis par le script appelant
+                "auto_transpile": job_config.get("auto_transpile", True),
+                "archive_projects": job_config.get("archive_projects"),
+                "archive_notes": job_config.get("archive_notes"),
+                
+                # Champs remplis après exécution
+                "ibm_job_id": None,
+                "submitted_at": None,
+                "completed_at": None,
+                "qpu_seconds": None,
+                "archive_path": None,
+                "report_path": None,
+                "results_summary": None,
+                "error": None
+            }
+            session.jobs.append(job_entry)
+        
+        # Estimer le temps QPU (formule IBM)
+        session._estimate_qpu_time()
+        
+        # Chemin du fichier de session
+        session.session_file = Path(output_dir) / f"session_{session.session_id}.json"
+        
+        return session
+    
+    @classmethod
+    def load(cls, session_file: str) -> 'MultiJobSession':
+        """
+        Charge une session existante depuis un fichier JSON.
+        
+        Args:
+            session_file: Chemin vers le fichier session_xxx.json
+        
+        Returns:
+            Instance MultiJobSession restaurée
+        
+        Raises:
+            FileNotFoundError: Si le fichier n'existe pas
+            ValueError: Si le fichier est invalide
+        """
+        import json
+        
+        session_path = Path(session_file)
+        if not session_path.exists():
+            raise FileNotFoundError(f"Session file not found: {session_file}")
+
+        # [v2.7.1 FIX] Tolerant load: if the primary JSON is corrupt (e.g. a
+        # crash during a non-atomic write left it truncated), fall back to the
+        # last-known-good '.bak' if one is present.
+        try:
+            with open(session_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except (ValueError, OSError) as e:
+            bak_path = Path(str(session_path) + '.bak')
+            if bak_path.exists():
+                with open(bak_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                raise ValueError(f"Invalid session file '{session_file}': {e}")
+
+        session = cls()
+        
+        # Restaurer les champs
+        session.session_id = data.get("session_id")
+        session.session_file = session_path
+        session.created_at = data.get("created_at")
+        session.updated_at = data.get("updated_at")
+        session.status = data.get("status", MultiJobSessionStatus.SESSION_PENDING)
+        
+        session.output_dir = data.get("output_dir")
+        session.backend = data.get("backend")
+        session.ibm_account = data.get("ibm_account")
+        session.ibm_instance = data.get("ibm_instance")
+        
+        session.jobs = data.get("jobs", [])
+        session.total_jobs = data.get("total_jobs", len(session.jobs))
+        
+        session.total_qpu_seconds = data.get("total_qpu_seconds", 0.0)
+        session.estimated_qpu_seconds = data.get("estimated_qpu_seconds", 0.0)
+        
+        return session
+    
+    def save(self):
+        """Sauvegarde l'état de la session dans le fichier JSON."""
+        import json
+        from datetime import datetime
+        
+        self.updated_at = datetime.now().isoformat()
+        
+        # Recalculer les statistiques
+        self._update_stats()
+        
+        data = {
+            "session_id": self.session_id,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "status": self.status,
+            
+            "output_dir": self.output_dir,
+            "backend": self.backend,
+            "ibm_account": self.ibm_account,
+            "ibm_instance": self.ibm_instance,
+            
+            "total_jobs": self.total_jobs,
+            "jobs": self.jobs,
+            
+            "summary": self.get_summary(),
+            
+            "total_qpu_seconds": self.total_qpu_seconds,
+            "estimated_qpu_seconds": self.estimated_qpu_seconds
+        }
+        
+        # Créer le dossier si nécessaire
+        self.session_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Encodeur personnalisé pour gérer Path et autres types
+        class SessionJSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, Path):
+                    return str(obj)
+                if hasattr(obj, '__dict__'):
+                    return str(obj)
+                return super().default(obj)
+
+        # [v2.7.1 FIX] Atomic write so a concurrent reader / crash never sees a
+        # truncated session file. Keep a .bak of the previous good state.
+        try:
+            if self.session_file.exists():
+                import shutil
+                shutil.copy2(str(self.session_file), str(self.session_file) + '.bak')
+        except Exception:
+            pass
+        _atomic_write_json(self.session_file, data, cls=SessionJSONEncoder)
+    
+    def _estimate_qpu_time(self):
+        """Estime le temps QPU total basé sur la formule IBM."""
+        total_seconds = 0.0
+        
+        for job in self.jobs:
+            # Formule IBM: 2 + 0.00035 * circuits * shots
+            circuits_count = job.get("circuits_count", 1)
+            shots = job.get("shots", 4096)
+            job_time = 2 + (0.00035 * circuits_count * shots)
+            total_seconds += job_time
+        
+        self.estimated_qpu_seconds = total_seconds
+    
+    def _update_stats(self):
+        """Met à jour les statistiques de la session."""
+        completed = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_COMPLETED)
+        running = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_RUNNING)
+        pending = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_PENDING)
+        failed = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_FAILED)
+        
+        self.total_qpu_seconds = sum(
+            j.get("qpu_seconds", 0) or 0 
+            for j in self.jobs 
+            if j["status"] == MultiJobSessionStatus.JOB_COMPLETED
+        )
+        
+        # Mettre à jour le statut de la session
+        if completed == self.total_jobs:
+            self.status = MultiJobSessionStatus.SESSION_COMPLETED
+        elif failed > 0 and (completed + failed) == self.total_jobs:
+            self.status = MultiJobSessionStatus.SESSION_PARTIAL
+        elif completed > 0 or running > 0:
+            self.status = MultiJobSessionStatus.SESSION_IN_PROGRESS
+        else:
+            self.status = MultiJobSessionStatus.SESSION_PENDING
+    
+    def get_summary(self) -> Dict:
+        """Retourne un résumé de l'état de la session."""
+        completed = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_COMPLETED)
+        running = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_RUNNING)
+        submitted = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_SUBMITTED)
+        pending = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_PENDING)
+        failed = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_FAILED)
+        skipped = sum(1 for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_SKIPPED)
+        
+        return {
+            "total": self.total_jobs,
+            "completed": completed,
+            "running": running,
+            "submitted": submitted,
+            "pending": pending,
+            "failed": failed,
+            "skipped": skipped,
+            "total_qpu_seconds": self.total_qpu_seconds,
+            # [v2.7.1 FIX R5] le restant inclut pending + running + submitted (pas seulement pending)
+            "estimated_remaining_seconds": (
+                self.estimated_qpu_seconds * ((pending + running + submitted) / self.total_jobs)
+                if self.total_jobs > 0 else 0)
+        }
+    
+    def get_pending_jobs(self) -> List[Dict]:
+        """Retourne la liste des jobs en attente (PENDING)."""
+        return [j for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_PENDING]
+    
+    def get_running_jobs(self) -> List[Dict]:
+        """Retourne la liste des jobs en cours (RUNNING ou SUBMITTED)."""
+        return [j for j in self.jobs 
+                if j["status"] in [MultiJobSessionStatus.JOB_RUNNING, MultiJobSessionStatus.JOB_SUBMITTED]]
+    
+    def get_completed_jobs(self) -> List[Dict]:
+        """Retourne la liste des jobs terminés (COMPLETED)."""
+        return [j for j in self.jobs if j["status"] == MultiJobSessionStatus.JOB_COMPLETED]
+    
+    def update_job(self, index: int, **kwargs):
+        """
+        Met à jour un job spécifique.
+        
+        Args:
+            index: Index du job (0-based)
+            **kwargs: Champs à mettre à jour (status, ibm_job_id, etc.)
+        """
+        if 0 <= index < len(self.jobs):
+            for key, value in kwargs.items():
+                if key in self.jobs[index]:
+                    self.jobs[index][key] = value
+            self.save()
+    
+    def mark_job_submitted(self, index: int, ibm_job_id: str):
+        """Marque un job comme soumis à IBM."""
+        from datetime import datetime
+        self.update_job(
+            index,
+            status=MultiJobSessionStatus.JOB_SUBMITTED,
+            ibm_job_id=ibm_job_id,
+            submitted_at=datetime.now().isoformat()
+        )
+    
+    def mark_job_running(self, index: int):
+        """Marque un job comme en cours d'exécution."""
+        self.update_job(index, status=MultiJobSessionStatus.JOB_RUNNING)
+    
+    def mark_job_completed(self, index: int, qpu_seconds: float = None,
+                           archive_path: str = None, report_path: str = None,
+                           results_summary: Dict = None):
+        """Marque un job comme terminé avec succès."""
+        from datetime import datetime
+        self.update_job(
+            index,
+            status=MultiJobSessionStatus.JOB_COMPLETED,
+            completed_at=datetime.now().isoformat(),
+            qpu_seconds=qpu_seconds,
+            archive_path=archive_path,
+            report_path=report_path,
+            results_summary=results_summary
+        )
+    
+    def mark_job_failed(self, index: int, error: str):
+        """Marque un job comme échoué."""
+        from datetime import datetime
+        self.update_job(
+            index,
+            status=MultiJobSessionStatus.JOB_FAILED,
+            completed_at=datetime.now().isoformat(),
+            error=error
+        )
+    
+    def is_account_compatible(self, current_account: str) -> bool:
+        """
+        Vérifie si le compte IBM actuel est compatible avec la session.
+        
+        Args:
+            current_account: Label du compte IBM actuel
+        
+        Returns:
+            True si compatible, False sinon
+        """
+        if self.ibm_account is None:
+            return True
+        return self.ibm_account == current_account
+    
+    def print_status_table(self):
+        """Affiche un tableau de l'état de tous les jobs."""
+        summary = self.get_summary()
+        
+        # Header
+        print(f"\n╔{'═' * 78}╗")
+        print(f"║  📋 SESSION: {self.session_id[:50]:<50}       ║")
+        print(f"╠{'═' * 78}╣")
+        print(f"║  Backend: {self.backend:<20} Account: {self.ibm_account or 'N/A':<20}       ║")
+        print(f"║  Status: {self.status:<20} QPU Time: {self.total_qpu_seconds:.1f}s / ~{self.estimated_qpu_seconds:.1f}s est.   ║")
+        print(f"╠{'═' * 78}╣")
+        print(f"║  {'#':<4} │ {'Label':<25} │ {'Status':<12} │ {'Job ID':<18} │ {'QPU':<6} ║")
+        print(f"╠{'─' * 78}╣")
+        
+        # Jobs
+        status_icons = {
+            MultiJobSessionStatus.JOB_PENDING: "⏳ PEND",
+            MultiJobSessionStatus.JOB_SUBMITTED: "📤 SUBM",
+            MultiJobSessionStatus.JOB_RUNNING: "🔄 RUN ",
+            MultiJobSessionStatus.JOB_COMPLETED: "✅ DONE",
+            MultiJobSessionStatus.JOB_FAILED: "❌ FAIL",
+            MultiJobSessionStatus.JOB_SKIPPED: "⏭️ SKIP"
+        }
+        
+        for job in self.jobs:
+            idx = job["index"]
+            label = job["label"][:25]
+            status = status_icons.get(job["status"], job["status"])
+            job_id = (job.get("ibm_job_id") or "-")[:18]
+            qpu = f"{job.get('qpu_seconds', 0) or 0:.1f}s" if job.get("qpu_seconds") else "-"
+            
+            print(f"║  {idx:<4} │ {label:<25} │ {status:<12} │ {job_id:<18} │ {qpu:<6} ║")
+        
+        # Footer
+        print(f"╠{'═' * 78}╣")
+        print(f"║  Total: {summary['total']} │ ✅ {summary['completed']} │ 🔄 {summary['running']} │ ⏳ {summary['pending']} │ ❌ {summary['failed']:<20}  ║")
+        print(f"╚{'═' * 78}╝")
+    
+    def get_confirmation_message(self, is_resume: bool = False) -> str:
+        """
+        Génère le message de confirmation pour l'utilisateur.
+        
+        Args:
+            is_resume: True si c'est une reprise de session
+        
+        Returns:
+            Message formaté pour confirmation
+        """
+        summary = self.get_summary()
+        
+        if is_resume:
+            # [v2.7.1 FIX R5] inclure les jobs SUBMITTED dans le décompte de reprise
+            jobs_to_run = summary['pending'] + summary['running'] + summary['submitted']
+            msg = f"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔄 REPRISE DE SESSION MULTI-JOB                                             ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Backend: {self.backend:<20} Compte: {self.ibm_account or 'N/A':<20}         ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Jobs déjà terminés:  {summary['completed']:>3}                                                  ║
+║  Jobs en cours:       {summary['running']:>3}  (seront récupérés)                              ║
+║  Jobs à exécuter:     {summary['pending']:>3}                                                  ║
+║  Jobs échoués:        {summary['failed']:>3}                                                  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Temps QPU estimé restant: ~{summary['estimated_remaining_seconds']:.1f}s                                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  🔑 SESSION ID: {self.session_id}
+
+Confirmer la reprise de {jobs_to_run} job(s) sur {self.backend}?"""
+        else:
+            msg = f"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚀 NOUVELLE SESSION MULTI-JOB                                               ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Backend: {self.backend:<20} Compte: {self.ibm_account or 'N/A':<20}         ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Nombre total de jobs: {self.total_jobs:>3}                                                  ║
+║  Temps QPU estimé:     ~{self.estimated_qpu_seconds:.1f}s ({self.estimated_qpu_seconds/60:.1f} min)                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  🔑 SESSION ID (à conserver pour reprise en cas de crash):
+  ┌────────────────────────────────────────────────────────────────────────────┐
+  │  {self.session_id:<74} │
+  └────────────────────────────────────────────────────────────────────────────┘
+
+  💡 Pour reprendre cette session:
+     
+     # Via Python:
+     fw.run_multi_job_session(resume_session_id="{self.session_id}")
+     
+     # Via ligne de commande (si votre script le supporte):
+     python votre_script.py --resume-session {self.session_id}
+
+Confirmer l'exécution de {self.total_jobs} job(s) sur {self.backend}?"""
+        
+        return msg
+
+
+def find_session_file(session_id: str, search_dirs: List[str] = None) -> Optional[Path]:
+    """
+    Recherche un fichier de session par son ID.
+    
+    Args:
+        session_id: ID de la session (complet ou partiel)
+        search_dirs: Liste de dossiers où chercher (défaut: qmc_runs/)
+    
+    Returns:
+        Path vers le fichier session ou None
+    """
+    if search_dirs is None:
+        search_dirs = ["qmc_runs", "."]
+    
+    for search_dir in search_dirs:
+        search_path = Path(search_dir)
+        if not search_path.exists():
+            continue
+        
+        # Chercher récursivement
+        for session_file in search_path.rglob(f"session_*{session_id}*.json"):
+            return session_file
+        
+        # Chercher aussi avec le nom exact
+        for session_file in search_path.rglob(f"session_{session_id}.json"):
+            return session_file
+    
+    return None
 
 
 # =============================================================================
@@ -3703,8 +4844,8 @@ class QMCJobDataCollector:
                             day_key = dt.strftime("%Y-%m-%d")
                             account_data["stats"]["jobs_per_day"][day_key] += 1
                             account_data["stats"]["usage_per_day"][day_key] += usage
-                        except:
-                            pass
+                        except Exception as date_err:  # [v2.7.1 FIX] log instead of silently swallowing date-parse errors
+                            self.log(f"   creation_date parse skipped for job {idx}: {date_err}", level='debug')
                     
                     if self.verbose and (idx + 1) % 20 == 0:
                         self.log(f"   Traitement: {idx + 1}/{len(jobs)} jobs...")
@@ -3794,6 +4935,11 @@ class QMCJobDataCollector:
         return data
 
 
+# [v2.7.1 FIX] HTML/XSS escaping helper for dynamic/third-party values in generated reports
+def _qmc_html_escape(v) -> str:
+    return html.escape('' if v is None else str(v), quote=True)
+
+
 class QMCAuditHTMLReportGenerator:
     """
     [v2.6.3] Génère un rapport HTML avec le style IBM Carbon Design System.
@@ -3854,6 +5000,20 @@ class QMCAuditHTMLReportGenerator:
         # Tables
         accounts_table = self._build_accounts_table(accounts, budget_minutes)
         jobs_table = self._build_jobs_table(accounts)
+
+        # [v2.7.1 FIX] Prevent <script> breakout when third-party labels (account/backend
+        # names, statuses) are embedded as JSON inside the <script> block.
+        def _js(obj):
+            return json.dumps(obj).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+        js_account_labels = _js(account_labels)
+        js_account_usage = _js(account_usage)
+        js_account_budgets = _js(account_budgets)
+        js_day_labels = _js(day_labels)
+        js_day_values = _js(day_values)
+        js_status_labels = _js(status_labels)
+        js_status_values = _js(status_values)
+        js_backend_labels = _js(backend_labels)
+        js_backend_values = _js(backend_values)
         
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -3931,7 +5091,7 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
     <main class="cds--content">
         <div class="page-header">
             <h1>Accounts usage report</h1>
-            <p>Period: {data.get("window_days", 30)} days · Generated: {data.get("collection_timestamp", "N/A")} · Budget: {budget_minutes} min/account</p>
+            <p>Period: {data.get("window_days", 30)} days · Generated: {_qmc_html_escape(data.get("collection_timestamp", "N/A"))} · Budget: {budget_minutes} min/account</p>
         </div>
         <div class="tile-grid">
             <div class="metric-tile"><div class="label">Accounts</div><div class="value">{len(accounts)}</div></div>
@@ -3951,7 +5111,7 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
         </div>
         <div class="section"><div class="section-header"><h2>Accounts</h2></div>{accounts_table}</div>
         <div class="section"><div class="section-header"><h2>Recent jobs</h2></div>{jobs_table}</div>
-        <footer class="footer">QMC Research Lab · QMC Framework v2.6.3 · IBM Carbon Design System</footer>
+        <footer class="footer">QMC Research Lab · QMC Framework v{__version__} · IBM Carbon Design System</footer>
     </main>
     <script>
     Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
@@ -3960,17 +5120,17 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
     const blue = '#0f62fe', gray = '#e0e0e0', green = '#198038', red = '#da1e28', yellow = '#f1c21b', purple = '#8a3ffc';
     new Chart(document.getElementById('usageChart'), {{
         type: 'bar',
-        data: {{ labels: {json.dumps(account_labels)}, datasets: [{{ label: 'Usage', data: {json.dumps(account_usage)}, backgroundColor: blue, barPercentage: 0.6 }}, {{ label: 'Budget', data: {json.dumps(account_budgets)}, backgroundColor: gray, barPercentage: 0.6 }}] }},
+        data: {{ labels: {js_account_labels}, datasets: [{{ label: 'Usage', data: {js_account_usage}, backgroundColor: blue, barPercentage: 0.6 }}, {{ label: 'Budget', data: {js_account_budgets}, backgroundColor: gray, barPercentage: 0.6 }}] }},
         options: {{ responsive: true, plugins: {{ legend: {{ position: 'bottom', labels: {{ boxWidth: 12 }} }} }}, scales: {{ x: {{ grid: {{ display: false }} }}, y: {{ beginAtZero: true, grid: {{ color: '#e0e0e0' }} }} }} }}
     }});
     new Chart(document.getElementById('timelineChart'), {{
         type: 'line',
-        data: {{ labels: {json.dumps(day_labels)}, datasets: [{{ data: {json.dumps(day_values)}, borderColor: blue, backgroundColor: 'rgba(15,98,254,0.1)', fill: true, tension: 0, pointRadius: 3 }}] }},
+        data: {{ labels: {js_day_labels}, datasets: [{{ data: {js_day_values}, borderColor: blue, backgroundColor: 'rgba(15,98,254,0.1)', fill: true, tension: 0, pointRadius: 3 }}] }},
         options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }}, scales: {{ x: {{ grid: {{ display: false }} }}, y: {{ beginAtZero: true, grid: {{ color: '#e0e0e0' }} }} }} }}
     }});
-    const statusColors = {json.dumps(status_labels)}.map(s => s.includes('DONE')||s.includes('COMPLETED') ? green : s.includes('ERROR')||s.includes('FAILED') ? red : s.includes('RUNNING') ? blue : yellow);
-    new Chart(document.getElementById('statusChart'), {{ type: 'doughnut', data: {{ labels: {json.dumps(status_labels)}, datasets: [{{ data: {json.dumps(status_values)}, backgroundColor: statusColors }}] }}, options: {{ responsive: true, cutout: '60%', plugins: {{ legend: {{ position: 'right', labels: {{ boxWidth: 12 }} }} }} }} }});
-    new Chart(document.getElementById('backendChart'), {{ type: 'bar', data: {{ labels: {json.dumps(backend_labels)}, datasets: [{{ data: {json.dumps(backend_values)}, backgroundColor: purple, barPercentage: 0.7 }}] }}, options: {{ responsive: true, indexAxis: 'y', plugins: {{ legend: {{ display: false }} }}, scales: {{ x: {{ beginAtZero: true, grid: {{ color: '#e0e0e0' }} }}, y: {{ grid: {{ display: false }} }} }} }} }});
+    const statusColors = {js_status_labels}.map(s => s.includes('DONE')||s.includes('COMPLETED') ? green : s.includes('ERROR')||s.includes('FAILED') ? red : s.includes('RUNNING') ? blue : yellow);
+    new Chart(document.getElementById('statusChart'), {{ type: 'doughnut', data: {{ labels: {js_status_labels}, datasets: [{{ data: {js_status_values}, backgroundColor: statusColors }}] }}, options: {{ responsive: true, cutout: '60%', plugins: {{ legend: {{ position: 'right', labels: {{ boxWidth: 12 }} }} }} }} }});
+    new Chart(document.getElementById('backendChart'), {{ type: 'bar', data: {{ labels: {js_backend_labels}, datasets: [{{ data: {js_backend_values}, backgroundColor: purple, barPercentage: 0.7 }}] }}, options: {{ responsive: true, indexAxis: 'y', plugins: {{ legend: {{ display: false }} }}, scales: {{ x: {{ beginAtZero: true, grid: {{ color: '#e0e0e0' }} }}, y: {{ grid: {{ display: false }} }} }} }} }});
     </script>
 </body>
 </html>'''
@@ -3984,9 +5144,10 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
                 error_type = acc.get("error_type", "UNKNOWN")
                 error_msg = acc.get("error_message", "Erreur inconnue")
                 
+                # [v2.7.1 FIX] escape dynamic account label + error message
                 rows.append(f'''<tr style="background-color: #fff1f1;">
-                    <td><strong>{label}</strong></td>
-                    <td colspan="5" style="color: #da1e28;"><strong>⚠️ INACCESSIBLE</strong> - {error_msg}</td>
+                    <td><strong>{_qmc_html_escape(label)}</strong></td>
+                    <td colspan="5" style="color: #da1e28;"><strong>⚠️ INACCESSIBLE</strong> - {_qmc_html_escape(error_msg)}</td>
                     <td><span class="cds--tag cds--tag--red">Error</span></td>
                 </tr>''')
             else:
@@ -4000,13 +5161,14 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
                 by_backend = stats.get("by_backend", {})
                 top_backend = max(by_backend, key=by_backend.get) if by_backend else "—"
                 
+                # [v2.7.1 FIX] escape dynamic account label + backend name
                 rows.append(f'''<tr>
-                    <td><strong>{label}</strong></td>
+                    <td><strong>{_qmc_html_escape(label)}</strong></td>
                     <td>{jobs:,}</td>
                     <td>{usage:.2f} min</td>
                     <td>{avg:.1f}s</td>
                     <td><div style="display:flex;align-items:center;gap:8px"><span>{pct:.1f}%</span><div class="progress-bar" style="width:60px"><div class="fill {'error' if pct >= 90 else 'warning' if pct >= 70 else 'success'}" style="width:{min(100,pct)}%"></div></div></div></td>
-                    <td><code>{top_backend}</code></td>
+                    <td><code>{_qmc_html_escape(top_backend)}</code></td>
                     <td><span class="cds--tag {tag[0]}">{tag[1]}</span></td>
                 </tr>''')
         
@@ -4034,13 +5196,14 @@ code {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: va
             tag = "cds--tag--green" if "DONE" in status or "COMPLETED" in status else "cds--tag--red" if "ERROR" in status or "FAILED" in status else "cds--tag--blue" if "RUNNING" in status else "cds--tag--gray"
             creation = job.get("creation_date", "")[:16] if job.get("creation_date") else ""
             
+            # [v2.7.1 FIX] escape dynamic job fields (id, account, backend, status, date)
             rows.append(f'''<tr>
-                <td><code>{job.get("job_id", "")[:16]}</code></td>
-                <td>{job.get("_account", "")}</td>
-                <td><code>{job.get("backend", "—")}</code></td>
-                <td><span class="cds--tag {tag}">{status}</span></td>
+                <td><code>{_qmc_html_escape(job.get("job_id", "")[:16])}</code></td>
+                <td>{_qmc_html_escape(job.get("_account", ""))}</td>
+                <td><code>{_qmc_html_escape(job.get("backend", "—"))}</code></td>
+                <td><span class="cds--tag {tag}">{_qmc_html_escape(status)}</span></td>
                 <td>{job.get("usage_seconds", 0):.1f}s</td>
-                <td>{creation}</td>
+                <td>{_qmc_html_escape(creation)}</td>
             </tr>''')
         
         return f'''<table class="cds--data-table">
@@ -4072,7 +5235,7 @@ def get_all_ibm_accounts_from_env() -> Dict[str, Dict]:
             load_dotenv()
         except ImportError:
             # Fallback manuel
-            with open(env_file) as f:
+            with open(env_file, encoding='utf-8') as f:  # [v2.7.1 FIX] explicit text encoding
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#') and '=' in line:
@@ -4791,7 +5954,8 @@ class QiskitVisualizationWrapper:
                 coupling_map = backend_or_coupling_map
             
             # Style IBM Carbon
-            self._configure_matplotlib()
+            # [v2.7.1 FIX] _configure_matplotlib does not exist; use _setup_matplotlib_style
+            self._setup_matplotlib_style()
             
             fig = plot_coupling_map(coupling_map, figsize=figsize, **kwargs)
             
@@ -4993,7 +6157,8 @@ class QiskitVisualizationWrapper:
                 bitstrings = [k for k, v in top_items]
                 values = [v for k, v in top_items]
                 total = sum(values)
-                percentages = [f"{v/total*100:.2f}%" for v in values]
+                # [v2.7.1 FIX] guard against all-zero counts -> division by zero
+                percentages = [f"{(v/total*100) if total > 0 else 0.0:.2f}%" for v in values]
                 
                 name = legend[idx] if legend and idx < len(legend) else f"Dataset {idx+1}"
                 
@@ -5466,10 +6631,21 @@ class QiskitQuantumInfoWrapper:
             Dict avec toutes les métriques
         """
         import numpy as np
-        
-        total = sum(counts.values())
+
+        total = sum(counts.values()) if counts else 0
+        # [v2.7.1 FIX R12] garde-fou : counts vides ou tout-zéro -> pas de division /
+        # max([]). Retourne des métriques neutres au lieu de lever ValueError/ZeroDivisionError.
+        if not counts or total <= 0:
+            return {
+                'total_counts': total,
+                'n_outcomes': len(counts) if counts else 0,  # [v2.7.1 FIX] counts peut être None -> len(None) lèverait TypeError
+                'shannon_entropy': 0.0,
+                'max_probability': 0.0,
+                'min_probability': 0.0,
+                'uniformity': 0.0,
+            }
         probs = [c / total for c in counts.values()]
-        
+
         result = {
             'total_counts': total,
             'n_outcomes': len(counts),
@@ -5478,7 +6654,7 @@ class QiskitQuantumInfoWrapper:
             'min_probability': min(probs),
             'uniformity': 1.0 - (max(probs) - min(probs)),
         }
-        
+
         if ideal_counts:
             result['hellinger_fidelity'] = cls.hellinger_fidelity(counts, ideal_counts)
         
@@ -6152,7 +7328,7 @@ class QMCErrorHandler:
     
     def export_errors(self, filepath: str):
         """Exporte les erreurs en JSON."""
-        with open(filepath, 'w') as f:
+        with open(filepath, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encodage explicite
             json.dump({
                 'errors': self._errors,
                 'stats': self._stats,
@@ -6515,7 +7691,7 @@ class ExperimentConfig:
     @classmethod
     def from_yaml(cls, path: PathType) -> 'ExperimentConfig':
         """Charge depuis un fichier YAML"""
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:  # [v2.7.1 FIX] encodage explicite
             data = yaml.safe_load(f)
         
         if 'circuit_family' in data:
@@ -6531,7 +7707,7 @@ class ExperimentConfig:
     
     def to_yaml(self, path: PathType):
         """Sauvegarde en YAML"""
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encodage explicite
             yaml.dump(self.to_dict(), f, default_flow_style=False)
 
 
@@ -6587,6 +7763,49 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+# =============================================================================
+# [v2.7.1] REDACTION DES SECRETS (defense-in-depth pour logs / rapports / exceptions)
+# =============================================================================
+
+# Motifs structurels : Bearer, clé=valeur, et identifiants dans une URL (user:pass@).
+_QMC_SECRET_PATTERNS = [
+    (re.compile(r'(?i)(bearer\s+)([A-Za-z0-9._\-]{6,})'), r'\1****REDACTED****'),
+    (re.compile(r'(?i)\b(api[_-]?key|token|secret|password|passwd|pwd|access[_-]?token)\b'
+                r'(\s*[=:]\s*)([\'"]?)([^\s\'"&,;]{4,})'),
+     r'\1\2\3****REDACTED****'),
+    (re.compile(r'(\b[a-z][a-z0-9+.\-]*://[^\s:/@]+:)([^\s@/]+)(@)'), r'\1****@'),
+]
+
+
+def _redact_secrets(text) -> str:
+    """Masque les secrets dans une chaîne destinée aux logs/rapports.
+
+    1) Remplace les VALEURS RÉELLES des secrets connus (variables d'env IBM_*/QMC_*
+       de type clé/token/secret/password) si elles apparaissent en clair — précis,
+       n'altère pas les hashes/IDs légitimes.
+    2) Applique des motifs structurels (Bearer, clé=valeur, user:pass@URL).
+    """
+    if not text:
+        return text
+    s = str(text)
+    try:
+        for k, v in list(os.environ.items()):
+            if (v and len(v) >= 8
+                    and any(t in k.upper() for t in ('API_KEY', 'TOKEN', 'SECRET', 'PASSWORD', 'PASSWD'))
+                    and v in s):
+                s = s.replace(v, '****' + v[-4:])
+        for pat, repl in _QMC_SECRET_PATTERNS:
+            s = pat.sub(repl, s)
+    except Exception:
+        return s
+    return s
+
+
+def safe_str(exc) -> str:
+    """str(exception) avec secrets masqués — à utiliser dans les logs/rapports."""
+    return _redact_secrets(str(exc))
 
 
 # =============================================================================
@@ -6646,14 +7865,19 @@ class Logger:
     @contextmanager
     def context(self, name: str):
         """Context manager pour logging contextuel"""
-        self._context_stack.append(name)
+        # [v2.7.1 FIX] Guard mutations of the shared context stack / timings
+        # under the lock so concurrent threads don't corrupt context labels.
+        with self._lock:
+            self._context_stack.append(name)
         start = time.time()
         try:
             yield
         finally:
             elapsed = time.time() - start
-            self._timings[name] = elapsed
-            self._context_stack.pop()
+            with self._lock:
+                self._timings[name] = elapsed
+                if self._context_stack:
+                    self._context_stack.pop()
     
     def log(self, msg: str, level: LogLevel = LogLevel.INFO, 
             section: str = None, data: Dict = None):
@@ -6676,10 +7900,13 @@ class Logger:
                 prefix += f" [{section}]"
             
             full_msg = f"{prefix} {icon} {msg}"
-            
+
             if data:
                 full_msg += f" | {json.dumps(data, default=str)}"
-            
+
+            # [v2.7.1] Redaction des secrets avant tout affichage/écriture (defense-in-depth)
+            full_msg = _redact_secrets(full_msg)
+
             if self.use_colors:
                 color = self.COLORS.get(level, '')
                 print(f"{color}{full_msg}{self.RESET}")
@@ -6717,9 +7944,14 @@ class Logger:
         """Affiche un tableau formaté"""
         if title:
             self.subsection(title)
-        
-        widths = [max(len(str(h)), max(len(str(r[i])) for r in rows)) 
-                  for i, h in enumerate(headers)]
+
+        # [v2.7.1 FIX] rows vide -> max() sur générateur vide lèverait ValueError.
+        # Largeur basée sur l'en-tête seul quand il n'y a aucune ligne.
+        if not rows:
+            widths = [len(str(h)) for h in headers]
+        else:
+            widths = [max(len(str(h)), max(len(str(r[i])) for r in rows))
+                      for i, h in enumerate(headers)]
         
         header_line = " | ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
         sep_line = "-+-".join("-" * w for w in widths)
@@ -7057,10 +8289,12 @@ class QMCModule(ABC):
         path = Path(path)
         
         if format == 'json':
-            with open(path, 'w') as f:
+            # [v2.7.1 FIX] encoding explicite pour écriture texte portable
+            with open(path, 'w', encoding='utf-8') as f:
                 json.dump(self._results, f, indent=2, default=str)
         elif format == 'yaml':
-            with open(path, 'w') as f:
+            # [v2.7.1 FIX] encoding explicite pour écriture texte portable
+            with open(path, 'w', encoding='utf-8') as f:
                 yaml.dump(self._results, f, default_flow_style=False)
 
 
@@ -7702,6 +8936,24 @@ class ParameterizedCircuitBuilder(CircuitBuilder):
 # ANALYZERS - IMPLEMENTATIONS
 # =============================================================================
 
+# [v2.7.1] Helpers statistiques partagés pour standardiser les barres d'erreur des analyzers.
+def _binomial_ci(p: float, n: int, z: float = 1.96):
+    """IC binomial (Wald) d'une proportion p estimée sur n tirages.
+    Renvoie (stderr, low, high) clampé dans [0,1]."""
+    if n <= 0:
+        return 0.0, float(p), float(p)
+    se = (max(0.0, p * (1.0 - p)) / n) ** 0.5
+    return se, max(0.0, p - z * se), min(1.0, p + z * se)
+
+
+def _mean_ci(mean: float, variance: float, n: int, z: float = 1.96):
+    """IC d'une moyenne d'échantillon : erreur-type = sqrt(var/n). Renvoie (stderr, low, high)."""
+    if n <= 0:
+        return 0.0, float(mean), float(mean)
+    se = (max(0.0, variance) / n) ** 0.5
+    return se, mean - z * se, mean + z * se
+
+
 class FidelityAnalyzer(Analyzer):
     """
     Analyse de fidélité avec intégration Qiskit native (v2.5.21).
@@ -7730,9 +8982,13 @@ class FidelityAnalyzer(Analyzer):
         """
         if not counts:
             return {'fidelity': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
-        
+        # [v2.7.1 FIX] Garde contre une somme de counts nulle (ex: {'00': 0})
+        # qui provoquerait une division par zéro sur fidelity/std_err.
+        if total <= 0:
+            return {'fidelity': 0, 'error': 'Zero total counts'}
+
         # Déterminer n_qubits depuis les counts
         if n_qubits is None:
             n_qubits = len(next(iter(counts.keys())))
@@ -7820,8 +9076,12 @@ class EntropyAnalyzer(Analyzer):
         """
         if not counts:
             return {'entropy': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
+        # [v2.7.1 FIX] Garde contre une somme de counts nulle qui provoquerait
+        # une division par zéro (probs = values/total) et un log2(0).
+        if total <= 0:
+            return {'entropy': 0, 'error': 'Zero total counts'}
         unique = len(counts)
         
         if n_qubits is None:
@@ -7887,9 +9147,13 @@ class CorrelationAnalyzer(Analyzer):
         """
         if not counts:
             return {'sigma': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
-        
+        # [v2.7.1 FIX] Garde contre total nul: évite des inf (std_err =
+        # sqrt(n-1)/sqrt(total)) émis dans les résultats.
+        if total <= 0:
+            return {'sigma': 0, 'error': 'Zero total counts'}
+
         if n_qubits is None:
             n_qubits = len(next(iter(counts.keys())))
         
@@ -7900,6 +9164,10 @@ class CorrelationAnalyzer(Analyzer):
             diff = 0
             
             for bitstring, count in counts.items():
+                # [v2.7.1 FIX] Retirer les séparateurs de registres Qiskit
+                # ("00 11" -> "0011") avant indexation positionnelle; no-op
+                # sur un bitstring simple (sans espace).
+                bitstring = bitstring.replace(' ', '')
                 if len(bitstring) >= n_qubits:
                     # Bits depuis la droite (LSB)
                     b1 = bitstring[-(j+1)]
@@ -7970,12 +9238,16 @@ class XEBAnalyzer(Analyzer):
         """
         if not counts:
             return {'xeb_score': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
-        
+        # [v2.7.1 FIX] Garde contre une somme de counts nulle qui provoquerait
+        # une division par zéro dans le calcul de weighted_prob (count/total).
+        if total <= 0:
+            return {'xeb_score': 0, 'error': 'Zero total counts'}
+
         if n_qubits is None:
             n_qubits = len(next(iter(counts.keys())))
-        
+
         n_states = 2 ** n_qubits
         
         # [v2.5.9] Warning explicite si pas de probs idéales
@@ -8010,19 +9282,36 @@ class XEBAnalyzer(Analyzer):
             weighted_prob += (count / total) * p_ideal
         
         xeb = n_states * weighted_prob - 1
-        
+
         # Normaliser entre 0 et 1
         # XEB = 0 pour distribution uniforme, XEB = D-1 pour parfait
         xeb_normalized = xeb / (n_states - 1) if n_states > 1 else xeb
-        
+
+        # [v2.7.1] Barre d'erreur statistique : weighted_prob est une MOYENNE d'échantillon
+        # de p_ideal sur `total` shots -> erreur-type = sqrt(Var(p_ideal)/total). On la
+        # propage à XEB (xeb = D·weighted_prob - 1) pour fournir un IC à 95% défendable.
+        var_p = 0.0
+        for bitstring, count in counts.items():
+            p_ideal = ideal_probs.get(bitstring.replace(' ', ''), 1 / n_states)
+            var_p += (count / total) * (p_ideal - weighted_prob) ** 2
+        wp_se, _wp_lo, _wp_hi = _mean_ci(weighted_prob, var_p, total)
+        xeb_se = float(n_states * wp_se)
+        xeb_norm_se = xeb_se / (n_states - 1) if n_states > 1 else xeb_se
+
         return {
             'xeb_score': round(float(xeb), 4),
             'xeb_normalized': round(float(xeb_normalized), 4),
-            'quantum_signature': xeb > 0,
+            'xeb_stderr': round(xeb_se, 6),
+            'xeb_ci95': (round(float(xeb - 1.96 * xeb_se), 4),
+                         round(float(xeb + 1.96 * xeb_se), 4)),
+            'xeb_normalized_stderr': round(float(xeb_norm_se), 6),
+            'weighted_prob': round(float(weighted_prob), 6),
+            'weighted_prob_stderr': round(float(wp_se), 8),
+            # signal significatif seulement si l'IC inférieur reste > 0 (et pas juste xeb>0)
+            'quantum_signature': bool((xeb - 1.96 * xeb_se) > 0),
             'valid': True,
             'n_qubits': n_qubits,
             'n_states': n_states,
-            'weighted_prob': round(float(weighted_prob), 6),
         }
 
 
@@ -8036,13 +9325,21 @@ class BellAnalyzer(Analyzer):
         
         if not counts:
             return {'correlation': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
-        
+        # [v2.7.1 FIX] Garde contre total nul ou n_pairs<=0 qui provoquerait
+        # une division par zéro dans correlation / (total * n_pairs).
+        if total <= 0 or n_pairs <= 0:
+            return {'correlation': 0, 'error': 'Zero total counts or n_pairs'}
+
         # Calculer la corrélation E(a,b) = P(++|ab) + P(--|ab) - P(+-|ab) - P(-+|ab)
         correlation = 0
         
         for bitstring, count in counts.items():
+            # [v2.7.1 FIX] Retirer les séparateurs de registres Qiskit
+            # ("00 11" -> "0011") avant indexation positionnelle; no-op
+            # sur un bitstring simple (sans espace).
+            bitstring = bitstring.replace(' ', '')
             # Pour chaque paire
             for i in range(n_pairs):
                 if len(bitstring) >= 2 * (i + 1):
@@ -8063,37 +9360,62 @@ class BellAnalyzer(Analyzer):
             'total_shots': total,
         }
     
-    def compute_chsh(self, correlations: List[float]) -> Dict:
+    def compute_chsh(self, correlations: List[float], shots: int = None) -> Dict:
         """
         Calcule S de CHSH à partir des 4 corrélations.
-        
+
         S = E(a0,b0) - E(a0,b1) + E(a1,b0) + E(a1,b1)
-        
+
         Borne classique: |S| ≤ 2
         Borne quantique: |S| ≤ 2√2 ≈ 2.828
+
+        Args:
+            correlations: les 4 corrélations E_i mesurées
+            shots: nombre de tirs par setting (pour l'erreur statistique)
         """
         if len(correlations) != 4:
             return {'error': 'Need exactly 4 correlations'}
-        
+
         E00, E01, E10, E11 = correlations
         # Formule CHSH correcte pour violation maximale
         S = E00 - E01 + E10 + E11
-        
+
         classical_bound = 2.0
         quantum_bound = 2 * np.sqrt(2)
-        
+
         violation = abs(S) > classical_bound
-        violation_sigma = (abs(S) - classical_bound) / 0.1  # Approximation
-        
-        return {
+
+        # [v2.7.1 FIX] Erreur statistique calculée à partir du bruit de tir
+        # binomial au lieu d'un std=0.1 codé en dur sans rapport avec les shots.
+        # Chaque corrélation E_i est une moyenne de variables ±1; Var(E_i) =
+        # (1 - E_i^2)/shots, et S est une somme/différence des 4 -> les
+        # variances s'additionnent: sigma_S = sqrt(sum(1 - E_i^2)/shots).
+        sigma_S = None
+        if shots and shots > 0:
+            var_S = sum(1.0 - e ** 2 for e in correlations) / shots
+            sigma_S = float(np.sqrt(var_S)) if var_S > 0 else 0.0
+
+        if sigma_S and sigma_S > 0:
+            violation_sigma = (abs(S) - classical_bound) / sigma_S
+        else:
+            # Pas de shots fournis (ou sigma nul): on ne peut pas quantifier
+            # statistiquement la violation.
+            violation_sigma = None
+
+        result = {
             'S': round(float(S), 4),
             'correlations': correlations,
             'classical_bound': classical_bound,
             'quantum_bound': round(quantum_bound, 4),
             'violation': violation,
-            'violation_sigma': round(violation_sigma, 2) if violation else 0,
+            'violation_sigma': (round(violation_sigma, 2)
+                                if (violation and violation_sigma is not None)
+                                else (0 if violation_sigma is not None else None)),
             'tsirelson_ratio': round(abs(S) / quantum_bound, 4),
         }
+        if sigma_S is not None:
+            result['sigma_S'] = round(sigma_S, 6)
+        return result
 
 
 class RandomnessAnalyzer(Analyzer):
@@ -8130,18 +9452,25 @@ class RandomnessAnalyzer(Analyzer):
         results['serial'] = self._serial_test(bits)
         
         # Score global
-        passed = sum(1 for r in results.values() if r.get('passed', False))
-        total_tests = len(results)
-        
-        quality_score = passed / total_tests
-        
+        # [v2.7.1 FIX] Les tests SAUTÉS (passed is None) ne comptent NI comme
+        # réussis NI dans le total: ils ne doivent pas gonfler/déflater le
+        # quality_score. Seuls les tests réellement exécutés (passed True/False)
+        # entrent dans le dénominateur.
+        executed = [r for r in results.values() if r.get('passed') is not None]
+        skipped = len(results) - len(executed)
+        passed = sum(1 for r in executed if r.get('passed') is True)
+        total_tests = len(executed)
+
+        quality_score = (passed / total_tests) if total_tests > 0 else 0.0
+
         return {
             'quality_score': round(quality_score, 2),
             'tests_passed': passed,
             'tests_total': total_tests,
+            'tests_skipped': skipped,
             'tests': results,
             'bit_count': len(bits),
-            'crypto_suitable': quality_score >= 0.75,
+            'crypto_suitable': quality_score >= 0.75 and total_tests > 0,
         }
     
     def _counts_to_bits(self, counts: CountsType) -> np.ndarray:
@@ -8215,7 +9544,11 @@ class RandomnessAnalyzer(Analyzer):
         n_blocks = n // block_size
         
         if n_blocks < 10:
-            return {'passed': True, 'reason': 'Not enough blocks, skipped'}
+            # [v2.7.1 FIX] Un test SAUTÉ ne doit pas compter comme RÉUSSI
+            # (cela gonflait artificiellement le quality_score). On renvoie
+            # passed=None pour signaler 'skipped'.
+            return {'passed': None, 'status': 'skipped',
+                    'reason': 'Not enough blocks, skipped'}
         
         chi_sq = 0
         for i in range(n_blocks):
@@ -8239,30 +9572,45 @@ class RandomnessAnalyzer(Analyzer):
         }
     
     def _serial_test(self, bits: np.ndarray, m: int = 2) -> Dict:
-        """Test sériel (paires de bits)"""
+        """Test sériel (paires de bits) -- HEURISTIQUE.
+
+        [v2.7.1 FIX] Note: ce test compte des fenêtres de m bits qui se
+        CHEVAUCHENT. Le vrai test sériel NIST SP 800-22 utilise la statistique
+        delta-psi-carré (différences de psi_m, psi_{m-1}, psi_{m-2}) suivant
+        une loi du chi-deux à 2^{m-1} degrés de liberté. Un simple chi-deux
+        avec df = 2^m - 1 sur des fenêtres chevauchantes a une loi nulle
+        incorrecte (comptes adjacents corrélés) -> p-value non fiable.
+        On garde une estimation HEURISTIQUE (utile pour détecter un biais
+        grossier) mais on le signale explicitement: le verdict 'passed' est
+        donc indicatif et n'est pas un véritable test NIST.
+        """
         n = len(bits)
-        
-        # Compter les paires
+
+        # Compter les motifs de m bits (fenêtres chevauchantes)
         counts = defaultdict(int)
         for i in range(n - m + 1):
             pattern = tuple(bits[i:i+m])
             counts[pattern] += 1
-        
-        # Chi-carré
+
+        # Chi-carré (approximation; voir docstring)
         expected = (n - m + 1) / (2 ** m)
         chi_sq = sum((c - expected) ** 2 / expected for c in counts.values())
-        
+
         try:
             from scipy.stats import chi2
-            df = 2 ** m - 1
+            # df indicatif: 2^{m-1} (ordre de grandeur du vrai test sériel)
+            df = 2 ** (m - 1) if m >= 1 else 1
             p_value = 1 - chi2.cdf(chi_sq, df)
         except ImportError:
+            df = 2 ** (m - 1) if m >= 1 else 1
             p_value = 0.5
-        
+
         return {
             'chi_squared': round(float(chi_sq), 4),
+            'df': df,
             'p_value': round(float(p_value), 4),
             'passed': p_value >= 0.01,
+            'heuristic': True,  # [v2.7.1 FIX] pas un vrai test NIST sériel
         }
 
 
@@ -8275,30 +9623,42 @@ class CompressionAnalyzer(Analyzer):
         
         if not counts:
             return {'compression': 0, 'error': 'No counts'}
-        
+
         total = sum(counts.values())
+        # [v2.7.1 FIX] Garde contre total nul qui provoquerait une division
+        # par zéro dans compression_ratio = unique / total.
+        if total <= 0:
+            return {'compression': 0, 'error': 'Zero total counts'}
         unique = len(counts)
-        
+
         if n_qubits is None:
             n_qubits = len(next(iter(counts.keys())))
         
         possible_states = 2 ** n_qubits
         compression_ratio = unique / total
-        
-        # Ratio par rapport au maximum possible
-        coverage = unique / possible_states
-        
-        # Pour GHZ: compression_ratio devrait être ~2/total (2 états dominants)
-        # Pour IQP/Random: devrait être ~1 (tous les shots uniques)
-        
+
+        # [v2.7.1 FIX] La 'signature' était basée sur compression_ratio =
+        # unique/total. Avec shots >> 2^n, unique est borné par 2^n, donc ce
+        # ratio est minuscule -> presque toujours classé 'structured'.
+        # On la base désormais sur la COUVERTURE de l'espace réellement
+        # atteignable: coverage = unique / min(2^n, shots). Un état structuré
+        # (ex: GHZ) ne couvre qu'une petite fraction des états atteignables;
+        # un état aléatoire les couvre largement.
+        reachable_states = max(1, min(possible_states, total))
+        coverage = unique / reachable_states
+
+        # Pour GHZ: coverage faible (peu d'états dominants).
+        # Pour IQP/Random: coverage proche de 1 (états largement couverts).
+
         return {
             'unique_states': unique,
             'total_shots': total,
             'possible_states': possible_states,
+            'reachable_states': reachable_states,
             'compression_ratio': round(compression_ratio, 6),
             'coverage': round(coverage, 6),
             'n_qubits': n_qubits,
-            'signature': 'structured' if compression_ratio < 0.5 else 'random',
+            'signature': 'structured' if coverage < 0.5 else 'random',
         }
 
 
@@ -8464,6 +9824,11 @@ class ExperimentEngine:
         if resume:
             start_idx = len(self._results.get(exp_id, []))
             self._log(f"Resuming from configuration {start_idx + 1}")
+        else:
+            # [v2.7.1 FIX R33] sans reprise, réinitialiser les résultats pour ne pas
+            # DUPLIQUER (le defaultdict accumulait à chaque ré-exécution -> successful+failed
+            # > total_configurations, résumés faussés).
+            self._results[exp_id] = []
         
         # Exécuter les configurations
         for i, config_dict in enumerate(configs[start_idx:], start_idx):
@@ -8626,10 +9991,439 @@ class ExperimentEngine:
                 rows.append(row)
             
             if rows:
-                with open(path, 'w', newline='') as f:
-                    writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                # [v2.7.1 FIX R32] champs = UNION des clés de toutes les lignes (les lignes
+                # d'erreur ont moins de clés). L'ancien fieldnames=rows[0].keys() + DictWriter
+                # extrasaction='raise' plantait si une ligne ultérieure avait des champs
+                # absents de la première. extrasaction='ignore' + restval='' par robustesse.
+                fieldnames = list(dict.fromkeys(k for row in rows for k in row))
+                with open(path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames,
+                                            extrasaction='ignore', restval='')
                     writer.writeheader()
                     writer.writerows(rows)
+
+
+# =============================================================================
+# CRYPTOGRAPHIE RÉELLE (v2.7.1) - Primitives standard auditées
+# =============================================================================
+
+class QMCQuantumCrypto:
+    """
+    [v2.7.1] Primitives cryptographiques RÉELLES pour le framework QMC.
+
+    Remplace les anciennes démonstrations « snake-oil » de v2.7.0 (XOR à clé
+    répétée, entropie mal estimée, authentification par comparaison de
+    distributions statistiquement toujours en échec). Le rôle du matériel
+    quantique est d'agir comme SOURCE D'ENTROPIE physique à l'enrôlement ; la
+    sécurité provient ENSUITE de primitives standard et auditées :
+
+      - Dérivation de clé          : HKDF-SHA256          (RFC 5869)
+      - Chiffrement authentifié    : AES-256-GCM          (NIST SP 800-38D)
+      - Authentification           : HMAC-SHA256 défi/rép (RFC 2104)
+      - Estimation de min-entropie : MCV                  (NIST SP 800-90B §6.3.1)
+
+    AES-GCM/HKDF utilisent le paquet `cryptography` (dépendance recommandée) ;
+    un repli HKDF pur-stdlib (HMAC) est fourni, mais AES-GCM EXIGE `cryptography`.
+    """
+
+    GCM_NONCE_BYTES = 12  # 96 bits : taille de nonce recommandée pour AES-GCM
+
+    # -- Dérivation de clé (HKDF-SHA256, RFC 5869) --
+    @staticmethod
+    def hkdf_sha256(ikm: bytes, length: int = 32, salt: bytes = None,
+                    info: bytes = b"QMC") -> bytes:
+        if not ikm:
+            raise QMCSecurityError("HKDF: matériel de clé d'entrée (IKM) vide",
+                                   operation="hkdf")
+        try:
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+            return HKDF(algorithm=hashes.SHA256(), length=length,
+                        salt=salt, info=info).derive(ikm)
+        except ImportError:
+            # Repli RFC 5869 en HMAC-SHA256 (stdlib uniquement)
+            import hmac as _hmac
+            hlen = hashlib.sha256().digest_size
+            if salt is None:
+                salt = b"\x00" * hlen
+            prk = _hmac.new(salt, ikm, hashlib.sha256).digest()  # extract
+            okm, t, counter = b"", b"", 1                        # expand
+            while len(okm) < length:
+                t = _hmac.new(prk, t + info + bytes([counter]), hashlib.sha256).digest()
+                okm += t
+                counter += 1
+            return okm[:length]
+
+    # -- Extraction / conditionnement de l'entropie quantique --
+    @staticmethod
+    def quantum_seed_from_counts(counts) -> bytes:
+        """Condense TOUTE la distribution de mesure (chaînes + multiplicités) en
+        un IKM de 32 octets via SHA-256. Le hachage est un CONDITIONNEMENT
+        déterministe, pas la source de sécurité (celle-ci = min-entropie de la
+        source brute, cf. min_entropy_mcv)."""
+        h = hashlib.sha256()
+        for bitstring in sorted(counts.keys()):
+            h.update(bitstring.replace(' ', '').encode())
+            h.update(b":")
+            h.update(str(int(counts[bitstring])).encode())
+            h.update(b"|")
+        return h.digest()
+
+    @staticmethod
+    def raw_bits_from_counts(counts):
+        """Liste des bits bruts observés (0/1), multiplicité préservée, pour
+        l'estimation d'entropie NIST. NE PAS utiliser comme clé telle quelle."""
+        bits = []
+        for bitstring, count in counts.items():
+            clean = bitstring.replace(' ', '')
+            for _ in range(int(count)):
+                bits.extend(1 if ch == '1' else 0 for ch in clean)
+        return bits
+
+    @staticmethod
+    def min_entropy_mcv(samples) -> float:
+        """Min-entropie « most-common-value » (NIST SP 800-90B §6.3.1) en bits
+        PAR ÉCHANTILLON, borne supérieure de confiance à 99%."""
+        import math as _math
+        seq = list(samples)
+        n = len(seq)
+        if n == 0:
+            return 0.0
+        counts = defaultdict(int)
+        for s in seq:
+            counts[s] += 1
+        p_max = max(counts.values()) / n
+        bound = 2.576 * ((p_max * (1 - p_max) / (n - 1)) ** 0.5) if n > 1 else 0.0
+        p_u = min(1.0, p_max + bound)
+        return -_math.log2(p_u) if p_u > 0 else 0.0
+
+    @staticmethod
+    def shannon_entropy_per_byte(data: bytes) -> float:
+        """Entropie de Shannon en bits/octet (0..8). Mesure descriptive."""
+        if not data:
+            return 0.0
+        counts = defaultdict(int)
+        for b in data:
+            counts[b] += 1
+        total = len(data)
+        return float(-sum((c / total) * np.log2(c / total) for c in counts.values()))
+
+    # -- Chiffrement authentifié (AES-256-GCM, NIST SP 800-38D) --
+    @classmethod
+    def aead_encrypt(cls, key: bytes, plaintext: bytes, aad: bytes = b"") -> dict:
+        """AES-256-GCM. Renvoie {'nonce','ciphertext','algorithm'} ; le tag
+        d'authentification est inclus dans `ciphertext`."""
+        try:
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        except ImportError as e:
+            raise QMCSecurityError(
+                "AES-256-GCM requiert le paquet `cryptography` (pip install cryptography)",
+                operation="aead_encrypt") from e
+        if len(key) != 32:
+            raise QMCSecurityError("AES-256-GCM requiert une clé de 32 octets",
+                                   operation="aead_encrypt")
+        nonce = secrets.token_bytes(cls.GCM_NONCE_BYTES)
+        ct = AESGCM(key).encrypt(nonce, plaintext, aad)
+        return {'nonce': nonce, 'ciphertext': ct, 'algorithm': 'AES-256-GCM'}
+
+    @classmethod
+    def aead_decrypt(cls, key: bytes, nonce: bytes, ciphertext: bytes,
+                     aad: bytes = b"") -> bytes:
+        """Déchiffre/authentifie. Lève (InvalidTag) si le message est altéré."""
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        return AESGCM(key).decrypt(nonce, ciphertext, aad)
+
+    # -- Authentification (HMAC-SHA256 challenge-response, RFC 2104) --
+    @staticmethod
+    def hmac_sha256(key: bytes, message: bytes) -> bytes:
+        import hmac as _hmac
+        return _hmac.new(key, message, hashlib.sha256).digest()
+
+    @staticmethod
+    def hmac_verify(key: bytes, message: bytes, tag: bytes) -> bool:
+        """Vérification HMAC en temps constant (anti-timing)."""
+        import hmac as _hmac
+        return _hmac.compare_digest(_hmac.new(key, message, hashlib.sha256).digest(), tag)
+
+
+class QMCSigmaZK:
+    """
+    [v2.7.1] Preuves à divulgation nulle (ZKP) RÉELLES et vérifiables.
+
+    Remplace les anciens « ZKP » de v2.7.0 qui n'étaient que des circuits IQP sans
+    vérificateur (aucune complétude/justesse/zéro-divulgation, fuite de la valeur
+    secrète par comptage de portes, IndexError hors-borne). La sécurité repose ici
+    sur le problème du LOGARITHME DISCRET dans le sous-groupe d'ordre premier q des
+    résidus quadratiques modulo le safe prime p de 2048 bits (RFC 3526 MODP Group
+    14). g et h sont deux générateurs indépendants (dlog_g(h) inconnu, h dérivé
+    « nothing-up-my-sleeve »). Toutes les preuves sont non-interactives (Fiat-Shamir).
+
+    Primitives :
+      - prove_knowledge / verify_knowledge : NIZK de connaissance d'un dlog (Schnorr)
+      - pedersen_commit                    : engagement homomorphe (cachant + liant)
+      - range_prove / range_verify         : preuve que value ∈ [lower, upper] SANS
+        révéler value (décomposition binaire + OR-proofs de Chaum-Pedersen + liaison)
+    """
+
+    # Safe prime 2048 bits, RFC 3526 MODP Group 14 (p = 2q+1, q premier)
+    _P_HEX = (
+        "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1"
+        "29024E088A67CC74020BBEA63B139B22514A08798E3404DD"
+        "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"
+        "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED"
+        "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D"
+        "C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F"
+        "83655D23DCA3AD961C62F356208552BB9ED529077096966D"
+        "670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B"
+        "E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9"
+        "DE2BCBF6955817183995497CEA956AE515D2261898FA0510"
+        "15728E5A8AACAA68FFFFFFFFFFFFFFFF"
+    )
+    P = int(_P_HEX, 16)
+    Q = (P - 1) // 2
+    G = 4  # = 2^2 : résidu quadratique, générateur du sous-groupe d'ordre q
+    # h : second générateur QR, dlog_g(h) inconnu (dérivé d'un seed NUMS puis carré)
+    H = pow(int.from_bytes(hashlib.sha256(b"QMC-ZK-pedersen-h-v2.7.1").digest(), 'big') % P + 2, 2, P)
+
+    @classmethod
+    def _challenge(cls, *vals) -> int:
+        h = hashlib.sha256()
+        h.update(b"QMC-Sigma-FS|")
+        for v in vals:
+            h.update(str(int(v)).encode())
+            h.update(b",")
+        return int.from_bytes(h.digest(), 'big') % cls.Q
+
+    @classmethod
+    def _in_subgroup(cls, x) -> bool:
+        """[v2.7.1 FIX R35/R134] Appartenance au sous-groupe d'ordre Q (résidus
+        quadratiques). Rejette 0, 1, P-1 et tout élément hors sous-groupe (sinon
+        des éléments de petit ordre, p.ex. P-1, permettent de forger des preuves
+        pour des énoncés dégénérés)."""
+        return (isinstance(x, int) and 1 < x < cls.P - 1
+                and pow(x, cls.Q, cls.P) == 1)
+
+    @classmethod
+    def _scalar_ok(cls, *vals) -> bool:
+        """[v2.7.1 FIX R135] Canonicalisation : exige 0 <= s < Q pour chaque
+        scalaire (réponse/challenge), sinon les preuves sont malléables (s+Q
+        vérifie aussi)."""
+        return all(isinstance(s, int) and 0 <= s < cls.Q for s in vals)
+
+    # -- Schnorr NIZK : connaissance de x tel que y = g^x --
+    @classmethod
+    def keygen(cls, x: int = None):
+        if x is None:
+            x = secrets.randbelow(cls.Q - 1) + 1
+        return x, pow(cls.G, x, cls.P)
+
+    @classmethod
+    def prove_knowledge(cls, x: int, y: int = None) -> dict:
+        if y is None:
+            y = pow(cls.G, x % cls.Q, cls.P)
+        k = secrets.randbelow(cls.Q - 1) + 1
+        a = pow(cls.G, k, cls.P)
+        c = cls._challenge(cls.G, y, a)
+        s = (k + c * (x % cls.Q)) % cls.Q
+        return {'y': y, 'a': a, 's': s}
+
+    @classmethod
+    def verify_knowledge(cls, proof: dict) -> bool:
+        try:
+            y, a, s = proof['y'], proof['a'], proof['s']
+            # [v2.7.1 FIX R35/R134/R135] valider sous-groupe + canonicité de s
+            if not (cls._in_subgroup(y) and cls._in_subgroup(a) and cls._scalar_ok(s)):
+                return False
+            c = cls._challenge(cls.G, y, a)
+            return pow(cls.G, s, cls.P) == (a * pow(y, c, cls.P)) % cls.P
+        except Exception:
+            return False
+
+    # -- Engagement de Pedersen : C = g^v · h^r --
+    @classmethod
+    def pedersen_commit(cls, v: int, r: int = None):
+        if r is None:
+            r = secrets.randbelow(cls.Q - 1) + 1
+        C = (pow(cls.G, v % cls.Q, cls.P) * pow(cls.H, r, cls.P)) % cls.P
+        return C, r
+
+    # -- OR-proof de Chaum-Pedersen : C engage un bit ∈ {0,1} --
+    @classmethod
+    def _bit_or_prove(cls, C: int, b: int, r: int) -> dict:
+        ginv = pow(cls.G, cls.P - 2, cls.P)
+        M = [C % cls.P, (C * ginv) % cls.P]   # M0 (b=0)=h^r ; M1 (b=1)=h^r
+        a = [0, 0]; c = [0, 0]; s = [0, 0]
+        fake = 1 - b
+        c[fake] = secrets.randbelow(cls.Q)
+        s[fake] = secrets.randbelow(cls.Q)
+        a[fake] = (pow(cls.H, s[fake], cls.P) *
+                   pow(M[fake], (cls.Q - c[fake]) % cls.Q, cls.P)) % cls.P
+        k = secrets.randbelow(cls.Q - 1) + 1
+        a[b] = pow(cls.H, k, cls.P)
+        cc = cls._challenge(M[0], M[1], a[0], a[1])
+        c[b] = (cc - c[fake]) % cls.Q
+        s[b] = (k + c[b] * r) % cls.Q
+        return {'a0': a[0], 'a1': a[1], 'c0': c[0], 'c1': c[1], 's0': s[0], 's1': s[1]}
+
+    @classmethod
+    def _bit_or_verify(cls, C: int, pf: dict) -> bool:
+        ginv = pow(cls.G, cls.P - 2, cls.P)
+        M0 = C % cls.P; M1 = (C * ginv) % cls.P
+        a0, a1, c0, c1, s0, s1 = pf['a0'], pf['a1'], pf['c0'], pf['c1'], pf['s0'], pf['s1']
+        # [v2.7.1 FIX R35/R134/R135] valider C/a0/a1 dans le sous-groupe + scalaires canoniques
+        if not (cls._in_subgroup(C) and cls._in_subgroup(a0) and cls._in_subgroup(a1)
+                and cls._scalar_ok(c0, c1, s0, s1)):
+            return False
+        if (c0 + c1) % cls.Q != cls._challenge(M0, M1, a0, a1):
+            return False
+        ok0 = pow(cls.H, s0, cls.P) == (a0 * pow(M0, c0, cls.P)) % cls.P
+        ok1 = pow(cls.H, s1, cls.P) == (a1 * pow(M1, c1, cls.P)) % cls.P
+        return ok0 and ok1
+
+    @classmethod
+    def _recompute_C(cls, commits) -> int:
+        C = 1
+        for i, Ci in enumerate(commits):
+            C = (C * pow(Ci, (1 << i) % cls.Q, cls.P)) % cls.P
+        return C
+
+    @classmethod
+    def _nonneg_prove(cls, w: int, nbits: int):
+        """Prouve que w ∈ [0, 2^nbits) ; renvoie (preuve_publique, r_total secret)."""
+        bits = [(w >> i) & 1 for i in range(nbits)]
+        commits, orproofs = [], []
+        r_total = 0
+        for i in range(nbits):
+            ri = secrets.randbelow(cls.Q - 1) + 1
+            Ci, _ = cls.pedersen_commit(bits[i], ri)
+            commits.append(Ci)
+            orproofs.append(cls._bit_or_prove(Ci, bits[i], ri))
+            r_total = (r_total + ri * (1 << i)) % cls.Q
+        return {'commits': commits, 'orproofs': orproofs, 'nbits': nbits}, r_total
+
+    @classmethod
+    def _nonneg_verify(cls, proof: dict) -> bool:
+        nbits = proof['nbits']
+        if len(proof['commits']) != nbits or len(proof['orproofs']) != nbits:
+            return False
+        for Ci, orp in zip(proof['commits'], proof['orproofs']):
+            # [v2.7.1 FIX R35/R134] chaque engagement Ci doit être dans le sous-groupe
+            if not cls._in_subgroup(Ci):
+                return False
+            if not cls._bit_or_verify(Ci, orp):
+                return False
+        return True
+
+    @classmethod
+    def _schnorr_h_prove(cls, x: int) -> dict:
+        X = pow(cls.H, x % cls.Q, cls.P)
+        k = secrets.randbelow(cls.Q - 1) + 1
+        a = pow(cls.H, k, cls.P)
+        c = cls._challenge(cls.H, X, a)
+        s = (k + c * (x % cls.Q)) % cls.Q
+        return {'a': a, 's': s}
+
+    @classmethod
+    def _schnorr_h_verify(cls, X: int, pf: dict) -> bool:
+        # [v2.7.1 FIX R35/R134/R135] valider X et a dans le sous-groupe + s canonique
+        if not (cls._in_subgroup(X) and cls._in_subgroup(pf.get('a')) and cls._scalar_ok(pf.get('s'))):
+            return False
+        c = cls._challenge(cls.H, X, pf['a'])
+        return pow(cls.H, pf['s'], cls.P) == (pf['a'] * pow(X % cls.P, c, cls.P)) % cls.P
+
+    @classmethod
+    def range_prove(cls, value: int, lower: int, upper: int) -> dict:
+        """Preuve ZK non-interactive que value ∈ [lower, upper], sans révéler value.
+        Lève QMCSecurityError si value est hors bornes (au lieu de fuiter/crasher)."""
+        value, lower, upper = int(value), int(lower), int(upper)
+        if upper < lower:
+            raise QMCSecurityError("range_prove: upper < lower", operation="range_prove")
+        if not (lower <= value <= upper):
+            raise QMCSecurityError("range_prove: value hors de [lower, upper]",
+                                   operation="range_prove")
+        span = upper - lower
+        nbits = max(1, int(span).bit_length())
+        p_low, r_low = cls._nonneg_prove(value - lower, nbits)
+        p_high, r_high = cls._nonneg_prove(upper - value, nbits)
+        # Liaison : C_low · C_high · g^{-span} = h^{r_low + r_high} (force w_low+w_high=span)
+        link = cls._schnorr_h_prove((r_low + r_high) % cls.Q)
+        return {'lower': lower, 'upper': upper, 'nbits': nbits,
+                'p_low': p_low, 'p_high': p_high, 'link': link}
+
+    @classmethod
+    def range_verify(cls, proof: dict) -> bool:
+        try:
+            nb = proof['nbits']
+            if proof['p_low']['nbits'] != nb or proof['p_high']['nbits'] != nb:
+                return False
+            if not cls._nonneg_verify(proof['p_low']) or not cls._nonneg_verify(proof['p_high']):
+                return False
+            span = proof['upper'] - proof['lower']
+            Clow = cls._recompute_C(proof['p_low']['commits'])
+            Chigh = cls._recompute_C(proof['p_high']['commits'])
+            ginv_span = pow(pow(cls.G, span % cls.Q, cls.P), cls.P - 2, cls.P)
+            X = (Clow * Chigh % cls.P) * ginv_span % cls.P
+            return cls._schnorr_h_verify(X, proof['link'])
+        except Exception:
+            return False
+
+
+class QMCTimeLock:
+    """
+    [v2.7.1] Time-lock cryptographique RÉEL via puzzle RSW (Rivest-Shamir-Wagner,
+    "Time-lock puzzles and timed-release crypto", 1996).
+
+    Remplace l'ancien « time-lock » de v2.7.0 qui n'imposait AUCUNE contrainte
+    temporelle (angles figés au build) et était non reproductible / sans décodeur
+    (perte de données). Ici, pour ouvrir un FORWARD lock il faut effectuer `t`
+    carrés modulaires SÉQUENTIELS x <- x^2 mod N : il n'existe pas de raccourci
+    sans connaître φ(N) (qui est détruit après création). Le travail séquentiel est
+    intrinsèquement non parallélisable -> contrainte de temps réelle. Les données
+    sont chiffrées en AES-256-GCM avec une clé dérivée (HKDF) de la solution
+    K = g^(2^t) mod N. Le puzzle est sérialisable (reproductible) et DÉCODABLE.
+
+    NOTE d'honnêteté : un EXPIRING lock (indéchiffrable APRÈS une date) ne peut PAS
+    être réalisé par cryptographie seule — il requiert l'effacement de clé ou une
+    autorité de publication temporisée. Voir TimeLockBuilder.make_expiring_lock.
+    """
+
+    @staticmethod
+    def create(data: bytes, squarings: int = 1_000_000, key_bits: int = 2048) -> dict:
+        """Crée un forward time-lock. `squarings` (=t) fixe le travail séquentiel
+        requis pour l'ouverture (≈ délai-cible × carrés_par_seconde de la machine)."""
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        if squarings < 0:
+            raise QMCSecurityError("squarings doit être >= 0", operation="timelock_create")
+        priv = rsa.generate_private_key(public_exponent=65537, key_size=key_bits)
+        nums = priv.private_numbers()
+        p, q = nums.p, nums.q
+        N = p * q
+        phi = (p - 1) * (q - 1)
+        g = 2
+        # Raccourci CRÉATEUR uniquement (connaît φ) : e = 2^t mod φ, K = g^e mod N
+        e = pow(2, squarings, phi)
+        K = pow(g, e, N)
+        kb = K.to_bytes((K.bit_length() + 7) // 8 or 1, 'big')
+        key = QMCQuantumCrypto.hkdf_sha256(kb, length=32, info=b"QMC-timelock-RSW")
+        enc = QMCQuantumCrypto.aead_encrypt(key, data, aad=b"QMC-timelock")
+        # φ, p, q sont abandonnés ici : plus aucun raccourci ensuite
+        return {'mode': 'forward', 'algorithm': 'RSW+AES-256-GCM',
+                'N': N, 'g': g, 't': squarings,
+                'nonce': enc['nonce'].hex(), 'ciphertext': enc['ciphertext'].hex()}
+
+    @staticmethod
+    def solve(puzzle: dict) -> bytes:
+        """Résout le puzzle (t carrés séquentiels) puis déchiffre. C'est le chemin
+        LENT volontaire : il matérialise la contrainte temporelle."""
+        N = int(puzzle['N']); g = int(puzzle['g']); t = int(puzzle['t'])
+        x = g % N
+        for _ in range(t):
+            x = (x * x) % N        # carré séquentiel — non parallélisable
+        kb = x.to_bytes((x.bit_length() + 7) // 8 or 1, 'big')
+        key = QMCQuantumCrypto.hkdf_sha256(kb, length=32, info=b"QMC-timelock-RSW")
+        return QMCQuantumCrypto.aead_decrypt(
+            key, bytes.fromhex(puzzle['nonce']), bytes.fromhex(puzzle['ciphertext']),
+            aad=b"QMC-timelock")
 
 
 # =============================================================================
@@ -8664,25 +10458,28 @@ class ProtocolTester:
         """
         Test du protocole QMC Core (encryption IQP).
         
-        [v2.5.11] IMPORTANT: Ceci est un TEST DE PIPELINE, pas un chiffrement sécurisé.
-        Le XOR utilisé est une démonstration du flux de données, pas une primitive
-        cryptographique. Pour la sécurité réelle, utiliser AES-GCM avec la clé dérivée.
-        
+        [v2.7.1] CHIFFREMENT RÉEL. La sortie quantique sert de SOURCE D'ENTROPIE ;
+        la clé en est dérivée par HKDF-SHA256 (RFC 5869) puis les données sont
+        chiffrées avec AES-256-GCM (NIST SP 800-38D), chiffrement authentifié avec
+        nonce aléatoire par message. Remplace l'ancien XOR à clé répétée (démo
+        non sécurisée). Le test vérifie le cycle complet ET la détection
+        d'altération (intégrité GCM).
+
         Args:
             plaintext: Données à chiffrer
             n_qubits: Nombre de qubits
             iqp_depth: Profondeur du circuit IQP
             shots: Nombre de shots
-        
+
         Returns:
-            Résultats du test incluant succès encryption/decryption
+            Résultats du test incluant succès encryption/decryption + tamper-test
         """
         self._log(f"Testing QMC Core encryption: {len(plaintext)} bytes, {n_qubits}Q")
-        
+
         results = {
-            'protocol': 'qmc_core_encryption_demo',  # [v2.5.11] Renommé pour clarté
-            'security_level': 'TOY_PIPELINE_TEST',   # [v2.5.11] Disclaimer explicite
-            'note': 'XOR demo only - use AES-GCM for production',  # [v2.5.11]
+            'protocol': 'qmc_core_encryption',
+            'security_level': 'AES-256-GCM + HKDF-SHA256',  # [v2.7.1] crypto réelle
+            'note': 'Quantum output used as entropy source; key via HKDF; AEAD via AES-256-GCM',
             'plaintext_size': len(plaintext),
             'n_qubits': n_qubits,
             'iqp_depth': iqp_depth,
@@ -8718,48 +10515,68 @@ class ProtocolTester:
             'total_shots': sum(counts.values()),
         })
         
-        # Step 3: Generate encryption key from quantum output
-        self._log("Step 3: Deriving encryption key")
-        key = self._derive_key_from_counts(counts, 256)
-        
+        # Step 3: Dériver une clé AES-256 depuis l'entropie quantique (HKDF)
+        self._log("Step 3: Deriving AES-256 key via HKDF-SHA256 from quantum entropy")
+        ikm = QMCQuantumCrypto.quantum_seed_from_counts(counts)
+        salt = secrets.token_bytes(16)
+        key = QMCQuantumCrypto.hkdf_sha256(ikm, length=32, salt=salt,
+                                           info=b"QMC-core-encryption-AES256GCM")
+        # Min-entropie réelle de la SOURCE quantique brute (NIST SP 800-90B, par bit)
+        raw_bits = QMCQuantumCrypto.raw_bits_from_counts(counts)
+        min_ent_per_bit = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
+        source_min_entropy_bits = round(min_ent_per_bit * len(raw_bits), 2)
+
         results['steps'].append({
             'name': 'key_derivation',
             'status': 'success',
+            'kdf': 'HKDF-SHA256',
             'key_bits': 256,
-            'key_entropy': self._estimate_entropy(key),
+            'source_min_entropy_bits_per_bit': round(min_ent_per_bit, 4),
+            'source_min_entropy_bits_total': source_min_entropy_bits,
         })
-        
-        # Step 4: Encrypt (TOY XOR - for demo only)
-        self._log("Step 4: Encrypting data (XOR demo)")
-        ciphertext = self._xor_encrypt(plaintext, key)
-        
+
+        # Step 4: Chiffrement authentifié AES-256-GCM (nonce aléatoire, AAD = métadonnées)
+        self._log("Step 4: Encrypting with AES-256-GCM (authenticated)")
+        aad = f"QMC|{n_qubits}Q|{iqp_depth}d".encode()
+        enc = QMCQuantumCrypto.aead_encrypt(key, plaintext, aad=aad)
+        ciphertext = enc['ciphertext']
+
         results['steps'].append({
             'name': 'encryption',
             'status': 'success',
             'ciphertext_size': len(ciphertext),
-            'method': 'XOR_DEMO',  # [v2.5.11] Clarté
+            'method': 'AES-256-GCM',
+            'nonce_hex': enc['nonce'].hex(),
         })
-        
-        # [v2.5.11] Stocker le ciphertext hash pour chaining potentiel
         results['ciphertext_hash'] = hashlib.sha256(ciphertext).hexdigest()[:32]
-        
-        # Step 5: Decrypt
-        self._log("Step 5: Decrypting data")
-        decrypted = self._xor_encrypt(ciphertext, key)
-        
+
+        # Step 5: Déchiffrement + vérification d'intégrité
+        self._log("Step 5: Decrypting and verifying authentication tag")
+        decrypted = QMCQuantumCrypto.aead_decrypt(key, enc['nonce'], ciphertext, aad=aad)
         decryption_success = decrypted == plaintext
+
+        # Step 5b: Test d'ALTÉRATION — un ciphertext modifié DOIT être rejeté
+        tamper_detected = False
+        try:
+            tampered = bytearray(ciphertext)
+            tampered[0] ^= 0x01
+            QMCQuantumCrypto.aead_decrypt(key, enc['nonce'], bytes(tampered), aad=aad)
+        except Exception:
+            tamper_detected = True  # InvalidTag attendu : l'intégrité fonctionne
+
         results['steps'].append({
             'name': 'decryption',
             'status': 'success' if decryption_success else 'failed',
             'match': decryption_success,
+            'tamper_detected': tamper_detected,
         })
-        
-        # Final result
-        results['success'] = decryption_success
-        results['quantum_entropy_bits'] = results['steps'][2]['key_entropy']
-        
-        self._log(f"Protocol test {'PASSED' if decryption_success else 'FAILED'}")
-        
+
+        # Final result : le test ne réussit que si le cycle ET l'intégrité sont OK
+        results['success'] = bool(decryption_success and tamper_detected)
+        results['quantum_entropy_bits'] = source_min_entropy_bits
+
+        self._log(f"Protocol test {'PASSED' if results['success'] else 'FAILED'}")
+
         self._results['qmc_core_encryption'] = results
         return results
     
@@ -8782,106 +10599,85 @@ class ProtocolTester:
             'steps': [],
         }
         
-        # Step 1: Registration (create quantum template)
-        self._log("Step 1: Registration - creating quantum template")
-        
-        # Hash identity to get seed
+        # [v2.7.1] AUTHENTIFICATION RÉELLE : challenge-response HMAC-SHA256.
+        # L'ancien protocole ré-exécutait un circuit quantique NON-DÉTERMINISTE et
+        # comparait les distributions par fidélité — statistiquement toujours en
+        # échec dès ~12-15 qubits (deux échantillons finis d'un support 2^n se
+        # recouvrent en ~shots/2^n). Modèle correct : le matériel quantique sert de
+        # SOURCE D'ENTROPIE à l'ENRÔLEMENT pour dériver une clé secrète K
+        # (HKDF, liée à l'identité). L'authentification est ensuite un
+        # challenge-response HMAC standard : déterministe, sûr, toujours OK pour le
+        # légitime et toujours rejeté pour l'imposteur.
+        results['security_level'] = 'HMAC-SHA256 challenge-response + HKDF (quantum-seeded)'
+        results['method'] = 'hmac_challenge_response'
+
+        # Step 1: Enrôlement — entropie quantique -> clé K liée à l'identité
+        self._log("Step 1: Enrollment - quantum entropy -> HKDF key bound to identity")
         seed = int.from_bytes(hashlib.sha256(identity_data).digest()[:4], 'big')
-        
-        # Generate IQP circuit deterministically (v2.5.9: utilise le paramètre seed)
         builder = IQPBuilder(self.framework.topology, self.logger)
-        circuit = builder.build(n_qubits, depth=5, use_random_angles=True, seed=seed, add_measurements=True)
-        
-        # Execute to get template
+        circuit = builder.build(n_qubits, depth=5, use_random_angles=True,
+                                seed=seed, add_measurements=True)
         transpiled = self.framework.transpile_circuits([circuit])
         template_results = self.framework.run_on_qpu(transpiled, shots=4096)
-        
+
         if not template_results:
             results['success'] = False
             results['error'] = 'Template generation failed'
             return results
-        
+
         template_counts = template_results[0].get('counts', {})
-        template_dist = self._normalize_counts(template_counts)
-        
+        ikm = QMCQuantumCrypto.quantum_seed_from_counts(template_counts)
+        # Sel public d'enrôlement ; l'identité est liée via le paramètre `info`.
+        enroll_salt = secrets.token_bytes(16)
+        K_enroll = QMCQuantumCrypto.hkdf_sha256(
+            ikm, length=32, salt=enroll_salt,
+            info=b"QMC-auth|" + hashlib.sha256(identity_data).digest())
+        # Min-entropie de la source quantique (NIST SP 800-90B)
+        raw_bits = QMCQuantumCrypto.raw_bits_from_counts(template_counts)
+        min_ent = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
         results['steps'].append({
-            'name': 'registration',
+            'name': 'enrollment',
             'status': 'success',
-            'template_states': len(template_dist),
+            'template_states': len(template_counts),
+            'kdf': 'HKDF-SHA256',
+            'source_min_entropy_per_bit': round(min_ent, 4),
         })
-        
-        # Step 2: Verification (same identity)
-        self._log("Step 2: Verification - same identity")
-        
-        # Same seed = same circuit (v2.5.9: paramètre seed explicite)
-        verify_circuit = builder.build(n_qubits, depth=5, use_random_angles=True, seed=seed, add_measurements=True)
-        
-        verify_transpiled = self.framework.transpile_circuits([verify_circuit])
-        verify_results = self.framework.run_on_qpu(verify_transpiled, shots=4096)
-        
-        if not verify_results:
-            results['success'] = False
-            results['error'] = 'Verification execution failed'
-            return results
-        
-        verify_counts = verify_results[0].get('counts', {})
-        verify_dist = self._normalize_counts(verify_counts)
-        
-        # Compute similarity (fidelity)
-        similarity = self._compute_distribution_similarity(template_dist, verify_dist)
-        
-        auth_success = similarity >= threshold
-        
+
+        # Step 2: Vérification (identité légitime) — challenge-response HMAC
+        self._log("Step 2: Verification (legitimate) - HMAC challenge-response")
+        challenge = secrets.token_bytes(32)
+        response = QMCQuantumCrypto.hmac_sha256(K_enroll, challenge)   # prouveur
+        auth_success = QMCQuantumCrypto.hmac_verify(K_enroll, challenge, response)  # vérifieur
         results['steps'].append({
             'name': 'verification_same',
             'status': 'success' if auth_success else 'failed',
-            'similarity': round(similarity, 4),
-            'threshold': threshold,
-            'authenticated': auth_success,
+            'authenticated': bool(auth_success),
         })
-        
-        # Step 3: Rejection test (different identity)
-        self._log("Step 3: Rejection test - different identity")
-        
-        # [v2.5.11] Fix: Initialiser rejection_success AVANT le bloc conditionnel
-        rejection_success = None
-        
-        fake_identity = secrets.token_bytes(len(identity_data))
-        fake_seed = int.from_bytes(hashlib.sha256(fake_identity).digest()[:4], 'big')
-        
-        # Different seed = different circuit (v2.5.9: paramètre seed explicite)
-        fake_circuit = builder.build(n_qubits, depth=5, use_random_angles=True, seed=fake_seed, add_measurements=True)
-        
-        fake_transpiled = self.framework.transpile_circuits([fake_circuit])
-        fake_results = self.framework.run_on_qpu(fake_transpiled, shots=4096)
-        
-        if fake_results:
-            fake_counts = fake_results[0].get('counts', {})
-            fake_dist = self._normalize_counts(fake_counts)
-            fake_similarity = self._compute_distribution_similarity(template_dist, fake_dist)
-            rejection_success = fake_similarity < threshold
-            
-            results['steps'].append({
-                'name': 'verification_fake',
-                'status': 'success' if rejection_success else 'failed',
-                'similarity': round(fake_similarity, 4),
-                'rejected': rejection_success,
-            })
-        else:
-            # [v2.5.11] Si le test de rejet n'a pas pu s'exécuter, on le note
-            results['steps'].append({
-                'name': 'verification_fake',
-                'status': 'skipped',
-                'reason': 'QPU execution failed for rejection test',
-            })
-        
-        # [v2.5.11] Fix: Logique stricte - le test de rejet DOIT réussir
-        # Si rejection_success est None (test pas exécuté), on considère l'auth incomplète
-        results['success'] = auth_success and (rejection_success == True)
-        results['rejection_tested'] = rejection_success is not None
-        
+
+        # Step 3: Rejet (imposteur) — clé dérivée d'une identité différente
+        self._log("Step 3: Rejection (impostor) - different identity key")
+        fake_identity = secrets.token_bytes(max(1, len(identity_data)))
+        # L'imposteur ne possède pas l'entropie d'enrôlement : on simule sa
+        # meilleure tentative (clé dérivée de sa propre identité).
+        K_impostor = QMCQuantumCrypto.hkdf_sha256(
+            secrets.token_bytes(32), length=32, salt=enroll_salt,
+            info=b"QMC-auth|" + hashlib.sha256(fake_identity).digest())
+        fake_response = QMCQuantumCrypto.hmac_sha256(K_impostor, challenge)
+        rejection_success = not QMCQuantumCrypto.hmac_verify(K_enroll, challenge, fake_response)
+        results['steps'].append({
+            'name': 'verification_fake',
+            'status': 'success' if rejection_success else 'failed',
+            'rejected': bool(rejection_success),
+        })
+
+        # Succès global : le légitime passe ET l'imposteur est rejeté
+        results['success'] = bool(auth_success and rejection_success)
+        results['rejection_tested'] = True
+        # `threshold` conservé pour compat mais NON utilisé (HMAC est binaire)
+        results['threshold_note'] = 'threshold ignored: HMAC verification is binary'
+
         self._log(f"Authentication test {'PASSED' if results['success'] else 'FAILED'}")
-        
+
         self._results['qmc_authentication'] = results
         return results
     
@@ -8954,48 +10750,42 @@ class ProtocolTester:
         return results
     
     def _derive_key_from_counts(self, counts: CountsType, n_bits: int) -> bytes:
-        """Dérive une clé depuis les counts quantiques"""
-        # Concatenate all bitstrings weighted by frequency
-        bit_sequence = []
-        for bitstring, count in sorted(counts.items(), key=lambda x: -x[1]):
-            bit_sequence.extend([int(b) for b in bitstring] * count)
-        
-        # Hash to get uniform key
-        bit_bytes = bytes([
-            sum(bit_sequence[i*8:(i+1)*8][j] << (7-j) 
-                for j in range(min(8, len(bit_sequence) - i*8)))
-            for i in range((len(bit_sequence) + 7) // 8)
-        ])
-        
-        # Use SHA-256 to derive key
-        key = hashlib.sha256(bit_bytes).digest()
-        return key[:n_bits // 8]
-    
+        """[v2.7.1] Dérive une clé depuis les counts quantiques via HKDF-SHA256.
+
+        L'ancienne version concaténait/répétait les bitstrings (perte d'ordre,
+        entropie surestimée) puis prenait un simple SHA-256. On utilise désormais
+        HKDF (extract+expand, RFC 5869) sur l'IKM conditionné de la distribution.
+        """
+        ikm = QMCQuantumCrypto.quantum_seed_from_counts(counts)
+        return QMCQuantumCrypto.hkdf_sha256(ikm, length=max(1, n_bits // 8),
+                                            info=b"QMC-derive-key")
+
     def _estimate_entropy(self, data: bytes) -> float:
-        """Estime l'entropie d'une séquence de bytes"""
-        if not data:
-            return 0
-        
-        counts = defaultdict(int)
-        for byte in data:
-            counts[byte] += 1
-        
-        total = len(data)
-        entropy = 0
-        for count in counts.values():
-            p = count / total
-            if p > 0:
-                entropy -= p * np.log2(p)
-        
-        return round(entropy * len(data), 2)
-    
+        """[v2.7.1] Entropie de Shannon en bits/octet (0..8).
+
+        L'ancienne version renvoyait `entropie_par_octet * len(data)` (mélange
+        d'unités) et l'étiquetait `quantum_entropy_bits`, ce qui SURÉVALUAIT
+        l'entropie. Pour la min-entropie réelle d'une source, utiliser
+        QMCQuantumCrypto.min_entropy_mcv sur les bits bruts.
+        """
+        return round(QMCQuantumCrypto.shannon_entropy_per_byte(data), 4)
+
     def _xor_encrypt(self, data: bytes, key: bytes) -> bytes:
-        """XOR encryption simple"""
-        return bytes(d ^ key[i % len(key)] for i, d in enumerate(data))
+        """[v2.7.1 SUPPRIMÉ] Le XOR à clé répétée n'est PAS un chiffrement sûr
+        (pas de confidentialité réelle, pas d'authentification, réutilisation de
+        clé). Conservé en fail-closed pour empêcher toute utilisation insécure :
+        utiliser QMCQuantumCrypto.aead_encrypt/aead_decrypt (AES-256-GCM)."""
+        raise QMCSecurityError(
+            "_xor_encrypt est supprimé en v2.7.1 (chiffrement non sûr). "
+            "Utiliser QMCQuantumCrypto.aead_encrypt / aead_decrypt (AES-256-GCM).",
+            operation="_xor_encrypt")
     
     def _normalize_counts(self, counts: CountsType) -> Dict[str, float]:
         """Normalise les counts en distribution de probabilité"""
         total = sum(counts.values())
+        # [v2.7.1 FIX] Guard division-by-zero on empty / all-zero counts.
+        if total <= 0:
+            return {}
         return {k: v / total for k, v in counts.items()}
     
     def _compute_distribution_similarity(self, dist1: Dict, dist2: Dict) -> float:
@@ -9316,7 +11106,8 @@ class BenchmarkSuite:
             self._log("Bell benchmark: some settings failed", LogLevel.WARN)
         
         # Compute CHSH S parameter
-        chsh_result = analyzer.compute_chsh(correlations)
+        # [v2.7.1 FIX] passer shots pour une erreur statistique réelle
+        chsh_result = analyzer.compute_chsh(correlations, shots=shots)
         
         benchmark_results = {
             'benchmark': 'bell_chsh',
@@ -9362,13 +11153,16 @@ class BenchmarkSuite:
         results['benchmarks']['bell'] = self.run_bell_benchmark()
         
         # Summary
+        # [v2.7.1 FIX] Guard empty IQP results: np.mean([]) returns nan and emits
+        # a RuntimeWarning. Report 0.0 when no IQP depths produced results.
+        _iqp_entropies = [
+            r.get('entropy_ratio', 0)
+            for r in results['benchmarks']['iqp'].get('results', [])
+        ]
         results['summary'] = {
             'ghz_max_qubits': results['benchmarks']['ghz'].get('max_successful_qubits', 0),
             'bell_violation': results['benchmarks']['bell'].get('violation', False),
-            'iqp_entropy_avg': np.mean([
-                r.get('entropy_ratio', 0) 
-                for r in results['benchmarks']['iqp'].get('results', [])
-            ]),
+            'iqp_entropy_avg': float(np.mean(_iqp_entropies)) if _iqp_entropies else 0.0,
         }
         
         # [v2.5.10] Stocker dans _results pour cohérence
@@ -9443,6 +11237,29 @@ class NoiseAnalyzer:
                 if qubit_data['t2']:
                     t2_values.append(qubit_data['t2'] * 1e6)
             
+            # [v2.7.1 FIX R45/R130] Collecter les erreurs de portes 2-qubits pour que
+            # summary['gate_2q'] existe RÉELLEMENT (EPLGCalculator le lisait mais aucun
+            # producteur ne le remplissait -> EPLG retombait toujours sur 0.02 codé en dur).
+            two_q_errors = []
+            try:
+                cmap = getattr(backend, 'coupling_map', None)
+                pairs = list(cmap) if cmap else []
+                for pair in pairs:
+                    pair = list(pair)
+                    for gname in ('ecr', 'cz', 'cx'):
+                        try:
+                            err = props.gate_error(gname, pair)
+                            if err and err > 0:
+                                two_q_errors.append(float(err))
+                                break
+                        except Exception:
+                            continue
+            except Exception as _e_2q:
+                # [v2.7.1 FIX] Log instead of silently swallowing: a failure here
+                # leaves summary['gate_2q'] empty and silently degrades EPLG.
+                self._log(f"two-qubit gate error collection failed: {_e_2q}", LogLevel.DEBUG)
+            analysis['gates']['two_qubit'] = {'errors': two_q_errors, 'count': len(two_q_errors)}
+
             # Summary statistics
             analysis['summary'] = {
                 'readout_error': {
@@ -9458,8 +11275,15 @@ class NoiseAnalyzer:
                     'mean': round(np.mean(t2_values), 1) if t2_values else None,
                     'min': round(min(t2_values), 1) if t2_values else None,
                 },
+                # [v2.7.1 FIX R45/R130] erreur de porte 2Q (consommée par EPLG)
+                'gate_2q': {
+                    'mean': round(float(np.mean(two_q_errors)), 6) if two_q_errors else None,
+                    'min': round(float(min(two_q_errors)), 6) if two_q_errors else None,
+                    'max': round(float(max(two_q_errors)), 6) if two_q_errors else None,
+                    'count': len(two_q_errors),
+                },
             }
-            
+
             self._calibration_data = analysis
             return analysis
             
@@ -9488,7 +11312,11 @@ class NoiseAnalyzer:
             # Average error rates
             avg_1q_error = 0.001  # Typical
             avg_2q_error = 0.01   # Typical
-            avg_readout_error = self._calibration_data.get('summary', {}).get('readout_error', {}).get('mean', 0.02)
+            # [v2.7.1 FIX] 'mean' may be None when calibration has no readout data;
+            # None in (1 - x) raises TypeError, so coalesce to the typical default.
+            avg_readout_error = self._calibration_data.get('summary', {}).get('readout_error', {}).get('mean')
+            if avg_readout_error is None:
+                avg_readout_error = 0.02
             
             # Estimate fidelity
             f_1q = (1 - avg_1q_error) ** n_1q
@@ -9522,7 +11350,9 @@ class NoiseAnalyzer:
             
             # Check readout errors
             readout = summary.get('readout_error', {})
-            if readout.get('max', 0) > 0.1:
+            # [v2.7.1 FIX] 'max' may be None (empty calibration) -> None > 0.1 raises
+            # TypeError. Coalesce to 0 before the numeric comparison.
+            if (readout.get('max') or 0) > 0.1:
                 recommendations.append({
                     'type': 'hardware',
                     'priority': 'high',
@@ -9532,7 +11362,9 @@ class NoiseAnalyzer:
             
             # Check T1/T2
             t2 = summary.get('t2_us', {})
-            if t2.get('min', 100) < 50:
+            # [v2.7.1 FIX] 'min' may be None (empty calibration) -> None < 50 raises
+            # TypeError. Coalesce to the benign default before comparison.
+            if (t2.get('min') if t2.get('min') is not None else 100) < 50:
                 recommendations.append({
                     'type': 'hardware',
                     'priority': 'medium',
@@ -9608,12 +11440,17 @@ class CredentialsManager:
             # Manual .env parsing
             env_file = Path('.env')
             if env_file.exists():
-                with open(env_file) as f:
+                # [v2.7.1 FIX] Specify encoding for deterministic .env parsing.
+                with open(env_file, encoding='utf-8') as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#') and '=' in line:
                             key, value = line.split('=', 1)
-                            os.environ[key.strip()] = value.strip().strip('"\'')
+                            key = key.strip()
+                            # [v2.7.1 FIX] N'importer que les clés IBM_/QMC_ et ne PAS
+                            # écraser une variable d'environnement déjà exportée.
+                            if key.startswith('IBM_') or key.startswith('QMC_'):
+                                os.environ.setdefault(key, value.strip().strip('"\''))
     
     def _get_from_env(self) -> Dict:
         """Récupère les credentials depuis l'environnement"""
@@ -9684,9 +11521,11 @@ class CredentialsManager:
             return {'status': 'not_loaded'}
         
         api_key = self._credentials.get('api_key', '')
+        # [v2.7.1 FIX] Ne révéler que les 4 DERNIERS caractères du token (anti-fuite)
+        masked_key = ('...' + api_key[-4:]) if len(api_key) > 4 else '***'
         return {
             'status': 'loaded',
-            'api_key_prefix': api_key[:8] + '...' if len(api_key) > 8 else '***',
+            'api_key_prefix': masked_key,
             'instance': self._credentials.get('instance', 'default'),
         }
 
@@ -9714,12 +11553,21 @@ class DirectoryManager:
         dir_name = f"{mode}_{timestamp}_{project}_{scale_str}q_shots{shots}"
         self.run_dir = self.base_dir / dir_name
         self.run_dir.mkdir(exist_ok=True)
-        
+
         # Sous-répertoires
         (self.run_dir / 'checkpoints').mkdir(exist_ok=True)
         (self.run_dir / 'plots').mkdir(exist_ok=True)
         (self.run_dir / 'exports').mkdir(exist_ok=True)
-        
+
+        # [v2.7.1] Permissions restrictives (propriétaire seul) sur les répertoires de run
+        # qui contiennent archives/checkpoints/exports potentiellement sensibles (POSIX).
+        for _d in (self.run_dir, self.run_dir / 'checkpoints',
+                   self.run_dir / 'plots', self.run_dir / 'exports'):
+            try:
+                os.chmod(_d, 0o700)
+            except OSError:
+                pass
+
         return self.run_dir
     
     def get_file(self, name: str) -> Path:
@@ -9735,8 +11583,12 @@ class DirectoryManager:
     def save_json(self, name: str, data: Dict):
         """Sauvegarde des données JSON"""
         path = self.get_file(f"{name}.json")
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, default=str)
+        # [v2.7.1 FIX] Atomic write (tmp + os.replace) so readers never see a
+        # partially written JSON file.
+        class _DMEncoder(json.JSONEncoder):
+            def default(self, obj):
+                return str(obj)
+        _atomic_write_json(path, data, cls=_DMEncoder)
 
 
 # =============================================================================
@@ -9790,8 +11642,12 @@ class ReportManager:
         """Sauvegarde le rapport"""
         if self.report_path:
             self._data['metadata']['updated_at'] = datetime.now().isoformat()
-            with open(self.report_path, 'w', encoding='utf-8') as f:
-                json.dump(self._data, f, indent=2, default=str)
+            # [v2.7.1 FIX] Atomic write so a reader / crash never sees a
+            # half-written report file.
+            class _RMEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    return str(obj)
+            _atomic_write_json(self.report_path, self._data, cls=_RMEncoder)
             self._last_save = time.time()
     
     def to_dict(self) -> Dict:
@@ -9976,7 +11832,7 @@ class CircuitOptimizer:
         """
         optimizer = cls(logger)
         
-        with open(csv_path, 'r') as f:
+        with open(csv_path, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (avoid platform cp1252 mojibake on IBM calibration CSV)
             reader = csv.DictReader(f)
             rows = list(reader)
         
@@ -10378,7 +12234,57 @@ class CircuitOptimizer:
         
         return global_best
     
-    def find_optimal_layout(self, 
+    def _validate_and_pad_layout(self, mapping: Dict[int, int], n_qubits: int) -> Dict[int, int]:
+        """
+        [v2.7.1 FIX] Garantit qu'un mapping logique->physique couvre tous les qubits
+        logiques 0..n_qubits-1 avec des qubits physiques distincts.
+
+        Si le mapping est incomplet, complète avec les meilleurs qubits physiques
+        opérationnels encore disponibles. Si c'est impossible (pas assez de qubits
+        physiques sains), lève QMCValidationError au lieu de provoquer un KeyError.
+        """
+        mapping = dict(mapping)
+        used_physical = set(mapping.values())
+
+        missing_logical = [i for i in range(n_qubits) if i not in mapping]
+        if missing_logical:
+            avoid = self.get_faulty_qubits()
+            # Qubits physiques candidats: opérationnels, non utilisés, non défaillants,
+            # triés par qualité décroissante.
+            candidates = [
+                q for q, _ in self.get_qubit_ranking()
+                if q not in used_physical and q not in avoid
+            ]
+            # Fallback supplémentaire: tout qubit non utilisé (même hors ranking opérationnel)
+            for q in self.qubits:
+                if q not in used_physical and q not in avoid and q not in candidates:
+                    candidates.append(q)
+
+            for logical_q in missing_logical:
+                if not candidates:
+                    raise QMCValidationError(
+                        f"Cannot build a complete layout: {n_qubits} logical qubits "
+                        f"requested but only {len(used_physical)} distinct physical "
+                        f"qubits are available."
+                    )
+                phys = candidates.pop(0)
+                mapping[logical_q] = phys
+                used_physical.add(phys)
+
+        # Vérification finale: couverture complète et distincte
+        if len(mapping) < n_qubits or any(i not in mapping for i in range(n_qubits)):
+            raise QMCValidationError(
+                f"Incomplete layout: expected {n_qubits} logical qubits, "
+                f"got {len(mapping)} ({sorted(mapping.keys())})."
+            )
+        if len(set(mapping.values())) < n_qubits:
+            raise QMCValidationError(
+                "Invalid layout: duplicate physical qubits assigned to distinct "
+                "logical qubits."
+            )
+        return mapping
+
+    def find_optimal_layout(self,
                             circuit_qubits: int,
                             circuit_connections: List[Tuple[int, int]] = None,
                             strategy: str = 'contiguous') -> Dict[int, int]:
@@ -10400,25 +12306,32 @@ class CircuitOptimizer:
             # Si le chemin est assez long, l'utiliser
             if len(path) >= circuit_qubits:
                 return {i: path[i] for i in range(circuit_qubits)}
-            
+
             # Sinon, fallback vers best_qubits
             if strategy == 'auto':
                 self._log(f"[OPTIMIZER] Contiguous path too short ({len(path)}/{circuit_qubits}), using best_qubits")
-            
+
             # Utiliser les meilleurs qubits disponibles
             ranking = self.get_qubit_ranking()
             best = [q for q, _ in ranking[:circuit_qubits]]
-            return {i: best[i] for i in range(len(best))}
-        
+            # [v2.7.1 FIX] best peut etre plus court que circuit_qubits -> valider/completer
+            return self._validate_and_pad_layout(
+                {i: best[i] for i in range(len(best))}, circuit_qubits)
+
         elif strategy == 'best_qubits':
             ranking = self.get_qubit_ranking()
             best = [q for q, _ in ranking[:circuit_qubits]]
-            return {i: best[i] for i in range(len(best))}
-        
+            # [v2.7.1 FIX] best peut etre plus court que circuit_qubits -> valider/completer
+            return self._validate_and_pad_layout(
+                {i: best[i] for i in range(len(best))}, circuit_qubits)
+
         elif strategy == 'topology_aware' and circuit_connections:
             # Pour circuits avec structure spécifique
             # Utilise un algorithme glouton amélioré
-            return self._topology_aware_layout(circuit_qubits, circuit_connections)
+            # [v2.7.1 FIX] garantir un layout complet (pas de qubit logique omis)
+            return self._validate_and_pad_layout(
+                self._topology_aware_layout(circuit_qubits, circuit_connections),
+                circuit_qubits)
         
         else:
             return self.find_optimal_layout(circuit_qubits, strategy='auto')
@@ -10469,11 +12382,31 @@ class CircuitOptimizer:
                 if score > best_score:
                     best_score = score
                     best_physical = phys_q
-            
+
+            # [v2.7.1 FIX] Si aucun qubit "ideal" trouve (tous evites/utilises),
+            # rabattre sur n'importe quel qubit physique non encore utilise pour
+            # ne jamais omettre un qubit logique (layout partiel).
+            if best_physical is None:
+                for phys_q in self.qubits:
+                    if phys_q not in used_physical and phys_q not in avoid:
+                        best_physical = phys_q
+                        break
+            # Dernier recours: ignorer la liste 'avoid' si plus aucun sain dispo
+            if best_physical is None:
+                for phys_q in self.qubits:
+                    if phys_q not in used_physical:
+                        best_physical = phys_q
+                        break
+
             if best_physical is not None:
                 layout[logical_q] = best_physical
                 used_physical.add(best_physical)
-        
+            else:
+                raise QMCValidationError(
+                    f"Cannot place logical qubit {logical_q}: no distinct physical "
+                    f"qubit available (need {n_qubits}, have {len(self.qubits)})."
+                )
+
         return layout
     
     def generate_transpiler_layout(self, 
@@ -10497,7 +12430,10 @@ class CircuitOptimizer:
                 connections.append((qargs[0]._index, qargs[1]._index))
         
         mapping = self.find_optimal_layout(n_qubits, connections, strategy)
-        
+
+        # [v2.7.1 FIX] garantir un mapping complet avant l'index list (sinon KeyError)
+        mapping = self._validate_and_pad_layout(mapping, n_qubits)
+
         # Créer le Layout Qiskit
         return Layout.from_intlist(
             [mapping[i] for i in range(n_qubits)],
@@ -10620,7 +12556,9 @@ class CircuitOptimizer:
             avg_path_score = np.mean(path_scores) if path_scores else 0
             
             lines.append(f"║    📏 Length: {len(path)} qubits (requested: {path_length})")
-            lines.append(f"║    📍 Start: Q{path[0]}  →  End: Q{path[-1]}")
+            # [v2.7.1 FIX] guard empty path (find_best_contiguous_path can return [])
+            if path:
+                lines.append(f"║    📍 Start: Q{path[0]}  →  End: Q{path[-1]}")
             lines.append(f"║    ⭐ Path quality score: {avg_path_score:.1%}")
             lines.append("║")
             
@@ -11066,10 +13004,56 @@ class DynamicTopology:
         
         return global_best_path
     
+    def compute_qubit_scores(self, exclude: Set[int] = None,
+                             include_faulty: bool = False) -> Dict[int, float]:
+        """
+        [v2.7.1 FIX] Calcule un score de qualité [0..1] par qubit.
+
+        Cette méthode manquait sur DynamicTopology (appelée par
+        CalibrationVisualizer.export_calibration_heatmap). Elle factorise la
+        logique de scoring déjà utilisée dans get_best_qubits.
+
+        Args:
+            exclude: qubits à exclure du résultat
+            include_faulty: si True, inclut aussi les qubits faulty (utile pour un
+                            heatmap exhaustif); sinon ils sont omis.
+
+        Returns:
+            Dict {qubit_index: score} (score plus élevé = meilleur qubit)
+        """
+        exclude = exclude or set()
+        scores: Dict[int, float] = {}
+        for q in range(self.n_qubits):
+            if q in exclude:
+                continue
+            if q in self.faulty_qubits and not include_faulty:
+                continue
+
+            qubit_info = self._qubit_errors.get(q, {})
+            readout_err = qubit_info.get('readout', 0.05)
+            t1 = qubit_info.get('t1', 100)
+            t2 = qubit_info.get('t2', 100)
+            sx_err = qubit_info.get('sx', 0.01)
+
+            score = (1 - readout_err) * 0.4 + \
+                    min(t1 / 300, 1) * 0.25 + \
+                    min(t2 / 300, 1) * 0.25 + \
+                    (1 - sx_err * 100) * 0.1
+
+            if q in self.suspect_qubits:
+                score *= 0.8
+            if q in self.faulty_qubits:
+                score *= 0.5
+
+            # Borner dans [0, 1] pour un heatmap cohérent
+            scores[q] = max(0.0, min(1.0, score))
+
+        return scores
+
     def get_best_qubits(self, n_qubits: int, exclude: Set[int] = None) -> List[int]:
         """
         Retourne les N meilleurs qubits triés par qualité.
-        
+
         Contrairement à get_best_path(), cette fonction ne requiert PAS
         que les qubits soient contigus/connectés. Elle retourne simplement
         les qubits avec les meilleurs scores de qualité.
@@ -11608,7 +13592,10 @@ class CalibrationVisualizer:
             for i, h in enumerate(headers):
                 # Utiliser _visible_len pour calculer la largeur visible
                 header_len = self._visible_len(str(h))
-                max_cell_len = max(self._visible_len(str(r[i])) for r in rows if i < len(r))
+                # [v2.7.1 FIX] Guard empty max(): if no row has this column index
+                # (ragged rows), the generator is empty and max() would raise
+                # ValueError. default=0 falls back to the header width.
+                max_cell_len = max((self._visible_len(str(r[i])) for r in rows if i < len(r)), default=0)
                 col_width = max(header_len, max_cell_len)
                 widths.append(col_width + 2)
         
@@ -11989,14 +13976,20 @@ class CalibrationVisualizer:
                 qubit_scores[q_idx] = score
         
         sorted_qubits = sorted(qubit_scores.items(), key=lambda x: x[1], reverse=True)
-        
+
         lines = []
         lines.extend(self._section_header("TOP 10 BEST QUBITS                    💀 TOP 10 WORST QUBITS", "🏆"))
-        
+
+        # [v2.7.1 FIX] Make best/worst columns DISJOINT. Previously best=[i] and
+        # worst=[-(i+1)] overlapped (same qubit in both columns) when fewer than 20
+        # operational qubits were available. Cap each side to half the ranking.
+        n_q = len(sorted_qubits)
+        k_each = min(10, n_q // 2) if n_q >= 2 else 0
+
         # Afficher côte à côte
         for i in range(10):
             # Best
-            if i < len(sorted_qubits):
+            if i < k_each:
                 best_q, best_score = sorted_qubits[i]
                 best_errs = t._qubit_errors.get(best_q, {})
                 best_str = (f"  {self._c('green', f'{i+1:2d}.')} Q{best_q:3d} "
@@ -12004,9 +13997,9 @@ class CalibrationVisualizer:
                            f"{best_score*100:5.1f}%")
             else:
                 best_str = " " * 35
-            
+
             # Worst
-            if i < len(sorted_qubits):
+            if i < k_each:
                 worst_q, worst_score = sorted_qubits[-(i+1)]
                 worst_errs = t._qubit_errors.get(worst_q, {})
                 col = 'red' if worst_score < 0.5 else 'yellow'
@@ -12015,9 +14008,9 @@ class CalibrationVisualizer:
                             f"{worst_score*100:5.1f}%")
             else:
                 worst_str = ""
-            
+
             lines.append(f"  {best_str}    {worst_str}")
-        
+
         return lines
     
     def _qubit_quality_heatmap(self) -> List[str]:
@@ -12107,8 +14100,17 @@ class CalibrationVisualizer:
             lines.append(f"    Mean:  {np.mean(t2_only):.1f} μs  {self._sparkline(sorted(t2_only))}")
         
         # Ratio T2/T1
+        # [v2.7.1 FIX] Pairer T1 et T2 PAR QUBIT (mêmes clés) au lieu d'un zip
+        # positionnel: si un qubit a un T1 mais pas de T2 (ou inversement), les
+        # listes value-only sont désalignées et le ratio mélange des qubits différents.
         if t1_only and t2_only:
-            ratios = [t2 / t1 for t1, t2 in zip(t1_only, t2_only) if t1 > 0]
+            t1_by_qubit = dict(t1_values)
+            t2_by_qubit = dict(t2_values)
+            ratios = [
+                t2_by_qubit[q] / t1_by_qubit[q]
+                for q in t1_by_qubit
+                if q in t2_by_qubit and t1_by_qubit[q] > 0
+            ]
             if ratios:
                 lines.append(f"  T2/T1 Ratio: {np.mean(ratios):.2f} (ideal ≈ 2.0)")
         
@@ -12478,17 +14480,17 @@ class CalibrationVisualizer:
     def get_report_string(self) -> str:
         """Retourne le rapport comme string"""
         import io
-        import sys
-        
-        old_stdout = sys.stdout
-        sys.stdout = buffer = io.StringIO()
-        
-        self.print_full_report()
-        
-        output = buffer.getvalue()
-        sys.stdout = old_stdout
-        
-        return output
+        import contextlib
+
+        # [v2.7.1 FIX] Restaurer sys.stdout même si print_full_report lève une
+        # exception (auparavant, une erreur de rendu laissait stdout redirigé vers
+        # le buffer pour TOUT le processus). contextlib.redirect_stdout garantit la
+        # restauration via son __exit__ (équivalent try/finally).
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            self.print_full_report()
+
+        return buffer.getvalue()
     
     # ═══════════════════════════════════════════════════════════════════════
     # v2.5.21: Méthodes d'export graphique via QiskitVisualizationWrapper
@@ -12576,17 +14578,23 @@ class CalibrationVisualizer:
             from matplotlib.colors import LinearSegmentedColormap
             
             # Collecter les scores de qualité
-            scores = self.topo.compute_qubit_scores()
-            n_qubits = len(scores)
-            
+            # [v2.7.1 FIX] compute_qubit_scores() existe désormais sur DynamicTopology
+            # (anciennement appelée mais inexistante -> heatmap jamais produit).
+            # include_faulty=True pour une grille exhaustive et un mapping index->case correct.
+            scores = self.topo.compute_qubit_scores(include_faulty=True)
+            n_qubits = self.topo.n_qubits if getattr(self.topo, 'n_qubits', None) else len(scores)
+
             # Créer un heatmap simple (ligne unique ou grille)
-            side = int(np.ceil(np.sqrt(n_qubits)))
+            side = int(np.ceil(np.sqrt(n_qubits))) if n_qubits > 0 else 1
             data = np.full((side, side), np.nan)
-            
-            for i, score in enumerate(scores.values()):
-                row = i // side
-                col = i % side
-                data[row, col] = score
+
+            # [v2.7.1 FIX] Indexer par numéro de qubit réel (pas par position d'énumération)
+            for qubit_idx in range(n_qubits):
+                if qubit_idx not in scores:
+                    continue
+                row = qubit_idx // side
+                col = qubit_idx % side
+                data[row, col] = scores[qubit_idx]
             
             # Couleurs IBM Carbon
             ibm_cmap = LinearSegmentedColormap.from_list(
@@ -12621,12 +14629,16 @@ class CalibrationVisualizer:
             plt.close(fig)
             
             return filepath
-            
+
         except Exception as e:
+            # [v2.7.1 FIX] Toujours signaler l'échec (auparavant silencieux si
+            # use_colors=False), afin de ne pas masquer une non-génération du PNG.
             if self.use_colors:
                 print(f"{self.COLORS['red']}[WARN] Heatmap export failed: {e}{self.COLORS['reset']}")
+            else:
+                print(f"[WARN] Heatmap export failed: {e}")
         return None
-    
+
     def export_all_visualizations(self, backend, output_dir: Path = None) -> Dict[str, Path]:
         """
         Exporte toutes les visualisations disponibles (v2.5.21).
@@ -12709,11 +14721,16 @@ class DynamicClusterOptimizer:
         """
         Calcule le ratio de collision pour une configuration donnée.
         
-        collision_ratio = 2^n_qubits / n_shots
-        
-        Un ratio > 10 garantit des mesures quasi-uniques.
+        collision_ratio = 2^n_qubits / n_shots = n_states / n_shots
+
+        [v2.7.1 FIX] Sémantique corrigée: une valeur PLUS BASSE est MEILLEURE
+        (plus de mesures par état -> meilleure reproductibilité). Les mesures
+        moyennes par état valent 1/collision_ratio = n_shots / 2^n_qubits.
         """
         n_states = 2 ** n_qubits_per_cluster
+        # [v2.7.1 FIX] guard division-by-zero: n_shots<=0 -> infinitely bad ratio
+        if n_shots <= 0:
+            return float('inf')
         return n_states / n_shots
     
     @staticmethod
@@ -12768,9 +14785,12 @@ class DynamicClusterOptimizer:
         # RÈGLE: On veut freq_moyenne >= 10 pour reproductibilité robuste
         # Donc: qpc <= log2(shots/10)
         
-        target_measures_per_state = 10.0
-        max_qpc_for_reproducibility = int(math.log2(n_shots / target_measures_per_state))
-        
+        # [v2.7.1 FIX] Utiliser réellement min_collision_ratio comme cible de
+        # mesures/état (collision_ratio dans la convention n_shots/2^qpc). Auparavant
+        # le paramètre était ignoré au profit d'une constante 10.0.
+        target_measures_per_state = float(min_collision_ratio) if min_collision_ratio and min_collision_ratio > 0 else 10.0
+        max_qpc_for_reproducibility = int(math.log2(n_shots / target_measures_per_state)) if n_shots > target_measures_per_state else 0
+
         # Min qubits par cluster pour sécurité minimale
         min_qpc = 8  # Minimum 8 qubits par cluster
         
@@ -12784,39 +14804,66 @@ class DynamicClusterOptimizer:
         self._log(f"[OPTIMIZER] Reproducibility: {max_qpc} qpc → ~{avg_freq:.1f} measures/state (target: ≥{target_measures_per_state})")
         
         # Chercher la meilleure configuration
+        # [v2.7.1 FIX] Tenir compte de target_security_bits et min_collision_ratio:
+        #   - on n'accepte un candidat que si son collision_ratio respecte la cible
+        #     (n_shots/2^qpc >= min_collision_ratio, c.-à-d. collision_ratio <= 1/target);
+        #   - on préfère la config la PLUS PETITE qui atteint target_security_bits
+        #     (sécurité = total_qubits); si aucune ne l'atteint, on retombe sur la
+        #     config qui MAXIMISE la sécurité.
+        max_ratio_allowed = (1.0 / target_measures_per_state) if target_measures_per_state > 0 else float('inf')
+
         best_config = None
-        best_total_qubits = 0
-        
+        best_total_qubits = 0          # meilleure (max) sécurité, tous candidats valides
+        best_meeting_target = None     # plus petite config atteignant target_security_bits
+        best_meeting_qubits = None
+
         for qpc in range(min_qpc, min(max_qpc + 1, max_usable + 1)):
             collision_ratio = self.compute_collision_ratio(qpc, n_shots)
-            
+
+            # Respecter le ratio de collision cible (reproductibilité minimale)
+            if collision_ratio > max_ratio_allowed:
+                continue
+
             # Combien de clusters peut-on faire ?
             n_clusters = max_usable // qpc
-            
+
             if n_clusters < 1:
                 continue
-            
+
             total_qubits = n_clusters * qpc
-            
+
             # Sécurité = nombre total de qubits
             security_bits = total_qubits
-            
-            # Garder la config qui maximise les qubits (= sécurité)
+
+            candidate = {
+                "n_qubits": total_qubits,
+                "n_clusters": n_clusters,
+                "qubits_per_cluster": qpc,
+                "n_shots": n_shots,
+                "collision_ratio": collision_ratio,
+                "security_bits": security_bits,
+                "security_level": self.get_security_level(security_bits),
+                "security_description": self.get_security_description(security_bits),
+                "qpu_good_qubits": n_good_qubits,
+                "qpu_utilization": total_qubits / n_good_qubits if n_good_qubits > 0 else 0,
+                "meets_target_security": security_bits >= target_security_bits,
+            }
+
+            # Config qui maximise la sécurité (filet de sécurité global)
             if total_qubits > best_total_qubits:
                 best_total_qubits = total_qubits
-                best_config = {
-                    "n_qubits": total_qubits,
-                    "n_clusters": n_clusters,
-                    "qubits_per_cluster": qpc,
-                    "n_shots": n_shots,
-                    "collision_ratio": collision_ratio,
-                    "security_bits": security_bits,
-                    "security_level": self.get_security_level(security_bits),
-                    "security_description": self.get_security_description(security_bits),
-                    "qpu_good_qubits": n_good_qubits,
-                    "qpu_utilization": total_qubits / n_good_qubits if n_good_qubits > 0 else 0,
-                }
-        
+                best_config = candidate
+
+            # Plus petite config atteignant la cible de sécurité
+            if security_bits >= target_security_bits:
+                if best_meeting_qubits is None or total_qubits < best_meeting_qubits:
+                    best_meeting_qubits = total_qubits
+                    best_meeting_target = candidate
+
+        # Préférer la config la plus économe atteignant target_security_bits
+        if best_meeting_target is not None:
+            best_config = best_meeting_target
+
         # Fallback si rien trouvé
         if best_config is None:
             qpc = min_qpc
@@ -12833,8 +14880,10 @@ class DynamicClusterOptimizer:
                 "security_description": self.get_security_description(total_qubits),
                 "qpu_good_qubits": n_good_qubits,
                 "qpu_utilization": total_qubits / n_good_qubits if n_good_qubits > 0 else 0,
+                # [v2.7.1 FIX] exposer si la cible de sécurité est atteinte
+                "meets_target_security": total_qubits >= target_security_bits,
             }
-        
+
         self.last_optimization = best_config
         return best_config
     
@@ -13032,17 +15081,29 @@ class DynamicClusterOptimizer:
         self._log("")
     
     def get_recommendation(self, config: Dict = None) -> str:
-        """Retourne une recommandation basée sur la configuration."""
+        """
+        Retourne une recommandation basée sur la configuration.
+
+        [v2.7.1 FIX] Les seuils étaient inversés. compute_collision_ratio() renvoie
+        collision_ratio = 2^qpc / n_shots = n_states / n_shots, où une valeur PLUS
+        BASSE est MEILLEURE (plus de mesures par état → reproductibilité). On
+        raisonne donc en "mesures par état" = n_shots / 2^qpc (= 1/collision_ratio):
+        plus élevé = plus sain. Une config saine est saluée, une mauvaise avertie.
+        """
         config = config or self.last_optimization
         if not config:
             return "No optimization data available"
-        
-        cr = config['collision_ratio']
+
+        cr = config['collision_ratio']  # n_states / n_shots (plus bas = mieux)
         sec = config['security_bits']
-        
-        if cr < 5:
+
+        # Mesures moyennes par état: plus c'est élevé, plus la repro est robuste.
+        measures_per_state = (1.0 / cr) if cr > 0 else float('inf')
+
+        if measures_per_state < 2:
+            # Trop d'états pour trop peu de shots: collisions / repro insuffisante.
             return "⚠️ INCREASE shots or REDUCE qubits_per_cluster"
-        elif cr < 10:
+        elif measures_per_state < 10:
             return "⚡ Consider increasing shots for better reliability"
         elif sec < 64:
             return "🔓 Security below recommended - add more clusters"
@@ -13332,7 +15393,11 @@ class SmartRetryManager:
                 last_error = e
                 error_type = type(e).__name__
                 
-                if error_type not in RETRIABLE_ERRORS and attempt == 0:
+                # [v2.7.1 FIX] A deterministically non-retriable error must NOT
+                # be retried on later attempts either. Previously gating on
+                # 'attempt == 0' meant a non-retriable error surfacing after a
+                # first retriable failure would be retried pointlessly.
+                if error_type not in RETRIABLE_ERRORS:
                     raise
                 
                 if attempt < self.max_retries:
@@ -13469,10 +15534,19 @@ class JobMonitor:
         start_time = self._clock()  # [v2.5.13] Utilise clock injecté
         last_status = None
         timeout_triggered = False
-        
+
+        # [v2.7.1 FIX] Reset the stop event at the start so a reused monitor
+        # (after a prior stop()) does not return immediately without polling.
+        self._stop_event.clear()
+
         while not self._stop_event.is_set():
             try:
-                status = str(job.status())
+                # [v2.7.1 FIX] Normaliser le statut : str(JobStatus.DONE) == 'JobStatus.DONE'
+                # != 'DONE' -> l'état terminal n'était jamais détecté -> boucle infinie.
+                _st = job.status()
+                status = (getattr(_st, 'name', None) or str(_st)).upper()
+                if status.startswith('JOBSTATUS.'):
+                    status = status.split('.', 1)[1]
                 elapsed = self._clock() - start_time  # [v2.5.13]
                 
                 if timeout and elapsed > timeout:
@@ -13506,10 +15580,22 @@ class JobMonitor:
             except Exception as e:
                 self._stop_spinner()
                 self._log(f"Monitor error: {e}", LogLevel.WARN)
+                # [v2.7.1 FIX R57] Appliquer AUSSI le timeout dans l'except : si
+                # job.status() lève en permanence, l'ancien code ne vérifiait jamais le
+                # timeout ici -> boucle/hang indéfini. On borne désormais le temps réel.
+                if timeout and (self._clock() - start_time) > timeout:
+                    self._log(f"[!!] Timeout after {self._clock() - start_time:.0f}s "
+                              f"(status() en erreur)", LogLevel.WARN)
+                    timeout_triggered = True
+                    try:
+                        job.cancel()
+                    except Exception:
+                        pass
+                    break
                 self._sleep(self.update_interval)  # [v2.5.13]
-        
+
         self._stop_spinner()
-        
+
         self.metrics = {
             'total_time_s': self._clock() - start_time,  # [v2.5.13]
             'final_status': last_status,
@@ -13794,62 +15880,6 @@ class CheckpointManager:
 
 
 # =============================================================================
-# QPU TIME ESTIMATOR
-# =============================================================================
-
-class QPUTimeEstimator:
-    """Estimation du temps QPU"""
-    
-    # [v2.6.0] Temps de base par type de processeur (en secondes)
-    # Source: IBM Quantum Platform - Janvier 2026
-    BASE_TIMES = {
-        # Heron r3 - Plus rapide (68ns gate time, 340k CLOPS)
-        'heron_r3': {'shot': 0.0010, 'circuit_overhead': 0.4, 'gate_2q': 0.00005},
-        # Heron r2 - Très rapide (68ns gate time, 300-340k CLOPS)
-        'heron_r2': {'shot': 0.0012, 'circuit_overhead': 0.5, 'gate_2q': 0.00006},
-        # Heron r1 - Rapide (72ns gate time, 290k CLOPS)
-        'heron_r1': {'shot': 0.0015, 'circuit_overhead': 0.6, 'gate_2q': 0.00007},
-        # Nighthawk r1 - Nouvelle architecture (24k CLOPS - plus lent)
-        'nighthawk_r1': {'shot': 0.005, 'circuit_overhead': 1.0, 'gate_2q': 0.0002},
-        # Legacy (compatibilité)
-        'heron2': {'shot': 0.0012, 'circuit_overhead': 0.5, 'gate_2q': 0.00006},
-        'heron': {'shot': 0.0015, 'circuit_overhead': 0.6, 'gate_2q': 0.00007},
-        'eagle': {'shot': 0.002, 'circuit_overhead': 0.8, 'gate_2q': 0.0007},
-        'default': {'shot': 0.002, 'circuit_overhead': 1.0, 'gate_2q': 0.0005},
-    }
-    
-    @classmethod
-    def estimate(cls, n_circuits: int, n_qubits: int, shots: int,
-                 depth: int = 100, processor_type: str = 'default') -> Dict:
-        """Estime le temps QPU"""
-        times = cls.BASE_TIMES.get(processor_type, cls.BASE_TIMES['default'])
-        
-        shot_time = shots * times['shot']
-        circuit_time = n_circuits * times['circuit_overhead']
-        gate_time = depth * n_qubits * times['gate_2q'] * n_circuits
-        
-        total = shot_time + circuit_time + gate_time
-        
-        return {
-            'estimated_qpu_s': round(total, 1),
-            'estimated_queue_s': 60,  # Conservative
-            'estimated_total_s': round(total + 60, 0),
-            'breakdown': {
-                'shots': round(shot_time, 2),
-                'circuits': round(circuit_time, 2),
-                'gates': round(gate_time, 2),
-            },
-        }
-    
-    @classmethod
-    def format_estimate(cls, estimate: Dict) -> str:
-        """Formate l'estimation pour affichage"""
-        return (f"[T] Estimation: QPU={estimate['estimated_qpu_s']:.1f}s, "
-                f"Queue≈{estimate['estimated_queue_s']}s, "
-                f"Total≈{estimate['estimated_total_s']:.0f}s")
-
-
-# =============================================================================
 # RESULT VISUALIZER
 # =============================================================================
 
@@ -14127,7 +16157,7 @@ class ResultVisualizer:
 </html>"""
         
         path = self.output_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (HTML contains non-ASCII; avoid platform cp1252 mojibake)
             f.write(html)
         
         self._log(f"Generated HTML report: {path.name}")
@@ -14292,10 +16322,67 @@ class ReportExporter:
 
 
 # =============================================================================
+# PARALLEL TRANSPILATION WORKER (module-level for ProcessPoolExecutor pickling)
+# =============================================================================
+
+def _parallel_transpile_worker(args):
+    """
+    [v2.7.0] Worker function for parallel transpilation via ProcessPoolExecutor.
+    
+    MUST be at module level (not a method/closure) for pickle serialization.
+    Each worker process creates its own PassManager to avoid shared state issues.
+    
+    Args:
+        args: Tuple of (batch_circuits, batch_indices, backend_target, backend_num_qubits,
+                        optimization_level, coupling_map_edges, basis_gates)
+    
+    Returns:
+        List of (original_index, transpiled_circuit) tuples
+    """
+    try:
+        (batch_circuits, batch_indices, backend_target, backend_num_qubits,
+         optimization_level, coupling_map_edges, basis_gates) = args
+        
+        from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+        from qiskit.transpiler import CouplingMap, Target
+        
+        # Reconstruct a minimal target for transpilation in this worker process
+        # Use CouplingMap + basis_gates as the transpilation target
+        coupling_map = CouplingMap(couplinglist=coupling_map_edges) if coupling_map_edges else None
+        
+        # If we received a full Target object (picklable in Qiskit ≥1.0), use it directly
+        if backend_target is not None:
+            pm = generate_preset_pass_manager(
+                optimization_level=optimization_level,
+                target=backend_target,
+            )
+        else:
+            pm = generate_preset_pass_manager(
+                optimization_level=optimization_level,
+                coupling_map=coupling_map,
+                basis_gates=basis_gates,
+            )
+        
+        results = []
+        for idx, qc in zip(batch_indices, batch_circuits):
+            try:
+                t_qc = pm.run(qc)
+                results.append((idx, t_qc, None))
+            except Exception as e:
+                results.append((idx, None, str(e)))
+        
+        return results
+        
+    except Exception as e:
+        # Return errors for all circuits in this batch
+        return [(idx, None, f"Worker error: {str(e)}") for idx in batch_indices]
+
+
+# =============================================================================
 # QMC FRAMEWORK v2.0 - CLASSE PRINCIPALE
 # =============================================================================
 
-class QMCFramework:
+class QMCFrameworkBase:
     """
     Framework principal QMC v2.0 avec système de plugins.
     
@@ -15139,14 +17226,153 @@ class QMCFramework:
         
         return int(min(100, max(0, score)))
 
-    def transpile_circuits(self, circuits: List, 
+    def _are_circuits_isa(self, circuits) -> bool:
+        """
+        [v2.7.0] Détecte si les circuits sont déjà ISA-compatibles (déjà transpilés).
+        
+        Un circuit est ISA si :
+        1. Toutes ses portes sont des portes natives du backend (ex: cz, sx, rz, x, id)
+        2. Toutes les portes 2Q respectent le coupling_map du backend
+        
+        Utilisation: éviter la double transpilation quand les circuits ont été
+        pré-transpilés par le script appelant.
+        
+        Args:
+            circuits: Liste de circuits à vérifier
+            
+        Returns:
+            True si TOUS les circuits sont ISA-compatibles
+        """
+        if not circuits or not hasattr(self, 'backend') or self.backend is None:
+            return False
+        
+        try:
+            # Récupérer les portes natives du backend
+            target = getattr(self.backend, 'target', None)
+            if target is not None:
+                native_ops = set(target.operation_names)
+            else:
+                # Fallback: portes typiques IBM Heron
+                native_ops = {'cz', 'sx', 'rz', 'x', 'id', 'measure', 'barrier', 'delay', 'reset'}
+            
+            # Toujours accepter les directives non-gate
+            native_ops.update({'measure', 'barrier', 'delay', 'reset', 'if_else', 'switch_case'})
+            
+            # Récupérer le coupling_map
+            coupling_map = getattr(self.backend, 'coupling_map', None)
+            valid_edges = set()
+            if coupling_map is not None:
+                for edge in coupling_map.get_edges():
+                    valid_edges.add((edge[0], edge[1]))
+                    valid_edges.add((edge[1], edge[0]))  # Bidirectionnel
+            
+            # Vérifier un échantillon (premier + dernier + milieu pour perf)
+            n = len(circuits)
+            sample_indices = sorted(set([0, n // 2, n - 1]))
+            
+            for idx in sample_indices:
+                if idx >= n:
+                    continue
+                qc = circuits[idx]
+                
+                for instruction in qc.data:
+                    op_name = instruction.operation.name
+                    
+                    # Vérifier que la porte est native
+                    if op_name not in native_ops:
+                        return False
+                    
+                    # Vérifier le coupling_map pour les portes 2Q
+                    if len(instruction.qubits) == 2 and valid_edges:
+                        q0 = qc.qubits.index(instruction.qubits[0])
+                        q1 = qc.qubits.index(instruction.qubits[1])
+                        if (q0, q1) not in valid_edges:
+                            return False
+            
+            return True
+            
+        except Exception:
+            return False
+
+    def _get_transpile_cache(self) -> 'TranspilationCache':
+        """[v2.7.1] Cache de transpilation (mémo par LOT). Lazy-init.
+        Branche la classe TranspilationCache (auparavant code mort) : on réutilise ses
+        primitives de hash (_circuit_hash inclut les PARAMÈTRES de portes, _backend_hash
+        inclut le nom + la date de calibration) pour garantir qu'aucun mauvais circuit
+        n'est renvoyé quand le circuit/backend/options changent."""
+        tc = getattr(self, '_tcache', None)
+        if tc is None:
+            tc = TranspilationCache(max_age_hours=24, max_entries=256)
+            self._tcache = tc
+        return tc
+
+    def _transpile_batch_key(self, circuits, context: str) -> str:
+        """Clé de cache d'un lot = hash(chaque circuit + backend + contexte de transpilation)."""
+        tc = self._get_transpile_cache()
+        parts = []
+        for c in circuits:
+            try:
+                parts.append(tc._circuit_hash(c, optimization_level=context))
+            except Exception:
+                parts.append('x')
+        try:
+            bh = tc._backend_hash(self.backend)
+        except Exception:
+            bh = 'nobackend'
+        raw = "|".join(parts) + "||" + bh + "||" + str(context)
+        return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+    def _transpile_cache_get(self, key: str):
+        """Renvoie (transpiled_list, circuits_info) si présent et non expiré, sinon None."""
+        tc = self._get_transpile_cache()
+        entry = tc._cache.get(key)
+        if not entry:
+            return None
+        transpiled, ts, info = entry
+        if time.time() - ts >= tc.max_age_seconds:
+            tc._cache.pop(key, None)
+            return None
+        return transpiled, info
+
+    def _transpile_cache_put(self, key: str, transpiled, circuits_info):
+        tc = self._get_transpile_cache()
+        if len(tc._cache) >= tc.max_entries:
+            try:
+                tc._evict_oldest()
+            except Exception:
+                tc._cache.clear()
+        tc._cache[key] = (transpiled, time.time(), circuits_info)
+
+    def get_transpile_cache_stats(self) -> Dict[str, Any]:
+        """[v2.7.1] Statistiques du cache de transpilation (hits/misses par circuit)."""
+        hits = getattr(self, '_transpile_cache_hits', 0)
+        misses = getattr(self, '_transpile_cache_misses', 0)
+        total = hits + misses
+        tc = getattr(self, '_tcache', None)
+        return {
+            'hits': hits, 'misses': misses,
+            'hit_rate': f"{(hits / total * 100):.1f}%" if total else "0.0%",
+            'entries': len(tc._cache) if tc else 0,
+        }
+
+    def transpile_circuits(self, circuits: List,
                           optimization_level: int = 3,
                           use_optimal_layout: bool = False,  # DÉSACTIVÉ - notre algo dégrade +37%
                           layout_strategy: str = 'auto',     # [v2.5.14] AUTO par défaut!
                           use_vf2_post_layout: bool = True,  # ACTIVÉ - améliore de -1.9%
-                          vf2_max_trials: int = 100000) -> List:  # 100k trials par défaut
+                          vf2_max_trials: int = 100000,      # 100k trials par défaut
+                          parallel: str = 'auto',            # [v2.7.0] 'auto', 'always', 'never'
+                          n_workers: int = None,             # [v2.7.0] None = auto (cpu_count)
+                          show_progress: bool = True) -> List:  # [v2.7.0] Barre de progression
         """
         Transpile les circuits avec Qiskit SabreLayout + VF2PostLayout.
+        
+        [v2.7.0] PARALLEL TRANSPILATION + PROGRESS BAR:
+        ================================================
+        - Transpilation multi-CPU automatique (ProcessPoolExecutor)
+        - Barre de progression temps réel avec ETA
+        - Seuil auto: parallèle si >= 4 circuits ET pas de pré-layout custom
+        - Gain typique: 2-6x sur machines multi-cœurs
         
         [v2.5.5] Résultats de tests (80q, depth 40):
         ============================================
@@ -15174,6 +17400,12 @@ class QMCFramework:
                             'none' (Sabre seul), 'topology_aware', 'best_qubits'
             use_vf2_post_layout: VF2PostLayout après routing (défaut: True)
             vf2_max_trials: Trials VF2 (défaut: 100000)
+            parallel: Mode de parallélisme (défaut: 'auto')
+                     'auto' = parallèle si >=4 circuits et pas de pré-layout custom
+                     'always' = forcer le parallélisme
+                     'never' = désactiver (utile pour debug)
+            n_workers: Nombre de workers CPU (défaut: None = auto = cpu_count)
+            show_progress: Afficher la barre de progression (défaut: True)
         
         Returns:
             Liste de circuits transpilés
@@ -15184,6 +17416,9 @@ class QMCFramework:
             
             # Forcer Sabre seul
             optimized = fw.transpile_circuits(circuits, layout_strategy='none')
+            
+            # Forcer parallélisme avec 8 workers
+            optimized = fw.transpile_circuits(circuits, parallel='always', n_workers=8)
         """
         if not self._connected:
             raise RuntimeError("Non connecté!")
@@ -15195,6 +17430,67 @@ class QMCFramework:
         # [v2.5.14] Auto-wrapping: accepte circuit unique OU liste
         if isinstance(circuits, QuantumCircuit):
             circuits = [circuits]
+
+        # [v2.7.1] CACHE DE TRANSPILATION (par lot). Évite de re-transpiler un lot
+        # identique (mêmes circuits + même backend + mêmes options) — gain net sur les
+        # sweeps / A-B / re-runs. La clé inclut les paramètres de portes, le backend
+        # (nom + date calib) et tout le contexte d'options : aucun mauvais circuit renvoyé.
+        _tcache_ctx = (f"opt{optimization_level}|optlay{use_optimal_layout}"
+                       f"|lay{layout_strategy}|vf2{use_vf2_post_layout}|trials{vf2_max_trials}")
+        _tcache_key = None
+        try:
+            _tcache_key = self._transpile_batch_key(circuits, _tcache_ctx)
+            _cached = self._transpile_cache_get(_tcache_key)
+        except Exception:
+            _cached = None
+        if _cached is not None:
+            _t_circuits, _t_info = _cached
+            self._transpile_cache_hits += len(circuits)
+            try:
+                self.report.set('circuits_transpiled', _t_info, section='transpilation')
+                self.dir_manager.save_json('circuits', {'circuits': _t_info})
+            except Exception:
+                pass
+            self.logger.info(f"  ⚡ Cache transpilation HIT: {len(circuits)} circuit(s) "
+                             f"réutilisé(s) (lot identique) — transpilation évitée")
+            return _t_circuits
+        self._transpile_cache_misses += len(circuits)
+
+        # [v2.7.0] ISA AUTO-DETECTION: skip transpilation si circuits déjà ISA
+        if len(circuits) > 0 and self._are_circuits_isa(circuits):
+            self.logger.info(f"  ✅ ISA DÉTECTÉ: {len(circuits)} circuits déjà transpilés — skip transpilation")
+            
+            # Collecter les stats minimales pour le rapport
+            circuits_info = []
+            for i, qc in enumerate(circuits):
+                ops = dict(qc.count_ops())
+                n_2q = sum(v for k, v in ops.items() if k in ['cz', 'ecr', 'cx', 'swap'])
+                n_1q = sum(v for k, v in ops.items() if k in ['h', 'x', 'y', 'z', 'rz', 'rx', 'ry', 
+                           's', 't', 'sdg', 'tdg', 'sx', 'sxdg', 'u1', 'u2', 'u3'])
+                circuits_info.append({
+                    'index': i,
+                    'name': getattr(qc, 'name', f'circuit_{i}'),
+                    'n_qubits': qc.num_qubits,
+                    'transpiled_depth': qc.depth(),
+                    'gates_2q': n_2q,
+                    'gates_1q': n_1q,
+                    'pre_layout': None,
+                    'vf2_applied': False,
+                    'isa_passthrough': True,
+                })
+            
+            self.dir_manager.save_json('circuits', {'circuits': circuits_info})
+            self.report.set('circuits_transpiled', circuits_info, section='transpilation')
+            self._last_transpilation_stats = {
+                'before': {'qubits': circuits[0].num_qubits, 'depth': circuits[0].depth(),
+                           'gates_1q': circuits_info[0]['gates_1q'], 'gates_2q': circuits_info[0]['gates_2q']},
+                'after': {'qubits': circuits[0].num_qubits, 'depth': circuits[0].depth(),
+                          'gates_1q': circuits_info[0]['gates_1q'], 'gates_2q': circuits_info[0]['gates_2q']},
+                'overhead_2q_percent': 0, 'swaps_estimated': 0,
+                'depth_expansion': 1.0, 'score': 100,
+                'recommendation': 'GO', 'isa_passthrough': True,
+            }
+            return circuits
         
         # [v2.5.14] Mode AUTO: Compare avec/sans pré-layout et garde le meilleur
         if layout_strategy == 'auto' and use_optimal_layout:
@@ -15241,6 +17537,309 @@ class QMCFramework:
         transpiled = []
         circuits_info = []
         
+        # ═══════════════════════════════════════════════════════════════════
+        # [v2.7.0] DÉCISION PARALLÈLE vs SÉQUENTIEL
+        # ═══════════════════════════════════════════════════════════════════
+        import multiprocessing
+        
+        n_circuits = len(circuits)
+        needs_custom_layout = (use_optimal_layout and layout_strategy != 'none')
+        
+        # Déterminer le nombre de workers
+        available_cpus = multiprocessing.cpu_count()
+        if n_workers is None:
+            n_workers_resolved = min(available_cpus, max(1, n_circuits // 2))
+        else:
+            n_workers_resolved = min(n_workers, available_cpus, n_circuits)
+        
+        # Seuil minimum pour le parallélisme (overhead de fork trop élevé sinon)
+        PARALLEL_THRESHOLD = 4
+        
+        use_parallel = False
+        if parallel == 'always':
+            use_parallel = (n_circuits >= 2 and n_workers_resolved >= 2)
+        elif parallel == 'auto':
+            use_parallel = (n_circuits >= PARALLEL_THRESHOLD 
+                           and n_workers_resolved >= 2
+                           and not needs_custom_layout)
+        # parallel == 'never' → use_parallel remains False
+        
+        if use_parallel:
+            self.logger.info(f"  ⚡ Mode PARALLÈLE: {n_workers_resolved} workers × "
+                           f"{math.ceil(n_circuits / n_workers_resolved)} circuits/worker")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # [v2.7.0] HELPER: Progress bar temps réel (carriage return)
+        # ═══════════════════════════════════════════════════════════════════
+        _transpile_start_time = time.time()
+        
+        def _print_progress(current, total, extra_info=""):
+            """Affiche une barre de progression inline avec ETA."""
+            if not show_progress or total <= 1:
+                return
+            elapsed = time.time() - _transpile_start_time
+            pct = current / total
+            bar_len = 30
+            filled = int(bar_len * pct)
+            bar = '█' * filled + '░' * (bar_len - filled)
+            
+            # Calcul ETA
+            if current > 0 and pct < 1.0:
+                eta = elapsed / pct * (1 - pct)
+                if eta >= 60:
+                    eta_str = f"ETA {eta/60:.1f}min"
+                else:
+                    eta_str = f"ETA {eta:.0f}s"
+            elif pct >= 1.0:
+                eta_str = f"done in {elapsed:.1f}s"
+            else:
+                eta_str = "estimating..."
+            
+            # Mode info (parallèle vs séquentiel)
+            mode_tag = f"⚡{n_workers_resolved}w" if use_parallel else "→"
+            
+            line = (f"\r  {mode_tag} [{bar}] {pct*100:5.1f}% "
+                   f"({current}/{total}) {eta_str} {extra_info}")
+            sys.stdout.write(line)
+            sys.stdout.flush()
+        
+        def _finish_progress(total):
+            """Termine proprement la barre de progression."""
+            if not show_progress or total <= 1:
+                return
+            elapsed = time.time() - _transpile_start_time
+            mode_tag = f"⚡{n_workers_resolved}w" if use_parallel else "→"
+            bar = '█' * 30
+            line = (f"\r  {mode_tag} [{bar}] 100.0% "
+                   f"({total}/{total}) done in {elapsed:.1f}s")
+            # Padding pour effacer d'éventuels résidus de texte plus long
+            sys.stdout.write(f"{line:<100}\n")
+            sys.stdout.flush()
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # [v2.7.0] CHEMIN A: TRANSPILATION PARALLÈLE (multi-CPU)
+        # ═══════════════════════════════════════════════════════════════════
+        if use_parallel:
+            from concurrent.futures import ProcessPoolExecutor, as_completed
+            
+            # Extraire les infos du backend pour les workers
+            backend_target = None
+            coupling_map_edges = None
+            basis_gates_list = None
+            
+            try:
+                # Tenter de passer le Target complet (picklable dans Qiskit >= 1.0)
+                backend_target = getattr(self.backend, 'target', None)
+                # Test pickle rapide
+                import pickle
+                pickle.dumps(backend_target)
+            except Exception:
+                # Fallback: passer coupling_map + basis_gates séparément
+                backend_target = None
+                try:
+                    cm = getattr(self.backend, 'coupling_map', None)
+                    if cm is not None:
+                        coupling_map_edges = list(cm.get_edges())
+                    bg = getattr(self.backend, 'operation_names', None)
+                    if bg is not None:
+                        basis_gates_list = list(bg)
+                except Exception:
+                    pass
+            
+            # Découper en batches équilibrés (round-robin pour équilibrer la charge)
+            batches = [[] for _ in range(n_workers_resolved)]
+            batch_indices = [[] for _ in range(n_workers_resolved)]
+            for idx, qc in enumerate(circuits):
+                worker_id = idx % n_workers_resolved
+                batches[worker_id].append(qc)
+                batch_indices[worker_id].append(idx)
+            
+            # Préparer les arguments pour chaque worker
+            worker_args = []
+            for w in range(n_workers_resolved):
+                if batches[w]:  # Skip empty batches
+                    worker_args.append((
+                        batches[w],
+                        batch_indices[w],
+                        backend_target,
+                        self.backend.num_qubits if hasattr(self.backend, 'num_qubits') else None,
+                        optimization_level,
+                        coupling_map_edges,
+                        basis_gates_list,
+                    ))
+            
+            # Tableau de résultats ordonnés
+            transpiled_ordered = [None] * n_circuits
+            completed_count = 0
+            errors = []
+            
+            try:
+                with ProcessPoolExecutor(max_workers=n_workers_resolved) as executor:
+                    futures = {executor.submit(_parallel_transpile_worker, args): w_idx 
+                              for w_idx, args in enumerate(worker_args)}
+                    
+                    for future in as_completed(futures):
+                        w_idx = futures[future]
+                        try:
+                            batch_results = future.result()
+                            for orig_idx, t_qc, error_msg in batch_results:
+                                if error_msg is not None:
+                                    errors.append((orig_idx, error_msg))
+                                else:
+                                    transpiled_ordered[orig_idx] = t_qc
+                                completed_count += 1
+                                _print_progress(completed_count, n_circuits)
+                        except Exception as e:
+                            # Toute l'exécution du worker a échoué
+                            for idx in batch_indices[w_idx]:
+                                errors.append((idx, str(e)))
+                                completed_count += 1
+                                _print_progress(completed_count, n_circuits)
+                
+                _finish_progress(n_circuits)
+                
+            except Exception as pool_error:
+                # Fallback: si ProcessPoolExecutor échoue (ex: pickle error),
+                # on tombe automatiquement en mode séquentiel
+                self.logger.warn(f"  ⚠️ Parallélisme échoué ({type(pool_error).__name__}), "
+                               f"fallback séquentiel...")
+                use_parallel = False
+                _transpile_start_time = time.time()
+                # Reset pour le chemin séquentiel
+                transpiled_ordered = None
+                errors = []
+            
+            # Vérifier les erreurs de transpilation parallèle
+            if use_parallel and errors:
+                error_msgs = [f"  Circuit {idx}: {msg}" for idx, msg in sorted(errors)]
+                raise QMCTranspilationError(
+                    f"Transpilation parallèle échouée pour {len(errors)} circuit(s):\n" + 
+                    "\n".join(error_msgs[:5]),
+                    circuit_name=f"batch_{len(errors)}_errors"
+                )
+            
+            # Si parallèle a réussi, passer au post-processing VF2 + stats
+            if use_parallel and transpiled_ordered is not None:
+                # [v2.7.0] VF2PostLayout en séquentiel (rapide, pas de bottleneck)
+                if VF2PostLayout is not None and use_vf2_post_layout:
+                    self.logger.info(f"  🔄 VF2PostLayout: {n_circuits} circuits × {vf2_trials:,} trials...")
+                
+                for i, t_qc in enumerate(transpiled_ordered):
+                    if t_qc is None:
+                        continue
+                    
+                    vf2_applied = False
+                    if VF2PostLayout is not None and use_vf2_post_layout:
+                        try:
+                            target = getattr(self.backend, 'target', None)
+                            if target:
+                                vf2_pm = PassManager([
+                                    VF2PostLayout(
+                                        target=target,
+                                        strict_direction=False,
+                                        max_trials=vf2_trials,
+                                    )
+                                ])
+                                t_qc = vf2_pm.run(t_qc)
+                                transpiled_ordered[i] = t_qc
+                                vf2_applied = True
+                        except Exception:
+                            pass
+                    
+                    # Stats
+                    n_qubits = circuits[i].num_qubits
+                    depth = t_qc.depth()
+                    ops = dict(t_qc.count_ops())
+                    n_2q = sum(v for k, v in ops.items() if k in ['cz', 'ecr', 'cx', 'swap'])
+                    n_1q = sum(v for k, v in ops.items() if k in ['h', 'x', 'y', 'z', 'rz', 'rx', 'ry', 
+                               's', 't', 'sdg', 'tdg', 'sx', 'sxdg', 'u1', 'u2', 'u3'])
+                    
+                    # Qubits physiques
+                    used_physical = set()
+                    if hasattr(t_qc, 'layout') and t_qc.layout:
+                        try:
+                            for j in range(n_qubits):
+                                phys = t_qc.layout.final_index_layout()[j]
+                                used_physical.add(phys)
+                        except:
+                            pass
+                    
+                    faulty_used = used_physical & faulty_qubits
+                    
+                    # Rapport visuel pour le premier circuit
+                    if i == 0:
+                        qc_orig = circuits[0]
+                        depth_before = qc_orig.depth()
+                        ops_before = dict(qc_orig.count_ops())
+                        gates_1q_before = sum(v for k, v in ops_before.items() 
+                                              if k in ['h', 'x', 'y', 'z', 'rz', 'rx', 'ry', 's', 't', 'sdg', 'tdg', 'u1', 'u2', 'u3'])
+                        gates_2q_before = sum(v for k, v in ops_before.items() 
+                                              if k in ['cz', 'cx', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
+                        
+                        before_stats = {
+                            'qubits': n_qubits,
+                            'depth': depth_before,
+                            'gates_1q': gates_1q_before,
+                            'gates_2q': gates_2q_before,
+                        }
+                        after_stats = {
+                            'qubits': n_qubits,
+                            'depth': depth,
+                            'gates_1q': n_1q,
+                            'gates_2q': n_2q,
+                            'physical_qubits': sorted(list(used_physical)) if used_physical else [],
+                            'transpile_time': time.time() - _transpile_start_time,
+                        }
+                        pipeline_steps = [
+                            {'name': f'Qiskit O{optimization_level} (SabreLayout)', 'applied': True, 
+                             'detail': f'level={optimization_level}'},
+                            {'name': 'VF2PostLayout', 'applied': vf2_applied, 
+                             'detail': f'{vf2_trials:,} trials' if vf2_applied else 'skipped'},
+                            {'name': 'Parallel Workers', 'applied': True,
+                             'detail': f'{n_workers_resolved} CPUs'},
+                        ]
+                        self._print_transpilation_report(before_stats, after_stats, pipeline_steps)
+                        
+                        overhead_2q = ((n_2q - gates_2q_before) / gates_2q_before * 100) if gates_2q_before > 0 else 0
+                        self._last_transpilation_stats = {
+                            'before': before_stats,
+                            'after': after_stats,
+                            'overhead_2q_percent': overhead_2q,
+                            'swaps_estimated': max(0, (n_2q - gates_2q_before) // 3),
+                            'depth_expansion': depth / depth_before if depth_before > 0 else 1,
+                            'score': self._calculate_transpilation_score(before_stats, after_stats),
+                            'recommendation': 'GO' if overhead_2q < 50 else ('WARN' if overhead_2q < 100 else 'NO-GO'),
+                        }
+                    
+                    circuits_info.append({
+                        'index': i,
+                        'name': getattr(circuits[i], 'name', f'circuit_{i}'),
+                        'n_qubits': n_qubits,
+                        'transpiled_depth': depth,
+                        'gates_2q': n_2q,
+                        'gates_1q': n_1q,
+                        'physical_qubits': list(used_physical) if used_physical else None,
+                        'pre_layout': None,
+                        'vf2_applied': vf2_applied,
+                        'faulty_qubits_used': list(faulty_used) if faulty_used else None,
+                    })
+                
+                transpiled = transpiled_ordered
+
+                self.dir_manager.save_json('circuits', {'circuits': circuits_info})
+                self.report.set('circuits_transpiled', circuits_info, section='transpilation')
+                # [v2.7.1] mémoriser le lot transpilé (+ stats) pour réutilisation
+                if _tcache_key is not None:
+                    try:
+                        self._transpile_cache_put(_tcache_key, transpiled, circuits_info)
+                    except Exception:
+                        pass
+
+                return transpiled
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # [v2.7.0] CHEMIN B: TRANSPILATION SÉQUENTIELLE (avec progress bar)
+        # ═══════════════════════════════════════════════════════════════════
         for i, qc in enumerate(circuits):
             n_qubits = qc.num_qubits
             initial_layout = None
@@ -15376,6 +17975,10 @@ class QMCFramework:
             
             transpiled.append(t_qc)
             
+            # [v2.7.0] Progress bar temps réel
+            _print_progress(i + 1, n_circuits, 
+                          f"depth={t_qc.depth()}" if i < n_circuits - 1 else "")
+            
             # Stats finales
             depth = t_qc.depth()
             ops = dict(t_qc.count_ops())
@@ -15429,9 +18032,18 @@ class QMCFramework:
                 'faulty_qubits_used': list(faulty_used) if faulty_used else None,
             })
         
+        # [v2.7.0] Terminer la barre de progression
+        _finish_progress(n_circuits)
+
         self.dir_manager.save_json('circuits', {'circuits': circuits_info})
         self.report.set('circuits_transpiled', circuits_info, section='transpilation')
-        
+        # [v2.7.1] mémoriser le lot transpilé (+ stats) pour réutilisation
+        if _tcache_key is not None:
+            try:
+                self._transpile_cache_put(_tcache_key, transpiled, circuits_info)
+            except Exception:
+                pass
+
         return transpiled
     
     def _extract_circuit_connections(self, circuit) -> List[Tuple[int, int]]:
@@ -15640,9 +18252,34 @@ class QMCFramework:
                             break
         
         return layout if len(layout) == n_qubits else None
-        
-        return transpiled
-    
+        # [v2.7.1 FIX] Supprimé : `return transpiled` était du code mort inatteignable
+        # (après le return ci-dessus) et 'transpiled' y était indéfini.
+
+    # =========================================================================
+    # [v2.7.1 FIX] TRAÇABILITÉ JOB QPU — propriétés d'aliasing
+    # =========================================================================
+    # Bug v2.7.0 : run_on_qpu/run_estimator écrivaient self._last_job_id (avec
+    # underscore) tandis que run_on_qpu_batched, run_multi_job_session et
+    # retrieve_job_results lisaient/écrivaient self.last_job_id (SANS underscore).
+    # Résultat : IDs jamais propagés -> reprise de session cassée, double-facturation
+    # QPU possible, totaux d'usage à 0. On unifie via des propriétés : les deux noms
+    # pointent désormais vers le même stockage (_last_job_id / _last_usage).
+    @property
+    def last_job_id(self):
+        return getattr(self, '_last_job_id', None)
+
+    @last_job_id.setter
+    def last_job_id(self, value):
+        self._last_job_id = value
+
+    @property
+    def last_usage(self):
+        return getattr(self, '_last_usage', None)
+
+    @last_usage.setter
+    def last_usage(self, value):
+        self._last_usage = value
+
     def run_on_qpu(self, circuits, shots: int = None,
                    save_counts: bool = True,
                    timeout: float = None,
@@ -15876,6 +18513,11 @@ class QMCFramework:
                     transpiled_circuits = circuits
                     # [v2.5.21] Stocker pour AutoReportGenerator
                     self._last_transpiled_circuits = transpiled_circuits
+                    # [v2.7.0] Mode collection: accumuler les circuits si activé
+                    if getattr(self, '_collecting_circuits', False):
+                        if not hasattr(self, '_collected_circuits'):
+                            self._collected_circuits = []
+                        self._collected_circuits.extend(transpiled_circuits)
                 except Exception as e:
                     error = QMCTranspilationError(f"Échec de la transpilation: {str(e)}")
                     if self.error_handler:
@@ -15885,6 +18527,11 @@ class QMCFramework:
                 transpiled_circuits = circuits
                 # [v2.5.21] Stocker pour AutoReportGenerator
                 self._last_transpiled_circuits = transpiled_circuits
+                # [v2.7.0] Mode collection: accumuler les circuits si activé
+                if getattr(self, '_collecting_circuits', False):
+                    if not hasattr(self, '_collected_circuits'):
+                        self._collected_circuits = []
+                    self._collected_circuits.extend(transpiled_circuits)
             run_context['transpile_time_s'] = time.time() - transpile_start
             
             # === SOUMISSION DU JOB ===
@@ -15906,10 +18553,16 @@ class QMCFramework:
             
             # [v2.5.18] PROTECTION: Utiliser la config .env, PAS self.auto_confirm
             # Le paramètre auto_confirm dans le code est IGNORÉ pour éviter le gaspillage QPU
+            # [v2.7.0] EXCEPTION: Si on est dans un contexte Multi-Job (confirmation déjà faite)
             actual_auto_confirm = QMC_AUTO_CONFIRM
             
-            # Warning si le programmeur essaie d'activer auto_confirm via code
-            if self.auto_confirm and not actual_auto_confirm:
+            # [v2.7.0] Si on est dans un contexte Multi-Job, la confirmation a déjà été faite
+            # au niveau de la session, donc on respecte self.auto_confirm
+            in_multijob_context = getattr(self, '_in_multijob_context', False)
+            if in_multijob_context:
+                actual_auto_confirm = self.auto_confirm  # Respecter la config Multi-Job
+            elif self.auto_confirm and not actual_auto_confirm:
+                # Warning si le programmeur essaie d'activer auto_confirm via code (hors Multi-Job)
                 self.logger.warn(
                     "⚠️ Paramètre auto_confirm=True IGNORÉ! "
                     "Pour désactiver la confirmation: QMC_AUTO_CONFIRM=true dans .env"
@@ -15961,7 +18614,9 @@ class QMCFramework:
             # Checkpoint
             circuits_hash = None
             try:
-                circuit_reprs = [f"{c.num_qubits}q_{c.depth()}d_{c.size()}ops" for c in circuits[:5]]
+                # [v2.7.1 FIX] Hash ALL circuits, not just the first 5, so the checkpoint
+                # signature reflects the full batch.
+                circuit_reprs = [f"{c.num_qubits}q_{c.depth()}d_{c.size()}ops" for c in circuits]
                 circuits_hash = hashlib.sha256('|'.join(circuit_reprs).encode()).hexdigest()[:16]
             except Exception:
                 circuits_hash = 'unknown'
@@ -15983,31 +18638,21 @@ class QMCFramework:
             }, name=f"job_{job_id[:8]}")
             
             # === MONITORING DU JOB ===
-            # [v2.5.21] Option monitoring robuste via .env
-            # [v2.5.21] Monitoring robuste ACTIVÉ PAR DÉFAUT (désactiver avec QMC_ROBUST_MONITORING=false)
-            use_robust_monitoring = os.environ.get("QMC_ROBUST_MONITORING", "true").lower() not in ("false", "0", "no")
-            
+            # [v2.7.0] Monitoring TOUJOURS robuste (plus de fallback vers l'ancien)
             try:
-                if use_robust_monitoring:
-                    # Monitoring avec timeout par appel et reconnexion auto
-                    metrics = self._monitor_job_with_reconnect(
-                        job, 
-                        timeout=timeout,
-                        poll_interval=10.0,
-                        status_timeout=45.0
+                metrics = self._monitor_job_with_reconnect(
+                    job, 
+                    timeout=timeout,
+                    poll_interval=10.0,
+                    status_timeout=45.0
+                )
+                
+                # Si connexion perdue, lever une erreur avec instructions
+                if metrics.get('connection_lost'):
+                    raise QMCTimeoutError(
+                        f"Connexion perdue - utilisez --recover-job {job_id}",
+                        job_id=job_id
                     )
-                    
-                    # Si connexion perdue, lever une erreur avec instructions
-                    if metrics.get('connection_lost'):
-                        raise QMCTimeoutError(
-                            f"Connexion perdue - utilisez --recover-job {job_id}",
-                            job_id=job_id
-                        )
-                else:
-                    # Monitoring standard avec animations
-                    metrics = self._monitor_job_with_animation(job, timeout=timeout, 
-                                                               n_circuits=len(circuits), 
-                                                               shots=shots)
             except Exception as e:
                 error = QMCTimeoutError(
                     f"Timeout lors de l'attente du job: {str(e)}",
@@ -16034,7 +18679,14 @@ class QMCFramework:
                 
                 run_context['qpu_time_s'] = qpu_time_s
                 run_context['queue_time_s'] = queue_time_s
-                
+                # [v2.7.1 FIX R65/R140] _last_usage DOIT rester un FLOAT (qpu_time_s) :
+                # run_on_qpu_batched le somme et retrieve_job_results y écrit un float.
+                # L'ancien commit v2.7.1 y mettait un dict -> TypeError dans sum() (régression).
+                # Le détail riche est conservé séparément dans _last_usage_detail.
+                self._last_usage = float(qpu_time_s)
+                self._last_usage_detail = {'qpu_time_s': qpu_time_s, 'queue_time_s': queue_time_s,
+                                           'job_id': job_id}
+
                 self.report.set('qpu_time_s', qpu_time_s, section='execution')
                 self.report.set('queue_time_s', queue_time_s, section='execution')
                 
@@ -16048,7 +18700,7 @@ class QMCFramework:
                 # [v2.5.21] Utiliser _safe_get_job_result avec timeout pour éviter blocage
                 try:
                     raw_result = self._safe_get_job_result(job, timeout_seconds=120.0)
-                    results = self._process_results(raw_result, circuits, save_counts)
+                    results = self._process_results(raw_result, circuits, save_counts, shots=shots)
                 except QMCTimeoutError:
                     # Le message d'erreur avec instructions de reprise est déjà affiché
                     run_context['status'] = 'RESULT_TIMEOUT'
@@ -16125,6 +18777,9 @@ class QMCFramework:
             # 2. Rapport HTML ENSUITE (plus lent, peut échouer sans perdre les données)
             run_context['total_time_s'] = time.time() - global_start_time
             
+            self.logger.info(f"")
+            self.logger.info(f"  📦 Post-traitement en cours...")
+            
             # === 1. ARCHIVE JSON - PRIORITÉ MAXIMALE ===
             # Sécurise immédiatement les résultats bruts avant tout traitement
             if actual_generate_archive:
@@ -16185,6 +18840,7 @@ class QMCFramework:
             # Génère les visualisations (peut échouer sans risque de perte de données)
             if actual_generate_report:
                 try:
+                    self.logger.info(f"  📊 Génération du rapport HTML...")
                     self._generate_auto_report(
                         results, run_context, execution_error,
                         transpiled_circuits=transpiled_circuits  # [v2.5.18] Pour visualisation
@@ -16192,6 +18848,14 @@ class QMCFramework:
                 except Exception as report_error:
                     self.logger.warn(f"⚠️ Erreur génération rapport: {report_error}")
                     # Les données sont déjà sécurisées dans l'archive JSON
+            
+            # [v2.7.0] Sauvegarder pour le mode collection (rapport unifié)
+            if getattr(self, '_collecting_circuits', False):
+                self._last_run_context = run_context.copy()
+                if results:
+                    if not hasattr(self, '_collection_results'):
+                        self._collection_results = []
+                    self._collection_results.extend(results)
         
         return results
     
@@ -16288,7 +18952,11 @@ class QMCFramework:
                 time.sleep(delay_between_jobs)
         
         total_time = time.time() - start_time
-        total_usage = sum(job_usages) if job_usages else 0
+        # [v2.7.1 FIX R65/R66/R80] Agrégation tolérante au type : _last_usage est un float,
+        # mais on accepte aussi un dict {'qpu_time_s':...} par robustesse (jamais de TypeError).
+        total_usage = sum(
+            (u.get('qpu_time_s', 0) if isinstance(u, dict) else (u or 0)) for u in job_usages
+        ) if job_usages else 0.0
         
         self.logger.info(f"")
         self.logger.info(f"{'═' * 60}")
@@ -16343,6 +19011,630 @@ class QMCFramework:
         return all_results
     
     # =========================================================================
+    # [v2.6.4] MULTI-JOB SESSION WITH AUTO-RESUME
+    # =========================================================================
+    
+    def run_multi_job_session(self, 
+                              jobs: List[Dict] = None,
+                              resume_session_id: str = None,
+                              session_name: str = None,
+                              output_dir: str = None,
+                              archive_project: str = None,
+                              auto_confirm: bool = False) -> Dict:
+        """
+        [v2.7.0] Exécute plusieurs jobs QPU avec reprise automatique en cas de crash.
+        
+        Ce système permet de :
+        - Exécuter N jobs QPU en séquence
+        - Sauvegarder l'état après chaque job
+        - Reprendre une session interrompue
+        - Récupérer les jobs "RUNNING" via l'API IBM
+        - Vérifier la compatibilité du compte IBM au relancement
+        - Upload automatique vers QMC Archive pour chaque job
+        
+        ⚠️ IMPORTANT: Chaque job = appel à run_on_qpu() avec archive + upload + rapport
+        Le framework reste un exécuteur générique - c'est le script appelant qui 
+        fournit les paramètres de chaque job.
+        
+        Args:
+            jobs: Liste de jobs à exécuter. Chaque job est un dict avec:
+                  - "circuits": Liste de circuits (OBLIGATOIRE)
+                  - "shots": Nombre de shots (optionnel, défaut: 4096)
+                  - "label": Label pour identification (optionnel)
+                  - "auto_transpile": Transpiler auto (optionnel, défaut: True)
+                  - "archive_projects": UUIDs projets pour upload (optionnel, override global)
+                  - "archive_notes": Notes pour l'archive (optionnel)
+                  - "metadata": Dict de métadonnées custom (optionnel)
+                  - Tout autre paramètre de run_on_qpu()
+            
+            resume_session_id: ID de session à reprendre (si reprise)
+            session_name: Préfixe custom pour le session_id (optionnel)
+            output_dir: Dossier de sortie (défaut: qmc_runs/session_XXX/)
+            archive_project: UUID du projet QMC Archive pour TOUS les jobs (optionnel)
+                            Si spécifié, tous les jobs seront uploadés vers ce projet.
+                            Les jobs peuvent override avec leur propre archive_projects.
+            auto_confirm: ⚠️ NON RECOMMANDÉ - Si True, pas de confirmation
+        
+        Returns:
+            Dict avec:
+                - "session_id": ID de la session
+                - "session_file": Chemin du fichier session
+                - "status": Statut final (COMPLETED, PARTIAL, FAILED)
+                - "total_jobs": Nombre total de jobs
+                - "completed_jobs": Nombre de jobs terminés
+                - "failed_jobs": Nombre de jobs échoués
+                - "total_qpu_seconds": Temps QPU total
+                - "results": Liste des résultats de chaque job
+                - "jobs": Détails de chaque job
+        
+        Example - Nouveau run:
+            >>> results = fw.run_multi_job_session(
+            ...     jobs=[
+            ...         {"circuits": circuits_off, "shots": 2048, "label": "OFF_seed42"},
+            ...         {"circuits": circuits_on, "shots": 2048, "label": "ON_seed42"},
+            ...         {"circuits": circuits_off2, "shots": 2048, "label": "OFF_seed1042"},
+            ...         {"circuits": circuits_on2, "shots": 2048, "label": "ON_seed1042"},
+            ...     ],
+            ...     archive_project="41dbecd1-bbc8-4270-af62-945cbe3e524f"  # Upload tous vers ce projet
+            ... )
+            >>> print(f"Session: {results['session_id']}")
+        
+        Example - Reprise:
+            >>> results = fw.run_multi_job_session(
+            ...     resume_session_id="SESSION_20260128_201009_abc123"
+            ... )
+        
+        Note:
+            La confirmation demande TOUS les jobs d'un coup (pas par job).
+            Pour reprendre, utiliser resume_session_id ou chercher le session.json
+            dans le dossier de sortie.
+        """
+        import time
+        from datetime import datetime
+        
+        # =====================================================================
+        # VALIDATION DES PARAMÈTRES
+        # =====================================================================
+        
+        if not self._connected:
+            raise QMCExecutionError("Non connecté au backend IBM Quantum")
+        
+        is_resume = resume_session_id is not None
+        
+        if not is_resume and (jobs is None or len(jobs) == 0):
+            raise ValueError("jobs est requis pour une nouvelle session")
+        
+        # =====================================================================
+        # CHARGER OU CRÉER LA SESSION
+        # =====================================================================
+        
+        session = None
+        jobs_with_circuits = {}  # Stocke les circuits par index (pas sérialisables)
+        
+        if is_resume:
+            # === MODE REPRISE ===
+            self.logger.section("🔄 REPRISE SESSION MULTI-JOB")
+            
+            # Chercher le fichier de session
+            session_file = find_session_file(resume_session_id)
+            
+            if session_file is None:
+                raise FileNotFoundError(
+                    f"Session non trouvée: {resume_session_id}\n"
+                    f"Cherchez le fichier session_*.json dans qmc_runs/"
+                )
+            
+            session = MultiJobSession.load(session_file)
+            self.logger.info(f"📂 Session chargée: {session.session_id}")
+            self.logger.info(f"📁 Fichier: {session_file}")
+            
+            # [v2.7.0] Mettre à jour self.run_dir pour que les archives soient au bon endroit
+            if hasattr(self, 'run_dir'):
+                self.run_dir = Path(session.output_dir)
+                self.logger.info(f"📂 Répertoire de travail: {self.run_dir}")
+            
+            # Vérifier compatibilité compte IBM
+            current_account = getattr(self, '_account_label', None)
+            if not session.is_account_compatible(current_account):
+                self.logger.warn(
+                    f"⚠️ COMPTE DIFFÉRENT détecté!\n"
+                    f"   Session créée avec: {session.ibm_account}\n"
+                    f"   Compte actuel: {current_account}\n"
+                    f"   → Les jobs RUNNING seront ignorés"
+                )
+                # Marquer les jobs RUNNING comme SKIPPED
+                for job in session.jobs:
+                    if job["status"] in [MultiJobSessionStatus.JOB_RUNNING, 
+                                         MultiJobSessionStatus.JOB_SUBMITTED]:
+                        job["status"] = MultiJobSessionStatus.JOB_SKIPPED
+                        job["error"] = f"Compte différent ({current_account} vs {session.ibm_account})"
+                session.save()
+            
+            # Pour la reprise, on n'a pas les circuits - ils devront être fournis
+            if jobs is not None:
+                # L'appelant a fourni les jobs avec circuits pour la reprise
+                for idx, job_config in enumerate(jobs):
+                    if idx < len(session.jobs):
+                        jobs_with_circuits[idx] = job_config.get("circuits", [])
+        
+        else:
+            # === NOUVELLE SESSION ===
+            self.logger.section("🚀 NOUVELLE SESSION MULTI-JOB")
+            
+            # Utiliser le répertoire du framework (run_dir) pour stocker la session
+            # afin d'avoir tous les fichiers au même endroit (archives, rapports, session)
+            if output_dir is None:
+                if hasattr(self, 'run_dir') and self.run_dir:
+                    output_dir = str(self.run_dir)
+                else:
+                    # Fallback si run_dir n'existe pas
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    prefix = session_name or "multijob"
+                    output_dir = f"qmc_runs/{prefix}_{timestamp}_{self.backend_name}"
+            
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            
+            # Récupérer le label du compte IBM
+            current_account = getattr(self, '_account_label', None)
+            current_instance = getattr(self, '_instance', None)
+            
+            # Stocker les circuits (non sérialisables) séparément
+            for idx, job_config in enumerate(jobs):
+                jobs_with_circuits[idx] = job_config.get("circuits", [])
+            
+            # Créer la session (sans les circuits)
+            jobs_serializable = []
+            for idx, job_config in enumerate(jobs):
+                job_ser = {
+                    "circuits_count": len(job_config.get("circuits", [])),
+                    "shots": job_config.get("shots", 4096),
+                    "label": job_config.get("label", f"job_{idx:03d}"),
+                    "metadata": job_config.get("metadata", {}),
+                    # Copier les autres paramètres run_on_qpu
+                    "auto_transpile": job_config.get("auto_transpile", True),
+                    "archive_projects": job_config.get("archive_projects"),
+                    "archive_notes": job_config.get("archive_notes"),
+                }
+                jobs_serializable.append(job_ser)
+            
+            session = MultiJobSession.create_new(
+                jobs=jobs_serializable,
+                output_dir=output_dir,
+                backend=self.backend_name,
+                ibm_account=current_account,
+                ibm_instance=current_instance,
+                session_id=session_name
+            )
+            
+            # Sauvegarder immédiatement
+            session.save()
+            self.logger.info(f"📋 Session créée: {session.session_id}")
+            self.logger.info(f"📁 Fichier: {session.session_file}")
+        
+        # =====================================================================
+        # AFFICHER LE TABLEAU D'ÉTAT
+        # =====================================================================
+        
+        session.print_status_table()
+        
+        # =====================================================================
+        # VÉRIFIER LES JOBS RUNNING (récupération IBM)
+        # =====================================================================
+        
+        running_jobs = session.get_running_jobs()
+        if running_jobs:
+            self.logger.info(f"\n🔍 Vérification de {len(running_jobs)} job(s) en cours...")
+            
+            for job_entry in running_jobs:
+                ibm_job_id = job_entry.get("ibm_job_id")
+                if ibm_job_id:
+                    try:
+                        self.logger.info(f"   ⏳ Récupération job {ibm_job_id}...")
+                        
+                        # Récupérer le job via IBM
+                        from qiskit_ibm_runtime import QiskitRuntimeService
+                        service = QiskitRuntimeService()
+                        ibm_job = service.job(ibm_job_id)
+                        
+                        status = ibm_job.status()
+                        self.logger.info(f"   📊 Status: {status}")
+                        
+                        if str(status) == "JobStatus.DONE":
+                            # Job terminé ! Récupérer les résultats
+                            self.logger.info(f"   ✅ Job terminé! Récupération des résultats...")
+                            
+                            # [v2.7.0] Récupération sécurisée avec timeout
+                            result = self._safe_get_job_result(ibm_job, timeout_seconds=120.0)
+                            qpu_time = 0.0
+
+                            try:
+                                usage = ibm_job.metrics()
+                                qpu_time = usage.get('usage', {}).get('quantum_seconds', 0.0)
+                            except Exception as metrics_err:
+                                # [v2.7.1 FIX] Tracer (au lieu d'avaler) : explique un usage
+                                # QPU à 0 dans la session. Contrôle de flux inchangé.
+                                self.logger.debug(f"metrics() indisponible pour {ibm_job_id}: {metrics_err}")
+
+                            session.mark_job_completed(
+                                job_entry["index"],
+                                qpu_seconds=qpu_time
+                            )
+                            
+                        elif str(status) in ["JobStatus.RUNNING", "JobStatus.QUEUED"]:
+                            # Job encore en cours - on va l'attendre
+                            self.logger.info(f"   🔄 Job en cours, sera attendu lors de l'exécution")
+                            
+                        else:
+                            # Job échoué
+                            session.mark_job_failed(job_entry["index"], f"IBM status: {status}")
+                            
+                    except Exception as e:
+                        self.logger.warn(f"   ⚠️ Impossible de récupérer {ibm_job_id}: {e}")
+                        # Ne pas marquer comme failed, peut-être compte différent
+        
+        # =====================================================================
+        # CONFIRMATION UNIQUE
+        # =====================================================================
+        
+        summary = session.get_summary()
+        # [v2.7.1 FIX R5] inclure les jobs SUBMITTED : un job réellement soumis au QPU mais
+        # non encore récupéré ne doit PAS être ignoré (sinon la session est marquée COMPLETED
+        # et ses résultats sont silencieusement perdus). get_running_jobs() inclut déjà SUBMITTED.
+        jobs_to_run = summary['pending'] + summary['running'] + summary['submitted']
+
+        if jobs_to_run == 0:
+            self.logger.info("\n✅ Tous les jobs sont déjà terminés!")
+            session.status = MultiJobSessionStatus.SESSION_COMPLETED
+            session.save()
+            
+            return {
+                "session_id": session.session_id,
+                "session_file": str(session.session_file),
+                "status": session.status,
+                "total_jobs": session.total_jobs,
+                "completed_jobs": summary['completed'],
+                "failed_jobs": summary['failed'],
+                "total_qpu_seconds": session.total_qpu_seconds,
+                "results": [],
+                "jobs": session.jobs
+            }
+        
+        # Afficher message de confirmation
+        print(session.get_confirmation_message(is_resume=is_resume))
+        
+        if not auto_confirm:
+            try:
+                response = input("\n[y/N] > ").strip().lower()
+                if response not in ['y', 'yes', 'o', 'oui']:
+                    self.logger.info("❌ Session annulée par l'utilisateur")
+                    return {
+                        "session_id": session.session_id,
+                        "session_file": str(session.session_file),
+                        "status": "CANCELLED",
+                        "total_jobs": session.total_jobs,
+                        "completed_jobs": summary['completed'],
+                        "failed_jobs": 0,
+                        "total_qpu_seconds": session.total_qpu_seconds,
+                        "results": [],
+                        "jobs": session.jobs
+                    }
+            except KeyboardInterrupt:
+                self.logger.info("\n❌ Session annulée (Ctrl+C)")
+                return {
+                    "session_id": session.session_id,
+                    "session_file": str(session.session_file),
+                    "status": "CANCELLED",
+                    "total_jobs": session.total_jobs,
+                    "completed_jobs": summary['completed'],
+                    "failed_jobs": 0,
+                    "total_qpu_seconds": session.total_qpu_seconds,
+                    "results": [],
+                    "jobs": session.jobs
+                }
+        
+        # =====================================================================
+        # EXÉCUTION DES JOBS
+        # =====================================================================
+        
+        self.logger.section("⚡ EXÉCUTION DES JOBS")
+        
+        session.status = MultiJobSessionStatus.SESSION_IN_PROGRESS
+        session.save()
+        
+        all_results = []
+        start_time = time.time()
+        
+        # [v2.7.0] IMPORTANT: Désactiver les confirmations individuelles
+        # La confirmation a été faite au niveau de la session
+        original_auto_confirm = self.auto_confirm
+        self.auto_confirm = True  # Forcer auto_confirm pour les jobs internes
+        
+        # [v2.7.0] Flag pour indiquer à run_on_qpu qu'on est dans un contexte Multi-Job
+        # Cela permet de bypasser la protection QMC_AUTO_CONFIRM
+        self._in_multijob_context = True
+        
+        try:
+            for job_entry in session.jobs:
+                idx = job_entry["index"]
+                label = job_entry["label"]
+                status = job_entry["status"]
+                
+                # Skip les jobs déjà terminés ou échoués
+                if status in [MultiJobSessionStatus.JOB_COMPLETED, 
+                              MultiJobSessionStatus.JOB_FAILED,
+                              MultiJobSessionStatus.JOB_SKIPPED]:
+                    self.logger.info(f"   ⏭️ Job {idx} [{label}]: {status} - skipped")
+                    continue
+                
+                # Si job RUNNING avec job_id, attendre qu'il finisse
+                if status in [MultiJobSessionStatus.JOB_RUNNING, MultiJobSessionStatus.JOB_SUBMITTED]:
+                    ibm_job_id = job_entry.get("ibm_job_id")
+                    if ibm_job_id:
+                        self.logger.info(f"\n{'─' * 60}")
+                        self.logger.info(f"   🔄 Job {idx} [{label}]: En attente de {ibm_job_id}...")
+                        
+                        try:
+                            from qiskit_ibm_runtime import QiskitRuntimeService
+                            service = QiskitRuntimeService()
+                            ibm_job = service.job(ibm_job_id)
+                            
+                            # [v2.7.0] Monitoring robuste + récupération sécurisée
+                            try:
+                                self.logger.info(f"   ⏳ Monitoring du job IBM...")
+                                metrics = self._monitor_job_with_reconnect(
+                                    ibm_job, timeout=600,
+                                    poll_interval=10.0, status_timeout=45.0)
+                            except Exception as mon_e:
+                                self.logger.warn(f"   ⚠️ Monitoring: {mon_e}")
+                            
+                            result = self._safe_get_job_result(ibm_job, timeout_seconds=120.0)
+                            
+                            # Récupérer métriques
+                            qpu_time = 0.0
+                            try:
+                                usage = ibm_job.metrics()
+                                qpu_time = usage.get('usage', {}).get('quantum_seconds', 0.0)
+                            except Exception as metrics_err:
+                                # [v2.7.1 FIX] Tracer (au lieu d'avaler) : explique un usage
+                                # QPU à 0 dans la session. Contrôle de flux inchangé.
+                                self.logger.debug(f"metrics() indisponible pour {ibm_job_id}: {metrics_err}")
+
+                            session.mark_job_completed(idx, qpu_seconds=qpu_time)
+                            self.logger.info(f"   ✅ Job {idx} récupéré! QPU: {qpu_time:.2f}s")
+                            
+                            # TODO: Générer archive/rapport pour ce job récupéré
+                            # (complexe car on n'a pas les circuits originaux)
+                            
+                        except Exception as e:
+                            self.logger.error(f"   ❌ Erreur récupération job {ibm_job_id}: {e}")
+                            session.mark_job_failed(idx, str(e))
+                        
+                        continue
+                
+                # === EXÉCUTER LE JOB ===
+                self.logger.info(f"\n{'═' * 60}")
+                self.logger.info(f"   🚀 Job {idx + 1}/{session.total_jobs}: {label}")
+                self.logger.info(f"{'═' * 60}")
+                
+                # Récupérer les circuits
+                circuits = jobs_with_circuits.get(idx, [])
+                
+                if not circuits:
+                    self.logger.error(f"   ❌ Pas de circuits pour job {idx}!")
+                    session.mark_job_failed(idx, "No circuits provided")
+                    continue
+                
+                # Construire les paramètres pour run_on_qpu
+                # Déterminer archive_projects: job-specific > global > défaut .env
+                job_archive_projects = job_entry.get("archive_projects")
+                if job_archive_projects is None and archive_project:
+                    # Utiliser le projet global si pas de spécifique pour ce job
+                    job_archive_projects = [archive_project]
+                
+                run_params = {
+                    "circuits": circuits,
+                    "shots": job_entry.get("shots", 4096),
+                    "auto_transpile": job_entry.get("auto_transpile", True),
+                    "archive_projects": job_archive_projects,
+                    "archive_notes": job_entry.get("archive_notes") or f"[MultiJob] {session.session_id} - Job {idx}: {label}",
+                }
+                
+                # Marquer comme soumis
+                session.update_job(idx, status=MultiJobSessionStatus.JOB_SUBMITTED)
+                
+                try:
+                    # Exécuter via run_on_qpu (archive + upload + rapport inclus)
+                    job_results = self.run_on_qpu(**run_params)
+                    
+                    if job_results is not None:
+                        # Succès!
+                        qpu_time = 0.0
+                        archive_path = None
+                        report_path = None
+                        
+                        # Récupérer les infos du dernier run
+                        # [v2.7.1] self.last_job_id alias désormais _last_job_id (réellement
+                        # défini par run_on_qpu) -> l'ibm_job_id est enfin persisté dans la
+                        # session, ce qui RÉPARE la reprise/récupération (F85).
+                        if self.last_job_id:
+                            try:
+                                from qiskit_ibm_runtime import QiskitRuntimeService
+                                service = QiskitRuntimeService()
+                                ibm_job = service.job(self.last_job_id)
+                                usage = ibm_job.metrics()
+                                qpu_time = usage.get('usage', {}).get('quantum_seconds', 0.0)
+                            except Exception as metrics_err:
+                                # [v2.7.1 FIX] Tracer (au lieu d'avaler) : explique un usage
+                                # QPU à 0 dans la session. Contrôle de flux inchangé.
+                                self.logger.debug(f"metrics() indisponible pour {self.last_job_id}: {metrics_err}")
+
+                            session.update_job(idx, ibm_job_id=self.last_job_id)
+                        
+                        if hasattr(self, 'last_archive_path'):
+                            archive_path = str(self.last_archive_path) if self.last_archive_path else None
+                        
+                        if hasattr(self, 'last_report_path'):
+                            report_path = str(self.last_report_path) if self.last_report_path else None
+                        
+                        session.mark_job_completed(
+                            idx,
+                            qpu_seconds=qpu_time,
+                            archive_path=archive_path,
+                            report_path=report_path,
+                            results_summary={"n_results": len(job_results)}
+                        )
+                        
+                        all_results.append({
+                            "job_index": idx,
+                            "label": label,
+                            "results": job_results,
+                            "qpu_seconds": qpu_time
+                        })
+                        
+                        self.logger.info(f"   ✅ Job {idx} terminé! QPU: {qpu_time:.2f}s")
+                        
+                    else:
+                        session.mark_job_failed(idx, "run_on_qpu returned None")
+                        self.logger.error(f"   ❌ Job {idx} a échoué (None)")
+                        
+                except KeyboardInterrupt:
+                    self.logger.warn(f"\n⚠️ Interruption utilisateur (Ctrl+C)")
+                    session.update_job(idx, status=MultiJobSessionStatus.JOB_PENDING)
+                    session.save()
+                    
+                    print(f"\n💾 Session sauvegardée: {session.session_file}")
+                    print(f"💡 Pour reprendre: fw.run_multi_job_session(resume_session_id='{session.session_id}')")
+                    
+                    raise
+                    
+                except Exception as e:
+                    self.logger.error(f"   ❌ Job {idx} a échoué: {e}")
+                    session.mark_job_failed(idx, str(e))
+                
+                # Petit délai entre jobs
+                time.sleep(2)
+        
+        finally:
+            # [v2.7.0] Restaurer l'état original de auto_confirm et le contexte Multi-Job
+            self.auto_confirm = original_auto_confirm
+            self._in_multijob_context = False
+        
+        # =====================================================================
+        # FINALISATION
+        # =====================================================================
+        
+        total_time = time.time() - start_time
+        session._update_stats()
+        session.save()
+        
+        # Afficher le résumé final
+        self.logger.section("📊 SESSION TERMINÉE")
+        session.print_status_table()
+        
+        final_summary = session.get_summary()
+        
+        self.logger.info(f"\n⏱️  Temps total: {total_time:.1f}s")
+        self.logger.info(f"💰 QPU total: {session.total_qpu_seconds:.2f}s")
+        self.logger.info(f"📁 Session: {session.session_file}")
+        
+        return {
+            "session_id": session.session_id,
+            "session_file": str(session.session_file),
+            "status": session.status,
+            "total_jobs": session.total_jobs,
+            "completed_jobs": final_summary['completed'],
+            "failed_jobs": final_summary['failed'],
+            "total_qpu_seconds": session.total_qpu_seconds,
+            "total_time_seconds": total_time,
+            "results": all_results,
+            "jobs": session.jobs
+        }
+    
+    def list_sessions(self, search_dir: str = "qmc_runs") -> List[Dict]:
+        """
+        [v2.6.4] Liste toutes les sessions multi-jobs disponibles.
+        
+        Args:
+            search_dir: Dossier où chercher les sessions
+        
+        Returns:
+            Liste de dict avec infos sur chaque session
+        """
+        sessions = []
+        search_path = Path(search_dir)
+        
+        if not search_path.exists():
+            return sessions
+        
+        for session_file in search_path.rglob("session_*.json"):
+            try:
+                session = MultiJobSession.load(session_file)
+                summary = session.get_summary()
+                
+                sessions.append({
+                    "session_id": session.session_id,
+                    "session_file": str(session_file),
+                    "created_at": session.created_at,
+                    "status": session.status,
+                    "backend": session.backend,
+                    "total_jobs": session.total_jobs,
+                    "completed": summary['completed'],
+                    "pending": summary['pending'],
+                    "failed": summary['failed'],
+                    "qpu_seconds": session.total_qpu_seconds
+                })
+            except Exception as e:
+                # Fichier corrompu ou invalide
+                # [v2.7.1 FIX] Ne plus avaler silencieusement : tracer en debug
+                # (contrôle de flux inchangé, on continue la boucle).
+                if getattr(self, 'logger', None):
+                    self.logger.debug(f"Session ignorée (illisible) {session_file}: {e}")
+
+        # Trier par date (plus récent en premier)
+        sessions.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return sessions
+    
+    def print_sessions_list(self, search_dir: str = "qmc_runs"):
+        """
+        [v2.6.4] Affiche la liste des sessions multi-jobs.
+        
+        Args:
+            search_dir: Dossier où chercher les sessions
+        """
+        sessions = self.list_sessions(search_dir)
+        
+        if not sessions:
+            print("\n📭 Aucune session trouvée dans", search_dir)
+            return
+        
+        print(f"\n╔{'═' * 90}╗")
+        print(f"║  📋 SESSIONS MULTI-JOB DISPONIBLES ({len(sessions)} trouvées){'':>30}║")
+        print(f"╠{'═' * 90}╣")
+        print(f"║  {'Session ID':<35} │ {'Status':<12} │ {'Jobs':<12} │ {'QPU':<8} │ {'Backend':<12} ║")
+        print(f"╠{'─' * 90}╣")
+        
+        status_icons = {
+            "PENDING": "⏳",
+            "IN_PROGRESS": "🔄",
+            "COMPLETED": "✅",
+            "PARTIAL": "⚠️",
+            "FAILED": "❌"
+        }
+        
+        for s in sessions:
+            sid = s['session_id'][:35]
+            status = f"{status_icons.get(s['status'], '?')} {s['status'][:10]}"
+            jobs = f"{s['completed']}/{s['total_jobs']}"
+            qpu = f"{s['qpu_seconds']:.1f}s"
+            backend = s['backend'][:12] if s['backend'] else "N/A"
+            
+            print(f"║  {sid:<35} │ {status:<12} │ {jobs:<12} │ {qpu:<8} │ {backend:<12} ║")
+        
+        print(f"╚{'═' * 90}╝")
+        print(f"\n💡 Pour reprendre: fw.run_multi_job_session(resume_session_id='SESSION_ID')")
+    
+    # =========================================================================
     # [v2.6.0] IBM RUNTIME V2 ADVANCED FEATURES
     # =========================================================================
     
@@ -16366,12 +19658,6 @@ class QMCFramework:
             
         Returns:
             Liste de résultats
-            
-        Example:
-            >>> # VQE avec session
-            >>> with fw.session(max_time="1h") as session:
-            ...     for params in optimizer_iterations:
-            ...         results = session.run(circuit, shots=4096)
             
         Note:
             Pour les plans Open, utilisez run_with_batch() à la place.
@@ -16405,7 +19691,7 @@ class QMCFramework:
                 if options:
                     sampler.options.update(**options)
                 
-                # Appliquer DD et twirling par défaut
+                # [v2.7.0] Mitigation complète (DD + twirling, même config que run_on_qpu)
                 sampler.options.dynamical_decoupling.enable = True
                 sampler.options.dynamical_decoupling.sequence_type = "XY4"
                 sampler.options.twirling.enable_gates = True
@@ -16415,21 +19701,45 @@ class QMCFramework:
                 
                 # Exécuter
                 job = sampler.run(transpiled)
-                self.logger.info(f"  🆔 Job ID: {job.job_id()}")
+                job_id = job.job_id()
+                self.logger.info(f"  🆔 Job ID: {job_id}")
                 
-                result = job.result()
-                
-                # Extraire les résultats
-                for i, pub_result in enumerate(result):
-                    counts = pub_result.data.meas.get_counts() if hasattr(pub_result.data, 'meas') else {}
-                    all_results.append({
-                        'counts': counts,
-                        'shots': shots,
-                        'circuit_index': i,
-                        'job_id': job.job_id(),
-                        'session_id': session.session_id,
-                    })
-                
+                # [v2.7.0] Monitoring robuste (même que run_on_qpu)
+                try:
+                    metrics = self._monitor_job_with_reconnect(
+                        job, timeout=None,
+                        poll_interval=10.0,
+                        status_timeout=45.0
+                    )
+                except Exception as e:
+                    self.logger.warn(f"  ⚠️ Monitoring: {e}")
+                    metrics = {"final_status": "UNKNOWN"}
+
+                # [v2.7.1 FIX] Le monitor renvoie ERROR/CANCELLED/TIMEOUT SANS
+                # lever d'exception. Ne récupérer/traiter le résultat QUE si le
+                # job est réellement terminé (final_status == 'DONE'), sinon
+                # remonter l'échec au lieu d'appeler aveuglément
+                # _safe_get_job_result/_process_results.
+                final_status = metrics.get('final_status', 'UNKNOWN')
+                if final_status != 'DONE':
+                    error_details = self._get_job_error_details(job)
+                    error_msg = error_details.get('error_message', '') if isinstance(error_details, dict) else ''
+                    self.logger.error(
+                        f"  ❌ Session non terminée (statut: {final_status})"
+                        + (f" - {error_msg}" if error_msg else "")
+                    )
+                    raise QMCExecutionError(
+                        f"Session job non terminé (statut: {final_status})"
+                        + (f": {error_msg}" if error_msg else ""),
+                        job_id=job_id
+                    )
+
+                # [v2.7.0] Récupération sécurisée avec timeout
+                raw_result = self._safe_get_job_result(job, timeout_seconds=120.0)
+
+                # [v2.7.0] Extraction résultats via _process_results (gère tous les registres)
+                all_results = self._process_results(raw_result, transpiled, save_counts=True, shots=shots)
+
                 self.logger.info(f"  ✅ Session terminée: {len(all_results)} résultats")
                 
         except Exception as e:
@@ -16489,35 +19799,34 @@ class QMCFramework:
                 if options:
                     sampler.options.update(**options)
                 
-                # DD et twirling
+                # [v2.7.0] Mitigation complète (DD + twirling, même config que run_on_qpu)
                 sampler.options.dynamical_decoupling.enable = True
                 sampler.options.dynamical_decoupling.sequence_type = "XY4"
+                sampler.options.twirling.enable_gates = True
                 
                 jobs = []
+                transpiled_batches = []
                 for i, batch_circuits in enumerate(circuits_batches):
                     # Transpiler ce batch
                     transpiled = self.transpile_circuits(batch_circuits)
+                    transpiled_batches.append(transpiled)
                     
                     # Soumettre
                     job = sampler.run(transpiled)
                     jobs.append(job)
                     self.logger.info(f"  📤 Batch {i+1}/{n_batches}: {len(batch_circuits)} circuits → Job {job.job_id()}")
                 
-                # Collecter les résultats
+                # [v2.7.0] Collecter les résultats avec _safe_get_job_result + _process_results
                 for i, job in enumerate(jobs):
                     self.logger.info(f"  ⏳ Attente batch {i+1}/{n_batches}...")
-                    result = job.result()
                     
-                    batch_results = []
-                    for j, pub_result in enumerate(result):
-                        counts = pub_result.data.meas.get_counts() if hasattr(pub_result.data, 'meas') else {}
-                        batch_results.append({
-                            'counts': counts,
-                            'shots': shots,
-                            'batch_index': i,
-                            'circuit_index': j,
-                            'job_id': job.job_id(),
-                        })
+                    try:
+                        raw_result = self._safe_get_job_result(job, timeout_seconds=120.0)
+                        batch_results = self._process_results(
+                            raw_result, transpiled_batches[i], save_counts=False, shots=shots)
+                    except Exception as e:
+                        self.logger.error(f"  ❌ Batch {i+1}: {e}")
+                        batch_results = []
                     
                     all_batch_results.append(batch_results)
                     self.logger.info(f"  ✅ Batch {i+1}: {len(batch_results)} résultats")
@@ -16593,9 +19902,33 @@ class QMCFramework:
         job = learner.run(transpiled)
         self.logger.info(f"  🆔 Job ID: {job.job_id()}")
         
-        # Attendre le résultat
-        noise_model = job.result()
-        
+        # [v2.7.0] Monitoring + récupération sécurisée (même que run_on_qpu)
+        # [v2.7.1 FIX] Initialiser metrics et NE récupérer le résultat que si le
+        # job est réellement terminé (final_status == 'DONE'). Le monitor renvoie
+        # ERROR/CANCELLED/TIMEOUT SANS lever d'exception.
+        metrics = {"final_status": "UNKNOWN"}
+        try:
+            metrics = self._monitor_job_with_reconnect(
+                job, timeout=None, poll_interval=10.0, status_timeout=45.0)
+        except Exception as e:
+            self.logger.warn(f"  ⚠️ Monitoring: {e}")
+
+        final_status = metrics.get('final_status', 'UNKNOWN')
+        if final_status != 'DONE':
+            error_details = self._get_job_error_details(job)
+            error_msg = error_details.get('error_message', '') if isinstance(error_details, dict) else ''
+            self.logger.error(
+                f"  ❌ Noise learning non terminé (statut: {final_status})"
+                + (f" - {error_msg}" if error_msg else "")
+            )
+            raise QMCExecutionError(
+                f"Noise learning job non terminé (statut: {final_status})"
+                + (f": {error_msg}" if error_msg else ""),
+                job_id=job.job_id()
+            )
+
+        noise_model = self._safe_get_job_result(job, timeout_seconds=300.0)
+
         self.logger.info(f"  ✅ Noise model appris!")
         self.logger.info(f"  📊 Layers caractérisés: {len(noise_model.data)}")
         
@@ -16654,58 +19987,56 @@ class QMCFramework:
     
     def get_sampler_v2(self, options: Dict = None) -> 'SamplerV2':
         """
-        [v2.6.0] Retourne un SamplerV2 configuré avec les options optimales.
+        [BLOQUÉ v2.7.0] Accès direct aux primitives IBM INTERDIT.
         
-        Args:
-            options: Options personnalisées à merger
-            
-        Returns:
-            SamplerV2 configuré
-            
-        Example:
-            >>> sampler = fw.get_sampler_v2({
-            ...     'default_shots': 8192,
-            ...     'dynamical_decoupling': {'sequence_type': 'XY4'}
-            ... })
-            >>> job = sampler.run([circuit])
+        Utilisez fw.run_on_qpu() pour le Sampler (archive + monitoring + rescue).
+        
+        Raises:
+            QMCExecutionError: Toujours. Utiliser run_on_qpu() à la place.
         """
-        from qiskit_ibm_runtime import SamplerV2
-        
-        if not self._connected:
-            raise QMCExecutionError("Non connecté au backend")
-        
-        sampler = SamplerV2(mode=self.backend)
-        
-        # Options par défaut optimales
-        sampler.options.default_shots = getattr(self, 'default_shots', 4096)
-        sampler.options.dynamical_decoupling.enable = True
-        sampler.options.dynamical_decoupling.sequence_type = "XY4"
-        sampler.options.twirling.enable_gates = True
-        
-        # Merger les options personnalisées
-        if options:
-            sampler.options.update(**options)
-        
-        return sampler
+        raise QMCExecutionError(
+            "❌ ACCÈS DIRECT AUX PRIMITIVES INTERDIT depuis v2.7.0!\n"
+            "\n"
+            "   get_sampler_v2() retournait un SamplerV2 brut SANS:\n"
+            "   - Archive QMC (34 sections)\n"
+            "   - Monitoring robuste (reconnexion auto)\n"
+            "   - Rescue save (sauvegarde immédiate)\n"
+            "   - Checkpoint (reprise après crash)\n"
+            "   - Upload QMC Archive\n"
+            "\n"
+            "   UTILISEZ À LA PLACE:\n"
+            "   results = fw.run_on_qpu(circuits, shots=4096)\n"
+        )
     
     def get_estimator_v2(self, resilience_level: int = 1, 
                          options: Dict = None) -> 'EstimatorV2':
         """
-        [v2.6.0] Retourne un EstimatorV2 configuré avec les options optimales.
+        [BLOQUÉ v2.7.0] Accès direct aux primitives IBM INTERDIT.
         
-        Args:
-            resilience_level: Niveau de résilience (0-2)
-                0: Pas de mitigation
-                1: TREX + DD + gate twirling
-                2: + ZNE (Zero Noise Extrapolation)
-            options: Options personnalisées à merger
-            
-        Returns:
-            EstimatorV2 configuré
-            
-        Example:
-            >>> estimator = fw.get_estimator_v2(resilience_level=2)
-            >>> job = estimator.run([(circuit, observable)])
+        Utilisez fw.run_estimator() pour l'Estimator (archive + monitoring + rescue).
+        
+        Raises:
+            QMCExecutionError: Toujours. Utiliser run_estimator() à la place.
+        """
+        raise QMCExecutionError(
+            "❌ ACCÈS DIRECT AUX PRIMITIVES INTERDIT depuis v2.7.0!\n"
+            "\n"
+            "   get_estimator_v2() retournait un EstimatorV2 brut SANS:\n"
+            "   - Archive QMC (34 sections)\n"
+            "   - Monitoring robuste (reconnexion auto)\n"
+            "   - Rescue save (sauvegarde immédiate)\n"
+            "   - Checkpoint (reprise après crash)\n"
+            "   - Upload QMC Archive\n"
+            "\n"
+            "   UTILISEZ À LA PLACE:\n"
+            "   results = fw.run_estimator(pubs, shots=8192, resilience_level=2)\n"
+        )
+    
+    def _create_estimator_v2(self, resilience_level: int = 1, 
+                              options: Dict = None) -> 'EstimatorV2':
+        """
+        [v2.7.0 INTERNE] Crée un EstimatorV2 configuré. 
+        Usage INTERNE uniquement — appelé par run_estimator().
         """
         from qiskit_ibm_runtime import EstimatorV2
         
@@ -16713,11 +20044,7 @@ class QMCFramework:
             raise QMCExecutionError("Non connecté au backend")
         
         estimator = EstimatorV2(mode=self.backend)
-        
-        # Configurer selon le niveau de résilience
         estimator.options.resilience_level = resilience_level
-        
-        # Options communes
         estimator.options.dynamical_decoupling.enable = True
         estimator.options.dynamical_decoupling.sequence_type = "XY4"
         
@@ -16730,11 +20057,292 @@ class QMCFramework:
             estimator.options.resilience.zne.noise_factors = [1, 3, 5]
             estimator.options.resilience.zne.extrapolator = ["exponential", "linear"]
         
-        # Merger les options personnalisées
         if options:
             estimator.options.update(**options)
         
         return estimator
+    
+    def run_estimator(self, pubs, shots: int = None, 
+                      resilience_level: int = 1,
+                      options: Dict = None,
+                      upload_to_archive: bool = True,
+                      archive_projects: List[str] = None,
+                      archive_notes: str = None) -> Optional[List[Dict]]:
+        """
+        [v2.7.0] Exécute des PUBs via EstimatorV2 avec le pipeline COMPLET du framework.
+        
+        MÊME PIPELINE que run_on_qpu():
+        - Estimation coût + confirmation obligatoire
+        - Checkpoint pour reprise après crash
+        - Monitoring robuste (reconnexion auto, timeout/appel)
+        - Récupération sécurisée avec timeout
+        - Rescue save IMMÉDIAT (résultats bruts sur disque)
+        - Archive QMC complète (34 sections)
+        - Upload QMC Archive (si configuré)
+        
+        Args:
+            pubs: Liste de PUBs [(circuit, observable), ...] ou [(circuit, observable, params), ...]
+            shots: Nombre de shots (défaut: self.default_shots)
+            resilience_level: Niveau de résilience (0=brut, 1=TREX+DD, 2=+ZNE+twirl)
+            options: Options EstimatorV2 personnalisées
+            upload_to_archive: Upload vers QMC Archive (défaut: True)
+            archive_projects: UUIDs projets QMC Archive (défaut: .env)
+            archive_notes: Notes pour l'archive
+            
+        Returns:
+            Liste de dicts avec {circuit_index, expectation_value, std_error, metadata}
+            ou None si échec/annulé
+            
+        Example:
+            >>> from qiskit.quantum_info import SparsePauliOp
+            >>> obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+            >>> isa_circuit = fw.transpile_circuits([circuit])[0]
+            >>> isa_obs = obs.apply_layout(isa_circuit.layout, num_qubits=isa_circuit.num_qubits)
+            >>> results = fw.run_estimator(
+            ...     pubs=[(isa_circuit, isa_obs)],
+            ...     shots=8192,
+            ...     resilience_level=2
+            ... )
+            >>> for r in results:
+            ...     print(f"⟨O⟩ = {r['expectation_value']:.6f} ± {r['std_error']:.6f}")
+        """
+        if shots is None:
+            shots = getattr(self, 'default_shots', 8192)
+        
+        if not self._connected:
+            raise QMCExecutionError("Non connecté au backend")
+        
+        lnames = {0: "brut", 1: "TREX+DD", 2: "TREX+ZNE+twirl"}
+        lname = lnames.get(resilience_level, f"level{resilience_level}")
+        
+        global_start_time = time.time()
+        run_context = {
+            'shots': shots,
+            'circuits_count': len(pubs),
+            'primitive': 'EstimatorV2',
+            'resilience_level': resilience_level,
+            'resilience_name': lname,
+            'job_id': None,
+            'status': 'STARTING',
+            'qpu_time_s': 0,
+        }
+        execution_error = None
+        results = None
+        job_id = None
+        
+        try:
+            self.logger.section(f"ESTIMATOR V2 — Level {resilience_level} ({lname})")
+            self.logger.info(f"  📊 {len(pubs)} PUBs, {shots} shots")
+            
+            # === ESTIMATION COÛT ===
+            isa_circuits = [pub[0] if isinstance(pub, tuple) else pub for pub in pubs]
+            self.estimate_cost(isa_circuits, shots, display=True)
+            
+            # === CONFIRMATION ===
+            actual_auto_confirm = QMC_AUTO_CONFIRM
+            in_multijob_context = getattr(self, '_in_multijob_context', False)
+            if in_multijob_context:
+                actual_auto_confirm = self.auto_confirm
+            
+            if not actual_auto_confirm:
+                if not self._confirm_qpu_submission(isa_circuits, shots):
+                    self.logger.warn("❌ Envoi QPU ANNULÉ par l'utilisateur")
+                    run_context['status'] = 'CANCELLED_BY_USER'
+                    return None
+            
+            # === CRÉER ESTIMATOR (interne) ===
+            estimator = self._create_estimator_v2(resilience_level, options)
+            estimator.options.default_shots = shots
+            
+            # === SOUMISSION ===
+            self.logger.info(f"  📤 Soumission {len(pubs)} PUBs...")
+            job = estimator.run(pubs)
+            job_id = job.job_id()
+            self._last_job_id = job_id
+            run_context['job_id'] = job_id
+            self.logger.info(f"  🆔 Job ID: {job_id}")
+            
+            # === CHECKPOINT ===
+            try:
+                self.checkpoint_manager.save_checkpoint({
+                    'job_id': job_id,
+                    'type': 'estimator',
+                    'resilience_level': resilience_level,
+                    'n_pubs': len(pubs),
+                    'shots': shots,
+                    'timestamp': datetime.now().isoformat(),
+                    'backend_name': self.backend_name,
+                }, name=f"estimator_L{resilience_level}_{job_id[:8]}")
+            except Exception:
+                pass
+            
+            # === MONITORING ROBUSTE ===
+            try:
+                metrics = self._monitor_job_with_reconnect(
+                    job, timeout=None,
+                    poll_interval=10.0,
+                    status_timeout=45.0
+                )
+                
+                if metrics.get('connection_lost'):
+                    raise QMCTimeoutError(
+                        f"Connexion perdue - job_id: {job_id}",
+                        job_id=job_id
+                    )
+            except Exception as e:
+                execution_error = e
+                run_context['status'] = 'MONITORING_ERROR'
+                raise
+            
+            final_status = metrics.get('final_status', 'UNKNOWN')
+            run_context['status'] = final_status
+            
+            if final_status in ['ERROR', 'CANCELLED']:
+                error_details = self._get_job_error_details(job)
+                execution_error = QMCExecutionError(
+                    f"Job {final_status}: {error_details.get('error_message', '?')}",
+                    job_id=job_id
+                )
+                raise execution_error
+            
+            # === RÉCUPÉRATION RÉSULTATS ===
+            qpu_times = self.get_job_execution_times(job_id)
+            run_context['qpu_time_s'] = qpu_times.get('qpu_time_s', 0) or 0
+            
+            raw_result = self._safe_get_job_result(job, timeout_seconds=120.0)
+            
+            # === EXTRACTION ===
+            # [v2.7.1 FIX] Gère les PUB MULTI-OBSERVABLES : pr.data.evs est un ndarray
+            # dont la forme = broadcast de la PUB. L'ancien float(pr.data.evs) levait un
+            # TypeError pour len>1 (donc plantage APRÈS facturation du job QPU).
+            results = []
+            for i, pr in enumerate(raw_result):
+                evs_arr = np.asarray(pr.data.evs)
+                stds_arr = np.asarray(pr.data.stds) if hasattr(pr.data, 'stds') else None
+                if evs_arr.ndim == 0:
+                    # Observable unique -> scalaire
+                    results.append({
+                        'circuit_index': i,
+                        'expectation_value': float(evs_arr),
+                        'std_error': float(stds_arr) if stds_arr is not None else 0.0,
+                        'shots': shots,
+                        'resilience_level': resilience_level,
+                    })
+                else:
+                    # Multi-observables -> liste (une valeur par observable)
+                    evs_list = [float(x) for x in evs_arr.ravel()]
+                    stds_list = ([float(x) for x in stds_arr.ravel()]
+                                 if stds_arr is not None else [0.0] * len(evs_list))
+                    results.append({
+                        'circuit_index': i,
+                        # compat : valeur scalaire si un seul observable, sinon liste
+                        'expectation_value': evs_list[0] if len(evs_list) == 1 else evs_list,
+                        'expectation_values': evs_list,
+                        'std_error': stds_list[0] if len(stds_list) == 1 else stds_list,
+                        'std_errors': stds_list,
+                        'n_observables': len(evs_list),
+                        'shots': shots,
+                        'resilience_level': resilience_level,
+                    })
+            
+            run_context['status'] = 'DONE'
+            run_context['completed_at'] = datetime.now().strftime('%H:%M:%S')
+            
+            elapsed = time.time() - global_start_time
+            self.logger.info(f"  [OK] Estimator terminé!")
+            self.logger.info(f"       ⏱️  Temps total: {elapsed:.1f}s")
+            self.logger.info(f"       🚀 Temps QPU: {run_context['qpu_time_s']:.2f}s")
+            self.logger.info(f"       📊 {len(results)} résultats")
+            
+        except Exception as e:
+            execution_error = e
+            run_context['status'] = run_context.get('status', 'ERROR')
+            run_context['total_time_s'] = time.time() - global_start_time
+            raise
+            
+        finally:
+            # === PIPELINE IDENTIQUE À run_on_qpu finally ===
+            run_context['total_time_s'] = time.time() - global_start_time
+            
+            self.logger.info(f"")
+            self.logger.info(f"  📦 Post-traitement Estimator...")
+            
+            # 1. Rescue save IMMÉDIAT
+            if results:
+                try:
+                    rescue_data = {
+                        'job_id': job_id,
+                        'type': 'estimator',
+                        'resilience_level': resilience_level,
+                        'shots': shots,
+                        'timestamp': datetime.now().isoformat(),
+                        'results': results,
+                    }
+                    if hasattr(self, 'dir_manager') and self.dir_manager:
+                        self.dir_manager.save_json('estimator_results', rescue_data)
+                        self.logger.info(f"  💾 Résultats sauvegardés")
+                except Exception:
+                    pass
+            
+            # 2. Archive JSON complète
+            actual_generate_archive = QMC_GENERATE_ARCHIVE
+            if actual_generate_archive:
+                try:
+                    # Construire résultats compatibles format archive
+                    archive_results = []
+                    if results:
+                        for r in results:
+                            archive_results.append({
+                                'circuit_index': r['circuit_index'],
+                                'shots': shots,
+                                'counts': {},
+                                'expectation_value': r['expectation_value'],
+                                'std_error': r['std_error'],
+                            })
+                    
+                    transpiled_for_archive = [pub[0] if isinstance(pub, tuple) else pub 
+                                              for pub in pubs] if pubs else None
+                    
+                    self._generate_auto_archive(
+                        results=archive_results,
+                        original_circuits=None,
+                        transpiled_circuits=transpiled_for_archive,
+                        run_context=run_context,
+                        error=execution_error
+                    )
+                except Exception as archive_error:
+                    self.logger.warn(f"  ⚠️ Archive: {archive_error}")
+            
+            # 3. Upload QMC Archive
+            if actual_generate_archive and upload_to_archive:
+                try:
+                    uploader = get_archive_uploader(self.logger)
+                    if uploader.is_enabled():
+                        archive_path = self.last_archive_path
+                        if archive_path and archive_path.exists():
+                            upload_result = uploader.upload(
+                                file_path=str(archive_path),
+                                project_ids=archive_projects,
+                                notes=archive_notes or f"Estimator L{resilience_level} {lname} - {job_id}",
+                                job_id=job_id,
+                            )
+                            uploader.print_upload_report(upload_result, compact=True)
+                except Exception as upload_error:
+                    self.logger.warn(f"  ⚠️ Upload: {upload_error}")
+            
+            # 4. Rapport HTML
+            actual_generate_report = QMC_GENERATE_REPORT
+            if actual_generate_report:
+                try:
+                    self.logger.info(f"  📊 Génération du rapport HTML...")
+                    self._generate_auto_report(
+                        archive_results if results else None,
+                        run_context, execution_error
+                    )
+                except Exception as report_error:
+                    self.logger.warn(f"  ⚠️ Rapport: {report_error}")
+        
+        return results
     
     def get_execution_spans(self, job) -> Dict:
         """
@@ -17567,49 +21175,34 @@ class QMCFramework:
     def transpile_parallel(self, circuits, n_workers: int = None,
                            optimization_level: int = 3) -> List:
         """
-        [v2.6.0] Transpile les circuits en parallèle.
+        [v2.7.0] Transpile les circuits en parallèle via ProcessPoolExecutor multi-CPU.
+        
+        ⚠️ NOTA: Depuis v2.7.0, transpile_circuits() supporte nativement le mode
+        parallèle (parallel='auto'). Cette méthode est un raccourci qui force
+        le parallélisme même pour un petit nombre de circuits.
         
         Args:
             circuits: Liste de circuits
-            n_workers: Nombre de workers (défaut: CPU count)
-            optimization_level: Niveau d'optimisation
+            n_workers: Nombre de workers CPU (défaut: cpu_count)
+            optimization_level: Niveau d'optimisation Qiskit (0-3, défaut: 3)
             
         Returns:
             Liste de circuits transpilés
+            
+        Example:
+            # Forcer 8 workers
+            transpiled = fw.transpile_parallel(circuits, n_workers=8)
+            
+            # Équivalent à:
+            transpiled = fw.transpile_circuits(circuits, parallel='always', n_workers=8)
         """
-        from concurrent.futures import ProcessPoolExecutor, as_completed
-        from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-        import multiprocessing
-        import os
-        
-        if n_workers is None:
-            n_workers = min(multiprocessing.cpu_count(), len(circuits))
-        
-        if self.logger:
-            self.logger.info(f"  🔄 Transpilation parallèle: {len(circuits)} circuits, {n_workers} workers")
-        
-        # Pour éviter les problèmes de sérialisation, on utilise une approche simple
-        backend = getattr(self, 'backend', None)
-        if backend is None:
-            raise ValueError("Backend required for parallel transpilation")
-        
-        pm = generate_preset_pass_manager(
-            backend=backend,
-            optimization_level=optimization_level
+        return self.transpile_circuits(
+            circuits,
+            optimization_level=optimization_level,
+            parallel='always',
+            n_workers=n_workers,
+            show_progress=True,
         )
-        
-        # Transpiler par batch (plus efficace que circuit par circuit)
-        batch_size = max(1, len(circuits) // n_workers)
-        batches = [circuits[i:i+batch_size] for i in range(0, len(circuits), batch_size)]
-        
-        transpiled_all = []
-        for batch in batches:
-            transpiled_all.extend(pm.run(batch))
-        
-        if self.logger:
-            self.logger.info(f"  ✅ {len(transpiled_all)} circuits transpilés")
-        
-        return transpiled_all
     
     def _generate_auto_archive(self, results: List[Dict], original_circuits, transpiled_circuits,
                                run_context: Dict, error: Exception = None):
@@ -17758,6 +21351,146 @@ class QMCFramework:
         else:
             self.logger.warn("Aucun rapport disponible. Exécutez run_on_qpu() d'abord.")
     
+    # =========================================================================
+    # [v2.7.0] MODE COLLECTION DE CIRCUITS
+    # =========================================================================
+    # Permet d'accumuler les circuits de plusieurs run_on_qpu() pour générer
+    # un rapport unique à la fin contenant TOUS les circuits.
+    #
+    # Usage:
+    #   fw.start_circuit_collection()
+    #   fw.run_on_qpu(circuits_off, ...)  # Circuits accumulés
+    #   fw.run_on_qpu(circuits_on, ...)   # Circuits accumulés
+    #   ... répéter ...
+    #   fw.stop_circuit_collection()  # Génère rapport avec TOUS les circuits
+    #
+    # Note: Compatible avec _in_multijob_context pour confirmation unique
+    # =========================================================================
+    
+    def start_circuit_collection(self, max_circuits: int = 500):
+        """
+        [v2.7.0] Démarre la collection de circuits pour rapport unifié.
+        
+        Tous les circuits passés à run_on_qpu() seront accumulés jusqu'à
+        l'appel de stop_circuit_collection() qui générera un rapport unique.
+        
+        Args:
+            max_circuits: Limite max de circuits à collecter (défaut: 500)
+                         Pour éviter une consommation mémoire excessive.
+        
+        Example:
+            >>> fw.start_circuit_collection()
+            >>> fw.run_on_qpu(circuits_off_1, ...)
+            >>> fw.run_on_qpu(circuits_on_1, ...)
+            >>> fw.run_on_qpu(circuits_off_2, ...)
+            >>> fw.run_on_qpu(circuits_on_2, ...)
+            >>> report_path = fw.stop_circuit_collection()
+            >>> print(f"Rapport avec tous les circuits: {report_path}")
+        """
+        self._collecting_circuits = True
+        self._collected_circuits = []
+        self._collection_max = max_circuits
+        self._collection_results = []  # Aussi collecter les résultats
+        self._collection_start_time = time.time()
+        self.logger.info(f"🔄 Mode collection activé (max {max_circuits} circuits)")
+    
+    def stop_circuit_collection(self, 
+                                generate_report: bool = True,
+                                report_title: str = None) -> Optional[Path]:
+        """
+        [v2.7.0] Arrête la collection et génère un rapport unifié.
+        
+        Args:
+            generate_report: Si True, génère un rapport HTML avec tous les circuits
+            report_title: Titre personnalisé pour le rapport
+            
+        Returns:
+            Path du rapport généré, ou None si generate_report=False
+        """
+        if not getattr(self, '_collecting_circuits', False):
+            self.logger.warn("⚠️ Aucune collection en cours")
+            return None
+        
+        self._collecting_circuits = False
+        collected = getattr(self, '_collected_circuits', [])
+        n_collected = len(collected)
+        
+        elapsed = time.time() - getattr(self, '_collection_start_time', time.time())
+        
+        self.logger.info(f"📊 Collection terminée: {n_collected} circuits en {elapsed:.1f}s")
+        
+        report_path = None
+        
+        if generate_report and n_collected > 0:
+            # Utiliser les circuits collectés pour le rapport
+            self._last_transpiled_circuits = collected
+            
+            # [v2.7.0 FIX] Générer le rapport unifié avec les VRAIES données du framework
+            # Récupérer le run_context du dernier job si disponible
+            last_run_context = getattr(self, '_last_run_context', {})
+            
+            run_context = {
+                # Données de collection
+                'collection_mode': True,
+                'total_circuits': n_collected,
+                'collection_time_s': elapsed,
+                'circuits_count': n_collected,
+                
+                # Données du dernier job (pour avoir backend, shots, etc.)
+                'shots': last_run_context.get('shots', 0),
+                'backend': self.backend_name if hasattr(self, 'backend_name') else 'N/A',
+                'job_id': last_run_context.get('job_id', 'COLLECTION'),
+                'optimization_level': last_run_context.get('optimization_level', 3),
+                'layout_strategy': last_run_context.get('layout_strategy', 'auto'),
+                
+                # Timing agrégé
+                'total_time_s': elapsed,
+                'qpu_time_s': sum(r.get('qpu_time_s', 0) for r in getattr(self, '_collection_results', []) if isinstance(r, dict)),
+                'queue_time_s': last_run_context.get('queue_time_s', 0),
+                'transpile_time_s': last_run_context.get('transpile_time_s', 0),
+                
+                # Timestamps
+                'timestamp': datetime.now().isoformat(),
+                'submitted_at': last_run_context.get('submitted_at', 'N/A'),
+                'completed_at': datetime.now().strftime('%H:%M:%S'),
+            }
+            
+            title = report_title or f"QMC Collection Report - {n_collected} circuits"
+            
+            try:
+                # Collecter tous les résultats (flatten si liste de listes)
+                all_results = []
+                for r in getattr(self, '_collection_results', []):
+                    if isinstance(r, list):
+                        all_results.extend(r)
+                    elif isinstance(r, dict):
+                        all_results.append(r)
+                
+                report_path = self.report_generator.generate(
+                    results=all_results if all_results else None,
+                    run_context=run_context,
+                    title=title,
+                    transpiled_circuits=collected
+                )
+                self._last_report_path = report_path
+                self.logger.info(f"📄 Rapport unifié: {report_path}")
+            except Exception as e:
+                self.logger.warn(f"⚠️ Erreur génération rapport: {e}")
+        
+        # Nettoyer
+        self._collected_circuits = []
+        self._collection_results = []
+        
+        return report_path
+    
+    def get_collected_circuits_count(self) -> int:
+        """[v2.7.0] Retourne le nombre de circuits collectés."""
+        return len(getattr(self, '_collected_circuits', []))
+    
+    def is_collecting_circuits(self) -> bool:
+        """[v2.7.0] Retourne True si le mode collection est actif."""
+        return getattr(self, '_collecting_circuits', False)
+
     def _get_job_error_details(self, job) -> Dict[str, Any]:
         """
         [v2.5.15] Récupère les détails d'erreur d'un job IBM Quantum.
@@ -18118,9 +21851,10 @@ class QMCFramework:
         total_shots = n_circuits * shots
         
         # Calculer les stats des circuits TRANSPILÉS
+        # [v2.7.0] Utiliser count_ops() au lieu d'itérer circuit.data (rapide sur gros circuits)
         total_depth = sum(c.depth() for c in circuits)
         total_2q = sum(
-            sum(1 for inst in c.data if len(inst.qubits) == 2)
+            sum(v for k, v in c.count_ops().items() if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
             for c in circuits
         )
         max_qubits = max(c.num_qubits for c in circuits) if circuits else 0
@@ -18554,160 +22288,22 @@ class QMCFramework:
     def _monitor_job_with_animation(self, job, timeout: float = None, 
                                     n_circuits: int = 1, shots: int = 4096) -> Dict:
         """
-        [v2.5.14] Monitor un job avec animation d'attente visible.
+        [DÉPRÉCIÉ v2.7.0] Redirige vers _monitor_job_with_reconnect.
         
-        Affiche une progression continue pour que l'utilisateur sache que ça fonctionne.
+        Cette méthode n'avait PAS de reconnexion auto, PAS de timeout par appel status(),
+        PAS de mise à jour de file d'attente. Utilisez _monitor_job_with_reconnect directement.
+        
+        Conservée uniquement pour rétro-compatibilité des scripts externes.
         """
-        import sys
-        import threading
-        
-        start_time = time.time()
-        last_status = None
-        stop_animation = threading.Event()
-        
-        # Animation frames
-        quantum_frames = ['|0⟩', '|+⟩', '|1⟩', '|-⟩', '|ψ⟩', '|φ⟩']
-        progress_frames = ['[■□□□□]', '[■■□□□]', '[■■■□□]', '[■■■■□]', '[■■■■■]', '[□■■■■]', '[□□■■■]', '[□□□■■]', '[□□□□■]', '[□□□□□]']
-        
-        def animate():
-            """Thread d'animation"""
-            frame_idx = 0
-            while not stop_animation.is_set():
-                elapsed = time.time() - start_time
-                
-                # Choisir l'animation selon le statut
-                if last_status == 'QUEUED':
-                    anim = progress_frames[frame_idx % len(progress_frames)]
-                    msg = f"En file d'attente IBM..."
-                elif last_status == 'RUNNING':
-                    anim = quantum_frames[frame_idx % len(quantum_frames)]
-                    msg = f"Exécution QPU en cours..."
-                else:
-                    anim = "⏳"
-                    msg = "Initialisation..."
-                
-                # Formater la ligne
-                line = f"\r  {anim} {msg} ({elapsed:.0f}s)                    "
-                
-                try:
-                    sys.stdout.write(line)
-                    sys.stdout.flush()
-                except:
-                    pass
-                
-                frame_idx += 1
-                stop_animation.wait(0.3)
-            
-            # Effacer la ligne d'animation
-            try:
-                sys.stdout.write("\r" + " " * 70 + "\r")
-                sys.stdout.flush()
-            except:
-                pass
-        
-        # Démarrer l'animation
-        anim_thread = threading.Thread(target=animate, daemon=True)
-        anim_thread.start()
-        
-        # Monitoring du job
-        metrics = {'phases': []}
-        phase_start = start_time
-        
-        try:
-            while True:
-                try:
-                    status = str(job.status())
-                    elapsed = time.time() - start_time
-                    
-                    # Timeout
-                    if timeout and elapsed > timeout:
-                        stop_animation.set()
-                        anim_thread.join(timeout=1)
-                        print(f"\n  ⚠️  TIMEOUT après {elapsed:.0f}s - Job ID: {job.job_id()}")
-                        print(f"  💡 Vous pouvez reprendre les résultats plus tard avec ce Job ID")
-                        try:
-                            job.cancel()
-                        except:
-                            pass
-                        metrics['timeout'] = True
-                        break
-                    
-                    # Changement de statut
-                    if status != last_status:
-                        phase_duration = time.time() - phase_start
-                        
-                        if last_status:
-                            metrics['phases'].append({
-                                'status': last_status,
-                                'duration_s': round(phase_duration, 1)
-                            })
-                        
-                        # Afficher le changement
-                        stop_animation.set()
-                        anim_thread.join(timeout=1)
-                        
-                        if status == 'QUEUED':
-                            print(f"  📋 [{elapsed:>6.0f}s] Status: QUEUED - En file d'attente IBM")
-                        elif status == 'RUNNING':
-                            print(f"  ⚡ [{elapsed:>6.0f}s] Status: RUNNING - Exécution sur {self.backend_name}")
-                        elif status == 'DONE':
-                            print(f"  ✅ [{elapsed:>6.0f}s] Status: DONE - Terminé!")
-                        elif status == 'ERROR':
-                            print(f"  ❌ [{elapsed:>6.0f}s] Status: ERROR - Échec du job")
-                        elif status == 'CANCELLED':
-                            print(f"  🚫 [{elapsed:>6.0f}s] Status: CANCELLED - Job annulé")
-                        else:
-                            print(f"  📊 [{elapsed:>6.0f}s] Status: {status}")
-                        
-                        last_status = status
-                        phase_start = time.time()
-                        
-                        # Relancer l'animation si pas terminé
-                        if status not in ['DONE', 'ERROR', 'CANCELLED']:
-                            stop_animation.clear()
-                            anim_thread = threading.Thread(target=animate, daemon=True)
-                            anim_thread.start()
-                    
-                    # Job terminé
-                    if status in ['DONE', 'ERROR', 'CANCELLED']:
-                        break
-                    
-                    time.sleep(5)  # Polling interval
-                    
-                except Exception as e:
-                    self.logger.warn(f"Monitor error: {e}")
-                    time.sleep(5)
-        
-        finally:
-            stop_animation.set()
-            try:
-                anim_thread.join(timeout=1)
-            except:
-                pass
-        
-        total_time = time.time() - start_time
-        metrics['total_time_s'] = round(total_time, 1)
-        metrics['final_status'] = last_status
-        
-        # Afficher un résumé final
-        print()
-        print(f"  ╔════════════════════════════════════════════════════════════════════════════╗")
-        print(f"  ║  📊 RÉSUMÉ EXÉCUTION QPU                                                   ║")
-        print(f"  ╠════════════════════════════════════════════════════════════════════════════╣")
-        print(f"  ║  🆔 Job:     {job.job_id():<58} ║")
-        print(f"  ║  ⏱️  Durée:   {total_time:.1f}s total                                              ║")
-        
-        # Détail des phases
-        for phase in metrics.get('phases', []):
-            status_emoji = {'QUEUED': '📋', 'RUNNING': '⚡'}.get(phase['status'], '📊')
-            print(f"  ║     {status_emoji} {phase['status']}: {phase['duration_s']:.1f}s                                           ║")
-        
-        status_emoji = {'DONE': '✅', 'ERROR': '❌', 'CANCELLED': '🚫'}.get(last_status, '📊')
-        print(f"  ║  {status_emoji} Final:  {last_status:<58} ║")
-        print(f"  ╚════════════════════════════════════════════════════════════════════════════╝")
-        print()
-        
-        return metrics
+        self.logger.warn(
+            "⚠️ _monitor_job_with_animation() est DÉPRÉCIÉ depuis v2.7.0. "
+            "Utilisation automatique de _monitor_job_with_reconnect() (robuste)."
+        )
+        return self._monitor_job_with_reconnect(
+            job, timeout=timeout,
+            poll_interval=10.0,
+            status_timeout=45.0
+        )
 
     def _display_calibration_summary_compact(self):
         """
@@ -18797,14 +22393,20 @@ class QMCFramework:
         for line in lines:
             print(line)
     
-    def _process_results(self, result, circuits: List, save_counts: bool) -> List[Dict]:
+    def _process_results(self, result, circuits: List, save_counts: bool,
+                         shots: int = None) -> List[Dict]:
         """
         Traite les résultats du job.
-        
+
         [v2.5.3] Inclut maintenant transpiled_depth et gates_2q dans les résultats.
         [v2.5.21] Ajout warning si plusieurs registres classiques détectés.
         [v2.5.21] Support multi-format: QPU, StatevectorSampler, AerSimulator, QuasiDistribution.
-        
+        [v2.7.1 FIX] (1) Les registres classiques multiples ne sont PLUS fusionnés par
+        sommation (ce qui doublait/corrompait les shots) : on retient un registre
+        primaire et on expose les autres séparément. (2) `shots` (réel) est propagé
+        et utilisé pour la conversion QuasiDistribution -> counts au lieu du 1024 codé
+        en dur, AVEC renormalisation par la masse totale de probabilité.
+
         Formats supportés:
         - SamplerV2 IBM Runtime (QPU): pub_result.data.c.get_counts() → {'00': 500}
         - StatevectorSampler: pub_result.data.meas.get_counts() → {'00': 500}
@@ -18830,6 +22432,7 @@ class QMCFramework:
             counts = {}
             found_register = None
             result_format = 'unknown'
+            multi_register_counts = None  # [v2.7.1] registres secondaires (si >1), non fusionnés
             
             # ═══════════════════════════════════════════════════════════════
             # FORMAT 1: PubResult avec BitArray (SamplerV2 / StatevectorSampler)
@@ -18850,9 +22453,13 @@ class QMCFramework:
                     except:
                         pass
                 
-                # Si toujours vide, essayer d'itérer sur tous les attributs de data
+                # Si toujours vide, itérer sur tous les attributs de data
+                # [v2.7.1 FIX] On NE FUSIONNE PLUS par sommation (cela doublait les
+                # shots et corrompait les bitstrings entre registres de largeurs
+                # différentes). On collecte chaque registre séparément puis on retient
+                # un PRIMAIRE (le plus large, puis le premier), et on expose les autres.
                 if not counts:
-                    found_registers = []
+                    per_register = {}
                     try:
                         for attr_name in dir(pub_result.data):
                             if not attr_name.startswith('_'):
@@ -18861,25 +22468,33 @@ class QMCFramework:
                                     if hasattr(attr, 'get_counts'):
                                         c = attr.get_counts()
                                         if c:
-                                            found_registers.append(attr_name)
+                                            per_register[attr_name] = c
                                             result_format = 'BitArray'
-                                            # Fusionner les counts de tous les registres
-                                            for k, v in c.items():
-                                                counts[k] = counts.get(k, 0) + v
                                 except:
                                     pass
                     except:
                         pass
-                    
-                    # [v2.5.21] Warning si plusieurs registres détectés
-                    if len(found_registers) > 1:
-                        self.logger.warn(
-                            f"⚠️ Circuit {i}: {len(found_registers)} registres classiques détectés "
-                            f"({', '.join(found_registers)}). Les counts ont été fusionnés - "
-                            f"vérifiez qu'il n'y a pas de collision de bitstrings."
-                        )
-                    elif found_registers:
-                        found_register = found_registers[0]
+
+                    if per_register:
+                        # Largeur de bitstring par registre (pour choisir le primaire)
+                        def _bitwidth(cc):
+                            try:
+                                return len(next(iter(cc.keys())))
+                            except Exception:
+                                return 0
+                        primary = max(per_register.keys(),
+                                      key=lambda n: (_bitwidth(per_register[n]), n))
+                        counts = dict(per_register[primary])
+                        found_register = primary
+                        if len(per_register) > 1:
+                            # Exposer les registres secondaires SANS les fusionner
+                            multi_register_counts = per_register
+                            self.logger.warn(
+                                f"⚠️ Circuit {i}: {len(per_register)} registres classiques "
+                                f"({', '.join(per_register.keys())}). Registre primaire utilisé: "
+                                f"'{primary}'. Les autres sont exposés dans "
+                                f"res['register_counts'] (PAS de fusion par sommation)."
+                            )
             
             # ═══════════════════════════════════════════════════════════════
             # FORMAT 2: QuasiDistribution (ancien Sampler - clés entières!)
@@ -18902,13 +22517,16 @@ class QMCFramework:
                                 n_qubits = n_qubits_from_circuits
                             
                             # Convertir entiers → bitstrings, probas → counts
+                            # [v2.7.1 FIX] Utilise les VRAIS shots (au lieu de 1024 codé
+                            # en dur) et RENORMALISE par la masse de probabilité totale.
                             total_prob = sum(abs(v) for v in quasi_dist.values())
-                            shots_estimate = 1024  # Estimation par défaut
-                            
+                            shots_estimate = int(shots) if shots else 4096
+                            norm = total_prob if total_prob > 0 else 1.0
+
                             for key_int, prob in quasi_dist.items():
                                 bitstring = format(key_int, f'0{n_qubits}b')
-                                # Convertir proba en count (arrondi)
-                                count = int(round(abs(prob) * shots_estimate))
+                                # Convertir proba (renormalisée) en count (arrondi)
+                                count = int(round((abs(prob) / norm) * shots_estimate))
                                 if count > 0:
                                     counts[bitstring] = count
                             
@@ -18929,11 +22547,11 @@ class QMCFramework:
             # ═══════════════════════════════════════════════════════════════
             # NORMALISATION FINALE DES COUNTS
             # ═══════════════════════════════════════════════════════════════
-            counts = self._normalize_counts_format(counts, circuit_index=i)
-            
+            counts = self._normalize_counts_format(counts, circuit_index=i, shots=shots)
+
             total = sum(counts.values()) if counts else 0
             unique = len(counts)
-            
+
             res = {
                 'circuit_index': i,
                 'shots': total,
@@ -18941,6 +22559,10 @@ class QMCFramework:
                 'counts': counts,
                 'result_format': result_format,  # [v2.5.21] Traçabilité du format
             }
+            # [v2.7.1] Exposer les registres secondaires (non fusionnés) si présents
+            if multi_register_counts is not None and len(multi_register_counts) > 1:
+                res['register_counts'] = {k: dict(v) for k, v in multi_register_counts.items()}
+                res['primary_register'] = found_register
             
             if counts:
                 first_key = next(iter(counts.keys()))
@@ -18963,7 +22585,8 @@ class QMCFramework:
         self.report.set('results', results, section='execution')
         return results
     
-    def _normalize_counts_format(self, counts: Dict, circuit_index: int = 0) -> Dict[str, int]:
+    def _normalize_counts_format(self, counts: Dict, circuit_index: int = 0,
+                                 shots: int = None) -> Dict[str, int]:
         """
         [v2.5.22] Normalise les counts pour un format uniforme SI NÉCESSAIRE.
         
@@ -19040,7 +22663,8 @@ class QMCFramework:
         # Détecter si ce sont des probabilités
         total_value = sum(abs(v) for v in counts.values() if isinstance(v, (int, float)))
         is_probabilities = 0 < total_value <= 1.1
-        shots_estimate = 1024  # Pour conversion proba → counts
+        # [v2.7.1 FIX] Utilise les vrais shots si fournis (au lieu de 1024 codé en dur)
+        shots_estimate = int(shots) if shots else 4096  # Pour conversion proba → counts
         
         for key, value in counts.items():
             # === Normaliser la clé ===
@@ -19505,7 +23129,10 @@ class QGPModule(QMCModule):
     def _counts_to_bytes(self, counts: CountsType) -> bytes:
         bit_list = []
         for bitstring, count in sorted(counts.items(), key=lambda x: -x[1]):
-            bit_list.extend([int(b) for b in bitstring] * count)
+            # [v2.7.1 FIX] Strip register-separator spaces (IBM counts may format
+            # multi-register bitstrings as "010 110") to avoid int(' ') ValueError.
+            clean_bits = bitstring.replace(' ', '')
+            bit_list.extend([int(b) for b in clean_bits] * count)
         
         byte_array = []
         for i in range(0, len(bit_list), 8):
@@ -19551,46 +23178,64 @@ class QAEEModule(QMCModule):
             'precision_qubits': precision_qubits,
             'steps': [],
         }
-        
-        # Build amplitude estimation circuit
-        # Simplified version using GHZ-like preparation
+
+        # [v2.7.1 FIX] Le circuit construit est un GHZ qui n'encode JAMAIS
+        # target_amplitude: il n'effectue donc PAS d'estimation d'amplitude.
+        # sqrt(P(|0...0>)) ~ sqrt(0.5) pour un GHZ, sans rapport avec la cible.
+        # Plutôt que de prétendre faussement estimer une amplitude, on relabelle
+        # honnêtement la sortie comme une DÉMONSTRATION GHZ et on marque
+        # amplitude_estimation_valid=False. (Une vraie estimation d'amplitude
+        # nécessiterait un opérateur A encodant a=target, suivi d'une QPE sur
+        # l'opérateur de Grover Q = A S_0 A^-1 S_psi.)
         builder = self.framework.get_circuit_builder('ghz')
         circuit = builder.build(n_qubits)
-        
+
+        results['amplitude_estimation_valid'] = False
+        results['note'] = (
+            'GHZ demonstration only: this routine prepares a GHZ state and does '
+            'NOT encode or estimate target_amplitude. No genuine amplitude '
+            'estimation (no A-operator + Grover/QPE) is performed; '
+            'target_amplitude is reported for reference only.'
+        )
+
         transpiled = self.framework.transpile_circuits([circuit])
         qpu_results = self.framework.run_on_qpu(transpiled, shots)
-        
+
         if qpu_results:
             counts = qpu_results[0].get('counts', {})
-            
-            # Estimate amplitude from counts
+
+            # Mesure de la population GHZ |0...0> (diagnostic, PAS une amplitude estimée)
             total = sum(counts.values())
             target_state = '0' * n_qubits
             target_count = counts.get(target_state, 0)
-            
+
             # [v2.5.13] Protection contre division par zéro
             if total <= 0:
                 results['success'] = False
                 results['error'] = 'No counts received from QPU (total=0)'
                 self._results = results
                 return results
-            
-            estimated_amplitude = np.sqrt(target_count / total)
-            
-            results['estimated_amplitude'] = round(estimated_amplitude, 6)
-            results['estimation_error'] = round(abs(estimated_amplitude - target_amplitude), 6)
-            results['success'] = results['estimation_error'] < 0.1
-            
+
+            # sqrt(P(|0...0>)) du GHZ: diagnostic uniquement, ne PAS comparer à la cible
+            ghz_zero_population = target_count / total
+            ghz_zero_amplitude = float(np.sqrt(ghz_zero_population))
+
+            results['ghz_zero_population'] = round(ghz_zero_population, 6)
+            results['ghz_zero_amplitude'] = round(ghz_zero_amplitude, 6)
+            # [v2.7.1 FIX] le 'succès' porte sur la préparation GHZ, pas sur
+            # une estimation d'amplitude (qui n'a pas lieu).
+            results['success'] = True
+
             results['steps'].append({
-                'name': 'amplitude_estimation',
+                'name': 'ghz_demonstration',
                 'status': 'success',
-                'estimated': results['estimated_amplitude'],
-                'target': target_amplitude,
+                'ghz_zero_population': results['ghz_zero_population'],
+                'amplitude_estimation_valid': False,
             })
         else:
             results['success'] = False
             results['error'] = 'Quantum execution failed'
-        
+
         self._results = results
         return results
 
@@ -19844,8 +23489,10 @@ def main():
         fw._cleanup()
 
 
-if __name__ == "__main__":
-    main()
+# [v2.7.1] Point d'entrée __main__ PRÉMATURÉ supprimé : il s'exécutait ICI (avant
+# la définition de QMCFrameworkExtended/QMCFramework et de l'alias public), donc `python <fichier>`
+# n'atteignait jamais la classe complète. L'entrée CLI unique est désormais en FIN de fichier
+# (après l'alias QMCFramework = QMCFramework), garantissant l'usage de la classe complète.
 
 
 # ============================================================================
@@ -19990,6 +23637,23 @@ class CredentialsManager(_BaseCredentialsManager):
         label = (label or "").strip().lower()
         self._selected_label = label
 
+    def _cleanup_temp_credentials(self) -> None:
+        """[v2.7.1 FIX] Supprime tout credential temporaire résiduel.
+
+        Évite qu'un compte 'temp' (créé via connect(api_key=...)) ne fuite dans
+        une sélection de compte ultérieure. Nettoie les variables IBM_*_TEMP et
+        désélectionne le label 'temp'.
+        """
+        try:
+            for k in list(os.environ.keys()):
+                if k == "IBM_API_KEY_ACTIVE_TEMP" or (k.startswith("IBM_") and k.endswith("_TEMP")):
+                    os.environ.pop(k, None)
+        except Exception:
+            pass
+        # Désélectionner le label temporaire s'il était actif
+        if getattr(self, "_selected_label", None) == "temp":
+            self._selected_label = None
+
     @property
     def active_label(self) -> str:
         """Retourne le label actif (premier par ordre alphabétique si non spécifié)"""
@@ -20090,11 +23754,13 @@ class CredentialsManager(_BaseCredentialsManager):
         label = self.active_label
         instance = self._credentials.get('instance')
         
-        # Format: "LABEL (abc12...)" pour identifier facilement le compte
+        # [v2.7.1 FIX] Ne révéler que les 4 DERNIERS caractères du token (anti-fuite)
+        masked_key = ('...' + api_key[-4:]) if len(api_key) > 4 else '***'
+        # Format: "LABEL (...ab12)" pour identifier facilement le compte
         return {
             'status': 'loaded',
             'account': label.upper(),
-            'api_key_prefix': api_key[:5] + '...' if len(api_key) > 5 else '***',
+            'api_key_prefix': masked_key,
             'instance': instance[:30] + '...' if instance and len(instance) > 30 else instance,
             'has_instance': bool(instance),  # Pour savoir si un CRN est configuré
         }
@@ -20222,12 +23888,13 @@ class SpinnerAnimation:
 
 
 # ---------------------------------------------------------------------------
-# QMCFramework (extended)
+# QMCFrameworkExtended — couche d'extensions IBM Quantum (hérite de QMCFrameworkBase)
+# [v2.7.1] Hiérarchie LINÉARISÉE : plus de réouverture de classe par alias
+# (auparavant `_BaseQMCFramework = QMCFramework` puis `class QMCFramework(_BaseQMCFramework)`).
+# Chaîne claire : QMCFrameworkBase -> QMCFrameworkExtended -> QMCFramework (classe concrete publique).
 # ---------------------------------------------------------------------------
 
-_BaseQMCFramework = QMCFramework
-
-class QMCFramework(_BaseQMCFramework):
+class QMCFrameworkExtended(QMCFrameworkBase):
     """Framework principal QMC avec extensions IBM Quantum v2.3.x."""
 
     def __init__(self, *args, **kwargs):
@@ -20262,6 +23929,13 @@ class QMCFramework(_BaseQMCFramework):
             show_monthly_stats: Afficher les stats d'utilisation 30j (défaut: True)
             **kwargs: Tolérance signature pour compat tests/runner.
         """
+        # [v2.7.1 FIX] Purger tout credential temporaire résiduel d'un appel précédent
+        # avant de (re)construire la sélection de compte.
+        try:
+            self.credentials._cleanup_temp_credentials()
+        except Exception:
+            pass
+
         # Si api_key explicite, créer une clé ACTIVE temporaire
         if api_key:
             import os
@@ -20656,16 +24330,38 @@ class QMCFramework(_BaseQMCFramework):
             Statut du job ('QUEUED', 'RUNNING', 'DONE', 'ERROR', 'CANCELLED')
             ou None si timeout/erreur
         """
+        # [v2.7.1 FIX] Normalize the status to a bare name. job.status() may
+        # return a JobStatus enum, whose str() is 'JobStatus.DONE' (not 'DONE');
+        # comparing that against 'DONE' would never match and the monitor would
+        # loop forever. Prefer .name, else strip a leading 'JobStatus.' prefix.
+        def _get_normalized_status():
+            raw = job.status()
+            if hasattr(raw, 'name'):
+                return str(raw.name).upper()
+            text = str(raw)
+            if text.startswith('JobStatus.'):
+                text = text[len('JobStatus.'):]
+            return text.upper()
+
+        # [v2.7.1 FIX R151] Ne PAS utiliser `with ThreadPoolExecutor(...)` : son __exit__
+        # appelle shutdown(wait=True) qui JOIN le worker bloqué -> le timeout annoncé
+        # n'a aucun effet (on attend la fin réelle de job.status()). On crée l'executor,
+        # on lit avec timeout, et on l'abandonne sans attendre (wait=False, cancel_futures).
+        executor = ThreadPoolExecutor(max_workers=1)
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(lambda: str(job.status()))
-                return future.result(timeout=timeout_seconds)
+            future = executor.submit(_get_normalized_status)
+            return future.result(timeout=timeout_seconds)
         except FutureTimeout:
             self.logger.warn(f"⚠️ Timeout ({timeout_seconds}s) en récupérant le statut du job")
             return None
         except Exception as e:
             self.logger.warn(f"⚠️ Erreur récupération statut: {e}")
             return None
+        finally:
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                executor.shutdown(wait=False)  # Python < 3.9
 
     def _safe_get_job_result(self, job, timeout_seconds: float = 120.0):
         """
@@ -21389,7 +25085,9 @@ class QMCFramework(_BaseQMCFramework):
                     try:
                         if job_info['status'] == 'DONE':
                             usage = job.usage()
-                            job_info['qpu_time_s'] = float(usage) if usage else None
+                            # [v2.7.1 FIX] use _safe_float (numpy/iterable-safe) for consistency
+                            # with every other usage extraction in this class; raw float() can raise.
+                            job_info['qpu_time_s'] = self._safe_float(usage) if usage else None
                     except:
                         pass
                     
@@ -21655,8 +25353,11 @@ class QMCFramework(_BaseQMCFramework):
             raise RuntimeError("Non connecté! Appelez connect() d'abord.")
 
         def _fetch():
-            return self.service.jobs(
-                limit=limit,
+            # [v2.7.1 FIX R82] paginer pour ne pas tronquer les stats/budget à `limit`
+            return _paginate_service_jobs(
+                self.service,
+                page=min(int(limit) if limit else 200, 200),
+                max_total=max(int(limit) if limit else 0, 5000),
                 backend_name=backend_name,
                 job_tags=job_tags,
                 created_after=created_after,
@@ -21791,6 +25492,12 @@ class QMCFramework(_BaseQMCFramework):
     # -----------------------------
 
     def get_available_accounts(self) -> Dict[str, Dict[str, Any]]:
+        # [v2.7.1 FIX] Purger tout credential temporaire résiduel pour qu'un
+        # compte 'temp' obsolète ne réapparaisse jamais dans la liste des comptes.
+        try:
+            self.credentials._cleanup_temp_credentials()
+        except Exception:
+            pass
         return self.credentials.list_accounts()
 
     def list_available_account_labels(self) -> List[str]:
@@ -21835,8 +25542,11 @@ class QMCFramework(_BaseQMCFramework):
                         raise RuntimeError("QiskitRuntimeService indisponible.")
                     service = QiskitRuntimeService(**cfg)
 
-                jobs = service.jobs(
-                    limit=limit,
+                # [v2.7.1 FIX R82] paginer (évite la sur-estimation du budget par troncature)
+                jobs = _paginate_service_jobs(
+                    service,
+                    page=min(int(limit) if limit else 200, 200),
+                    max_total=max(int(limit) if limit else 0, 5000),
                     backend_name=backend_name,
                     job_tags=job_tags,
                     created_after=created_after,
@@ -22055,15 +25765,19 @@ class QMCFramework(_BaseQMCFramework):
                     service = QiskitRuntimeService(**cfg)
                 
                 # Récupérer la liste des jobs
-                jobs = service.jobs(
-                    limit=limit,
+                # [v2.7.1 FIX R82] paginer pour télécharger réellement TOUS les jobs
+                # (l'appel unique limit=N tronquait silencieusement, omettant des jobs)
+                jobs = _paginate_service_jobs(
+                    service,
+                    page=min(int(limit) if limit else 200, 200),
+                    max_total=max(int(limit) if limit else 0, 5000),
                     backend_name=backend_name,
                     job_tags=job_tags,
                     created_after=created_after,
                     created_before=now,
                     descending=True
                 ) or []
-                
+
                 account_result["jobs_count"] = len(jobs)
                 
                 if verbose:
@@ -22343,7 +26057,7 @@ class QMCFramework(_BaseQMCFramework):
             f.write("\n".join(lines))
     
     # =========================================================================
-    # [v2.5.15] MÉTHODES D'ESTIMATION DE COÛT (déplacées de QMCFrameworkV2_4)
+    # [v2.5.15] MÉTHODES D'ESTIMATION DE COÛT (déplacées de QMCFramework)
     # =========================================================================
     
     def estimate_cost(self, circuits, shots: int = 4096,
@@ -22352,7 +26066,7 @@ class QMCFramework(_BaseQMCFramework):
         Estime le coût d'exécution avant soumission.
         
         [v2.5.14] Accepte circuit unique OU liste.
-        [v2.5.15] Maintenant disponible dans QMCFramework (pas juste V2_4).
+        [v2.5.15] Maintenant disponible dans QMCFramework (par héritage).
         
         Args:
             circuits: Circuit unique OU liste de circuits à estimer
@@ -22386,7 +26100,7 @@ class QMCFramework(_BaseQMCFramework):
         
         Affiche l'estimation et demande confirmation avant d'exécuter.
         [v2.5.14] Accepte circuit unique OU liste.
-        [v2.5.15] Maintenant disponible dans QMCFramework (pas juste V2_4).
+        [v2.5.15] Maintenant disponible dans QMCFramework (par héritage).
         """
         # [v2.5.14] Auto-wrapping
         from qiskit import QuantumCircuit
@@ -22508,7 +26222,7 @@ FRAMEWORK_DATE = "2025-12-11"
 # Override __version__ from v2.3.1
 # __version__ déjà défini
 
-FRAMEWORK_BANNER_V2_4 = """
+FRAMEWORK_BANNER_LEGACY_UNUSED = """
 ╔═══════════════════════════════════════════════════════════════════════════╗
 ║            QMC QUANTUM TESTING FRAMEWORK v{version}                         ║
 ║                      QMC Research Lab 2025                                ║
@@ -22684,22 +26398,42 @@ class QuantumSignatureBuilder(CircuitBuilder):
         Returns:
             Circuit combiné pour vérification batch
         """
-        from qiskit import QuantumCircuit
-        
+        from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+
+        # [v2.7.1 FIX] L'ancien code construisait un circuit par signature mais
+        # ne RETOURNAIT QUE LE PREMIER -> une seule signature était réellement
+        # vérifiée. On itère désormais sur TOUTES les signatures et on les
+        # compose dans un unique circuit batch, chacune sur un bloc de qubits
+        # DISJOINT (et son propre registre classique), de sorte que chaque
+        # signature soit effectivement exécutée/vérifiée.
         circuits = []
         for msg_hash, key_seed in signatures:
-            circuit = self.build(msg_hash, n_qubits, key_seed, 
-                                verification_mode=True, add_measurements=False)
+            circuit = self.build(msg_hash, n_qubits, key_seed,
+                                 verification_mode=True, add_measurements=False)
             circuits.append(circuit)
-        
-        # Combiner les circuits (simplification: on retourne le premier)
-        # En production: utiliser parallel execution
-        if circuits:
-            combined = circuits[0]
-            combined.name = f"QSig_batch_{len(signatures)}sigs"
-            return combined
-        
-        return None
+
+        if not circuits:
+            return None
+
+        # Largeur (nombre de qubits) de chaque sous-circuit de signature
+        block_width = max(c.num_qubits for c in circuits)
+        n_sigs = len(circuits)
+
+        qr = QuantumRegister(block_width * n_sigs, 'q')
+        # Un registre classique par signature pour distinguer les résultats
+        cregs = [ClassicalRegister(block_width, f'c{idx}') for idx in range(n_sigs)]
+        combined = QuantumCircuit(qr, *cregs, name=f"QSig_batch_{n_sigs}sigs")
+
+        for idx, sub in enumerate(circuits):
+            offset = idx * block_width
+            target_qubits = list(range(offset, offset + sub.num_qubits))
+            # Composer le sous-circuit sur son bloc de qubits dédié
+            combined.compose(sub, qubits=target_qubits, inplace=True)
+            # Mesurer le bloc dans son registre classique dédié
+            for q in range(sub.num_qubits):
+                combined.measure(offset + q, cregs[idx][q])
+
+        return combined
     
     def _derive_angles_from_bytes(self, data: bytes, n: int) -> List[float]:
         """Dérive n angles depuis des bytes via SHAKE-256"""
@@ -22949,8 +26683,9 @@ class ZKPBuilder(CircuitBuilder):
         """
         from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
         
-        # Encoder la preuve
-        proof_data = struct.pack('>QQQ', value, lower, upper)
+        # Encoder la preuve [v2.7.1: encodage texte robuste — l'ancien struct.pack
+        # '>QQQ' plantait pour value négatif ou > 2^64]
+        proof_data = f"{int(value)}|{int(lower)}|{int(upper)}".encode()
         nonce = secrets.token_bytes(16)
         commitment = hashlib.sha256(proof_data + nonce).digest()
         
@@ -22971,23 +26706,53 @@ class ZKPBuilder(CircuitBuilder):
         for i, q in enumerate(path):
             qc.rz(angles[i], q)
         
-        # Pattern CZ basé sur les bits de value normalisé
-        normalized = (value - lower) / (upper - lower) if upper > lower else 0.5
-        n_cz = int(normalized * (len(path) - 1))
-        for i in range(n_cz):
-            qc.cz(path[i], path[i + 1])
-        
+        # [v2.7.1 FIX] Le pattern CZ est désormais dérivé du COMMITMENT (et non de
+        # la valeur normalisée). L'ancien code calculait n_cz = int(normalized*(len-1))
+        # ce qui (1) levait IndexError pour value > upper (n_cz >= len(path)) et
+        # (2) FUITAIT la valeur secrète : le nombre de portes CZ était une fonction
+        # monotone déterministe de `value`. On borne la boucle et on masque la valeur.
+        # La garantie cryptographique de bornes provient de la preuve CLASSIQUE
+        # QMCSigmaZK.range_prove (cf. make_range_proof) ; ce circuit n'est qu'un
+        # artefact d'engagement quantique sans rôle de sécurité.
+        cz_pattern = self._derive_angles(commitment, max(1, len(path) - 1))
+        for i in range(len(path) - 1):
+            if cz_pattern[i] > np.pi:   # ~50% des positions, déterminé par le commitment
+                qc.cz(path[i], path[i + 1])
+
         for q in path:
             qc.h(q)
-        
+
         for i, q in enumerate(path):
             qc.measure(q, i)
-        
+
         self._metadata['proof_type'] = 'range'
         self._metadata['range'] = f"[{lower}, {upper}]"
         self._log(f"Built Range Proof circuit: {n_qubits}Q, range=[{lower},{upper}]")
-        
+
         return qc
+
+    # -- [v2.7.1] Preuves ZK CLASSIQUES vérifiables (garanties réelles) --
+    def make_range_proof(self, value: int, lower: int, upper: int) -> Dict:
+        """Produit une preuve ZK NON-INTERACTIVE et VÉRIFIABLE que value ∈ [lower, upper]
+        sans révéler value (QMCSigmaZK : Pedersen + OR-proofs + Fiat-Shamir). Lève
+        QMCSecurityError si value est hors bornes (au lieu de fuiter/crasher)."""
+        return QMCSigmaZK.range_prove(value, lower, upper)
+
+    @staticmethod
+    def verify_range_proof(proof: Dict) -> bool:
+        """Vérifie une preuve de make_range_proof. True ssi la preuve est valide."""
+        return QMCSigmaZK.range_verify(proof)
+
+    def prove_secret_knowledge(self, secret_int: int):
+        """Preuve de connaissance d'un secret x (y = g^x publié). Renvoie (proof, y)."""
+        x = int(secret_int) % QMCSigmaZK.Q
+        proof = QMCSigmaZK.prove_knowledge(x)
+        return proof, proof['y']
+
+    @staticmethod
+    def verify_secret_knowledge(proof: Dict) -> bool:
+        """Vérifie une preuve de connaissance (Schnorr). True ssi valide."""
+        return QMCSigmaZK.verify_knowledge(proof)
     
     def _derive_angles(self, data: bytes, n: int) -> List[float]:
         """Dérive n angles depuis des bytes"""
@@ -23110,10 +26875,54 @@ class TimeLockBuilder(CircuitBuilder):
         self._metadata['timelock_mode'] = 'forward'
         self._metadata['unlock_time'] = unlock_time.isoformat()
         self._metadata['hours_until_unlock'] = round(hours_until_unlock, 2)
+        # [v2.7.1] Ce circuit est un ARTEFACT d'engagement : il n'impose aucune
+        # contrainte temporelle réelle. Pour un vrai time-lock, utiliser
+        # make_forward_lock() / open_forward_lock() (puzzle RSW QMCTimeLock).
+        self._metadata['security_note'] = 'circuit artifact only; use make_forward_lock for real timelock'
         self._log(f"Built Forward TimeLock: unlocks at {unlock_time.isoformat()}")
-        
+
         return qc
-    
+
+    # -- [v2.7.1] Time-lock cryptographique RÉEL (puzzle RSW) --
+    def make_forward_lock(self, data: bytes, unlock_time: datetime,
+                          squarings_per_second: int = 200000) -> Dict:
+        """Crée un forward time-lock RÉEL et reproductible (QMCTimeLock/RSW). Le
+        nombre de carrés séquentiels est calibré sur le délai souhaité et le débit
+        machine `squarings_per_second`. Renvoie un puzzle sérialisable + décodable."""
+        delay_s = max(0.0, (unlock_time - datetime.now()).total_seconds())
+        squarings = max(1, int(delay_s * max(1, squarings_per_second)))
+        puzzle = QMCTimeLock.create(data, squarings=squarings)
+        puzzle['unlock_time'] = unlock_time.isoformat()
+        puzzle['squarings_per_second_assumed'] = squarings_per_second
+        return puzzle
+
+    @staticmethod
+    def open_forward_lock(puzzle: Dict) -> bytes:
+        """Ouvre un puzzle de make_forward_lock (effectue le travail séquentiel)."""
+        return QMCTimeLock.solve(puzzle)
+
+    def make_expiring_lock(self, data: bytes, expire_time: datetime) -> Dict:
+        """[v2.7.1] EXPIRING lock honnête. Une expiration purement cryptographique
+        est IMPOSSIBLE (rien n'empêche de garder une copie). On chiffre en
+        AES-256-GCM sous une clé aléatoire ; l'expiration est appliquée en
+        DÉTRUISANT `key_hex` à expire_time (effacement de clé = expiration)."""
+        key = secrets.token_bytes(32)
+        enc = QMCQuantumCrypto.aead_encrypt(key, data, aad=b"QMC-expiring")
+        return {'mode': 'expiring', 'algorithm': 'AES-256-GCM + key-erasure',
+                'expire_time': expire_time.isoformat(),
+                'key_hex': key.hex(),  # À EFFACER à expire_time pour matérialiser l'expiration
+                'nonce': enc['nonce'].hex(), 'ciphertext': enc['ciphertext'].hex(),
+                'note': 'Crypto-only expiry is impossible; delete key_hex at expire_time.'}
+
+    @staticmethod
+    def open_expiring_lock(blob: Dict) -> bytes:
+        if not blob.get('key_hex'):
+            raise QMCSecurityError("expiring lock : clé effacée (expiré)",
+                                   operation="open_expiring_lock")
+        return QMCQuantumCrypto.aead_decrypt(
+            bytes.fromhex(blob['key_hex']), bytes.fromhex(blob['nonce']),
+            bytes.fromhex(blob['ciphertext']), aad=b"QMC-expiring")
+
     def build_expiring_lock(self, data: bytes, expire_time: datetime,
                             n_qubits: int = 50, calibration_ref: Dict = None,
                             add_measurements: bool = True) -> 'CircuitType':
@@ -23483,6 +27292,10 @@ class GroverBuilder(CircuitBuilder):
         # Calculer le nombre optimal d'itérations
         N = 2 ** n_qubits
         M = len(marked_states)
+        # [v2.7.1 FIX] Garde anti division-par-zero : une liste marked_states
+        # vide provoquait np.sqrt(N / M) -> ZeroDivisionError (et M/N plus bas).
+        if M == 0:
+            raise ValueError("GroverBuilder.build: marked_states ne peut pas être vide")
         if iterations is None:
             iterations = max(1, int(np.pi / 4 * np.sqrt(N / M)))
         
@@ -23727,8 +27540,10 @@ class SwapTestBuilder(CircuitBuilder):
         # Trouver les counts où ancilla = 0
         p_zero = 0
         for bitstring, count in counts.items():
-            # L'ancilla peut être en première ou dernière position
-            if bitstring[-1] == '0' or bitstring[0] == '0':
+            # [v2.7.1 FIX] Ne compter QUE le bit ancilla (dernière position).
+            # L'ancien 'or bitstring[0]=="0"' sur-comptait P(0) en incluant un
+            # qubit de données non lié sous full_measurement.
+            if bitstring[-1] == '0':
                 p_zero += count
         
         p_zero /= total
@@ -23851,27 +27666,51 @@ class QRNGBuilder(CircuitBuilder):
             n_bytes: Nombre de bytes à extraire (défaut: tous)
         
         Returns:
-            Bytes aléatoires
+            Bytes aléatoires (conditionnés)
+
+        [v2.7.1 FIX] L'ancienne version faisait `for _ in range(count): all_bits +=
+        bitstring`, ce qui (1) répétait chaque chaîne `count` fois CONSÉCUTIVEMENT
+        (longs blocs périodiques -> min-entropie détruite) et (2) n'appliquait AUCUN
+        extracteur/conditionnement. On applique désormais un EXTRACTEUR
+        cryptographique (SHAKE-256) sur une sérialisation canonique de TOUTE la
+        distribution (chaînes + multiplicités) — amplification de confidentialité —
+        et on plafonne la sortie par défaut au budget de min-entropie de la source
+        (NIST SP 800-90B, estimateur MCV).
         """
-        # Collecter tous les bits
-        all_bits = []
-        for bitstring, count in counts.items():
-            # Répéter selon le count pour pondérer
-            for _ in range(count):
-                all_bits.extend(bitstring)
-        
-        # Convertir en bytes
-        result = []
-        for i in range(0, len(all_bits) - 7, 8):
-            byte_str = ''.join(all_bits[i:i+8])
-            result.append(int(byte_str, 2))
-        
-        result = bytes(result)
-        
-        if n_bytes is not None:
-            result = result[:n_bytes]
-        
-        return result
+        if not counts:
+            return b""
+        # Sérialisation canonique (déterministe) de la source quantique
+        buf = bytearray(b"QMC-QRNG|")
+        raw_bits = []
+        for bs in sorted(counts.keys()):
+            clean = bs.replace(' ', '')
+            c = int(counts[bs])
+            buf.extend(clean.encode())
+            buf.extend(b":")
+            buf.extend(str(c).encode())
+            buf.extend(b"|")
+            raw_bits.extend((1 if ch == '1' else 0) for ch in clean for _ in range(c))
+        # Budget d'octets « sûrs » = min-entropie totale de la source / 8
+        min_ent_per_bit = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
+        safe_bytes = int((min_ent_per_bit * len(raw_bits)) / 8)
+        # [v2.7.1 FIX R89] Source à min-entropie nulle : NE PAS fabriquer d'aléa.
+        # L'ancien repli « else 32 » émettait 32 octets SHAKE DÉTERMINISTES (prédictibles)
+        # pour une source dégénérée -> on échoue fermé (fail-closed) à la place.
+        if safe_bytes <= 0:
+            raise QMCSecurityError(
+                "QRNG: min-entropie insuffisante dans la source quantique "
+                "(safe_bytes=0). Augmentez les shots/qubits ou utilisez secrets.token_bytes.",
+                operation="extract_random_bytes")
+        if n_bytes is None:
+            n_bytes = safe_bytes
+        elif int(n_bytes) > safe_bytes:
+            # Ne pas extraire plus que le budget de min-entropie de la source.
+            raise QMCSecurityError(
+                f"QRNG: n_bytes={n_bytes} dépasse le budget de min-entropie "
+                f"({safe_bytes} octets) de la source. Réduisez n_bytes ou augmentez la source.",
+                operation="extract_random_bytes")
+        # Extracteur SHAKE-256 : sortie uniforme de longueur arbitraire
+        return hashlib.shake_256(bytes(buf)).digest(int(n_bytes))
 
 
 class AmplitudeEncodingBuilder(CircuitBuilder):
@@ -23997,10 +27836,13 @@ class AmplitudeEncodingBuilder(CircuitBuilder):
             if total > 0:
                 theta = 2 * np.arcsin(np.sqrt(prob_1 / total))
                 qc.ry(theta, qubit)
-        
-        # Ajouter des portes d'intrication pour améliorer l'approximation
-        for i in range(n_qubits - 1):
-            qc.cx(i, i + 1)
+
+        # [v2.7.1 FIX] Couche CX d'intrication SUPPRIMÉE.
+        # L'encodage approximatif produit un état produit dont les
+        # probabilités marginales par qubit correspondent à la cible.
+        # La couche CX finale détruisait précisément ces marginales
+        # (corrompant amplitudes/marges encodées) sans améliorer
+        # l'approximation. Les RY seuls préservent la normalisation (unitaires).
     
     @staticmethod
     def decode_amplitudes(counts: Dict[str, int], n_qubits: int) -> np.ndarray:
@@ -24016,13 +27858,18 @@ class AmplitudeEncodingBuilder(CircuitBuilder):
         """
         N = 2 ** n_qubits
         total = sum(counts.values())
-        
+
         amplitudes = np.zeros(N)
+        # [v2.7.1 FIX] Garde anti division-par-zero : des counts vides
+        # (total == 0) provoquaient np.sqrt(count / total).
+        if total <= 0:
+            return amplitudes
         for bitstring, count in counts.items():
             # Convertir bitstring en index
-            idx = int(bitstring, 2)
+            # [v2.7.1 FIX] Ignorer les espaces séparateurs de registres avant int(.,2).
+            idx = int(bitstring.replace(' ', ''), 2)
             amplitudes[idx] = np.sqrt(count / total)
-        
+
         return amplitudes
 
 
@@ -24135,12 +27982,17 @@ class QPEBuilder(CircuitBuilder):
         return qc
     
     def _add_inverse_qft(self, qc, register, n: int):
-        """Ajoute la QFT inverse"""
-        # Swap qubits
-        for i in range(n // 2):
-            qc.swap(register[i], register[n - 1 - i])
-        
-        # QFT inverse gates
+        """Ajoute la QFT inverse.
+
+        [v2.7.1 FIX CRITIQUE] L'ancien code appliquait une boucle de SWAP des
+        qubits AVANT les portes de QFT inverse. Combiné à l'attribution des
+        puissances controlled-U (precision_reg[0] = MSB) et à la convention de
+        lecture extract_phase (precision_reg[0] = LSB), ce swap inversait l'ordre
+        des bits et rendait TOUTES les phases estimées fausses (vérifié sur Aer :
+        T->0.25 au lieu de 0.125). Le swap est supprimé ; la QFT inverse seule
+        produit désormais les phases exactes pour T/S/Z/custom.
+        """
+        # QFT inverse gates (PAS de swap : voir note ci-dessus)
         for i in range(n):
             for j in range(i):
                 angle = -np.pi / (2 ** (i - j))
@@ -24353,53 +28205,68 @@ class DeutschJozsaBuilder(CircuitBuilder):
         qc.barrier()
         
         # 2. Oracle
-        self._add_oracle(qc, n_qubits, oracle_type, seed)
-        
+        # [v2.7.1 FIX] _add_oracle retourne le type RÉELLEMENT construit
+        # (une demande 'random'/'balanced' pouvait silencieusement produire
+        #  un oracle constant). On enregistre ce type véridique en metadata.
+        built_oracle_type = self._add_oracle(qc, n_qubits, oracle_type, seed)
+
         qc.barrier()
-        
+
         # 3. Hadamard sur les qubits d'entrée
         for i in range(n_qubits):
             qc.h(i)
-        
+
         qc.barrier()
-        
+
         # 4. Mesure (uniquement les qubits d'entrée)
         for i in range(n_qubits):
             qc.measure(i, i)
-        
+
         self._metadata['n_qubits'] = n_qubits
-        self._metadata['oracle_type'] = oracle_type
-        self._metadata['expected_result'] = '0' * n_qubits if 'constant' in oracle_type else 'non-zero'
+        # [v2.7.1 FIX] metadata reflète le type d'oracle réellement bâti
+        self._metadata['oracle_type'] = built_oracle_type
+        self._metadata['requested_oracle_type'] = oracle_type
+        self._metadata['expected_result'] = '0' * n_qubits if 'constant' in built_oracle_type else 'non-zero'
         
         self._log(f"Built Deutsch-Jozsa: {n_qubits}q, oracle={oracle_type}")
         
         return qc
     
-    def _add_oracle(self, qc, n_qubits: int, oracle_type: str, seed=None):
-        """Ajoute l'oracle f(x)"""
+    def _add_oracle(self, qc, n_qubits: int, oracle_type: str, seed=None) -> str:
+        """Ajoute l'oracle f(x). Retourne le type d'oracle réellement construit."""
         ancilla = n_qubits
-        
+
         if oracle_type == 'constant_0':
             # f(x) = 0 pour tout x → Ne fait rien
-            pass
-        
+            return 'constant_0'
+
         elif oracle_type == 'constant_1':
             # f(x) = 1 pour tout x → X sur ancilla
             qc.x(ancilla)
-        
+            return 'constant_1'
+
         elif oracle_type == 'balanced':
-            # f(x) = x_0 (premier bit) → CNOT
+            # f(x) = x_0 (premier bit) → CNOT (équilibré garanti)
             qc.cx(0, ancilla)
-        
+            return 'balanced'
+
         elif oracle_type == 'random':
-            # Oracle équilibré aléatoire
+            # [v2.7.1 FIX] Oracle ÉQUILIBRÉ garanti.
+            # f(x) = a·x (mod 2) est équilibré ssi le masque a est non nul.
+            # L'ancien code (rng.random() > 0.5 par qubit) pouvait produire
+            # un masque entièrement nul -> oracle CONSTANT déguisé en 'random'.
             rng = np.random.default_rng(seed)
-            
-            # Choisir aléatoirement quels inputs donnent f(x)=1
-            # Pour être équilibré, exactement 2^(n-1) inputs donnent 1
+            mask = [bool(rng.integers(0, 2)) for _ in range(n_qubits)]
+            if not any(mask):
+                # Forcer au moins un bit du masque pour garantir l'équilibre.
+                mask[int(rng.integers(0, n_qubits))] = True
             for i in range(n_qubits):
-                if rng.random() > 0.5:
+                if mask[i]:
                     qc.cx(i, ancilla)
+            return 'balanced'
+
+        # Type inconnu: ne rien faire -> constant_0
+        return 'constant_0'
     
     @staticmethod
     def interpret_result(counts: Dict[str, int]) -> str:
@@ -24409,9 +28276,16 @@ class DeutschJozsaBuilder(CircuitBuilder):
         Returns:
             'constant' si f est constante, 'balanced' sinon
         """
+        # [v2.7.1 FIX] Garde sur counts vides : max() sur un dict vide levait
+        # ValueError. On renvoie 'constant' (état |0...0⟩ par défaut, aucune info).
+        if not counts:
+            return 'constant'
         # Trouver le résultat le plus fréquent
         max_result = max(counts, key=counts.get)
-        
+        # [v2.7.1 FIX] Retirer les espaces séparateurs de registres : sinon un
+        # espace (qui n'est pas '0') faussait le test all(b == '0').
+        max_result = max_result.replace(' ', '')
+
         # Si tous les qubits sont à 0 → fonction constante
         if all(b == '0' for b in max_result):
             return 'constant'
@@ -24511,8 +28385,13 @@ class BernsteinVaziraniBuilder(CircuitBuilder):
         Returns:
             Le string secret trouvé
         """
+        # [v2.7.1 FIX] Garde sur counts vides : max() sur un dict vide levait
+        # ValueError. On renvoie une chaîne vide plutôt que de crasher.
+        if not counts:
+            return ''
         # Le résultat le plus fréquent EST le secret (reversed)
-        max_result = max(counts, key=counts.get)
+        # [v2.7.1 FIX] Retirer les espaces séparateurs de registres avant inversion.
+        max_result = max(counts, key=counts.get).replace(' ', '')
         return max_result[::-1]
 
 
@@ -24630,7 +28509,11 @@ class SimonBuilder(CircuitBuilder):
         
         if len(measurements) < n_qubits - 1:
             return None
-        
+
+        # [v2.7.1 FIX] Retirer les espaces séparateurs de registres dans chaque
+        # mesure : sinon int(' ') levait ValueError lors du parsing des bits.
+        measurements = [m.replace(' ', '') for m in measurements]
+
         # Construction de la matrice
         matrix = []
         for m in measurements[:n_qubits - 1]:
@@ -24728,34 +28611,32 @@ class TeleportationBuilder(CircuitBuilder):
         qc.measure(0, cr_alice[0])
         qc.measure(1, cr_alice[1])
         
-        # 5. Corrections classiques de Bob (conditionnelles)
-        # Note: Les instructions conditionnelles classiques (c_if) ont une syntaxe
-        # qui varie selon les versions de Qiskit. Pour la compatibilité, nous
-        # utilisons une approche qui fonctionne avec Qiskit >= 0.45
+        # 5. Corrections classiques de Bob (CONDITIONNELLES)
+        # [v2.7.1 FIX CRITIQUE] L'ancien code appliquait X et Z de manière
+        # INCONDITIONNELLE (qc.x(2); qc.z(2)), ce qui détruisait le protocole :
+        # Bob recevait Z·X·(état conditionné par la mesure de Bell), donc un état
+        # maximalement mixte (succès ~50% au lieu de ~100%, vérifié sur Aer).
+        # Règle standard de la téléportation : Bob applique X^{m1} Z^{m0} où
+        #   m0 = mesure de q0 d'Alice -> cr_alice[0]  (déclenche la correction Z)
+        #   m1 = mesure de q1 d'Alice -> cr_alice[1]  (déclenche la correction X)
+        # On utilise le feedforward dynamique moderne `if_test` (Qiskit >= 1.0,
+        # supporté par Aer et le hardware IBM dynamic-circuits). En cas
+        # d'indisponibilité, on RETIRE les corrections plutôt que d'en mettre de
+        # fausses (un état non corrigé reste analysable, un état corrompu non).
         if with_correction:
             qc.barrier()
             try:
-                # Méthode Qiskit >= 1.0: utiliser IfElseOp ou instructions conditionnelles
-                from qiskit.circuit import IfElseOp
-                from qiskit.circuit.library import XGate, ZGate
-                
-                # Créer les sous-circuits pour les corrections
-                x_circuit = qc.copy_empty_like()
-                x_circuit.x(2)
-                
-                z_circuit = qc.copy_empty_like()
-                z_circuit.z(2)
-                
-                # Note: Les IfElseOp avec bits individuels sont complexes
-                # Pour simplifier, on ajoute juste les portes inconditionnelles
-                # et on documente que la téléportation nécessite post-traitement
-                qc.x(2)  # Correction X (sera conditionnelle en hardware réel)
-                qc.z(2)  # Correction Z (sera conditionnelle en hardware réel)
-                
-            except Exception:
-                # Fallback: ajouter les portes sans condition
-                qc.x(2)
-                qc.z(2)
+                with qc.if_test((cr_alice[1], 1)):
+                    qc.x(2)  # correction X conditionnée par m1
+                with qc.if_test((cr_alice[0], 1)):
+                    qc.z(2)  # correction Z conditionnée par m0
+            except Exception as e:
+                # Pas de feedforward disponible : ne PAS appliquer de corrections
+                # inconditionnelles (cela corromprait l'état). On documente que le
+                # post-traitement classique est requis.
+                self._metadata['correction_mode'] = 'deferred_classical_postprocess'
+                self._log(f"if_test indisponible ({e}); corrections déférées au "
+                          f"post-traitement classique", level=LogLevel.WARN)
         
         # 6. Mesure finale de Bob (optionnelle)
         if measure_all:
@@ -25374,8 +29255,9 @@ class QuantumAdvantageAnalyzer(Analyzer):
         
         # Test 1: XEB
         xeb_result = self._xeb_analyzer.analyze(counts, n_qubits, ideal_distribution)
+        xeb_score = xeb_result.get('xeb_score', 0)
         results['tests']['xeb'] = {
-            'score': xeb_result.get('xeb_score', 0),
+            'score': xeb_score,
             'passed': xeb_result.get('quantum_advantage', False),
         }
         
@@ -25398,26 +29280,51 @@ class QuantumAdvantageAnalyzer(Analyzer):
         # Score global
         tests_passed = sum(1 for t in results['tests'].values() if t.get('passed', False))
         total_tests = len(results['tests'])
-        
-        # Avantage quantique prouvé si >60% des tests passent
-        quantum_advantage_proven = tests_passed / total_tests > 0.6
-        
+        heuristic_fraction = tests_passed / total_tests if total_tests else 0.0
+
+        # [v2.7.1 FIX] Ne plus émettre 'quantum advantage PROVEN' à partir
+        # d'heuristiques faibles (HOG/Porter-Thomas/entropie/anti-concentration
+        # qui passaient sur du quasi-aléatoire). Un avantage quantique ne peut
+        # être affirmé que:
+        #   (1) avec une distribution de RÉFÉRENCE idéale fournie, ET
+        #   (2) un linear-XEB AU-DESSUS d'un plancher de bruit.
+        # Sans cela -> verdict 'inconclusive' (jamais 'proven').
+        XEB_NOISE_FLOOR = 0.01  # plancher: en deçà, indistinguable du bruit
+        has_reference = ideal_distribution is not None and len(ideal_distribution) > 0
+        xeb_above_floor = float(xeb_score) > XEB_NOISE_FLOOR
+
+        quantum_advantage_proven = bool(has_reference and xeb_above_floor)
+
         results['quantum_advantage_proven'] = quantum_advantage_proven
         results['tests_passed'] = tests_passed
         results['tests_total'] = total_tests
-        results['confidence'] = round(tests_passed / total_tests, 2)
-        
-        # Niveau de preuve
-        if tests_passed == total_tests:
-            results['proof_level'] = 'STRONG'
-        elif tests_passed / total_tests > 0.6:
-            results['proof_level'] = 'MODERATE'
+        results['confidence'] = round(heuristic_fraction, 2)
+        results['heuristic_fraction'] = round(heuristic_fraction, 2)
+        results['has_reference_distribution'] = has_reference
+        results['linear_xeb'] = round(float(xeb_score), 6)
+        results['xeb_noise_floor'] = XEB_NOISE_FLOOR
+
+        # Niveau de preuve: l'avantage 'prouvé' exige la référence + XEB.
+        # Les heuristiques seules ne donnent qu'un signal 'inconclusive'.
+        if quantum_advantage_proven:
+            results['verdict'] = 'PROVEN'
+            results['proof_level'] = 'STRONG' if xeb_score > 0.1 else 'MODERATE'
         else:
-            results['proof_level'] = 'WEAK'
-        
-        self._log(f"Quantum Advantage Analysis: {tests_passed}/{total_tests} tests passed, "
-                  f"proof_level={results['proof_level']}")
-        
+            results['verdict'] = 'INCONCLUSIVE'
+            if not has_reference:
+                results['verdict_reason'] = (
+                    'no reference (ideal) distribution provided; '
+                    'cannot certify quantum advantage from heuristics alone')
+            elif not xeb_above_floor:
+                results['verdict_reason'] = (
+                    f'linear-XEB ({xeb_score:.4f}) not above noise floor '
+                    f'({XEB_NOISE_FLOOR})')
+            results['proof_level'] = 'INCONCLUSIVE'
+
+        self._log(f"Quantum Advantage Analysis: verdict={results['verdict']}, "
+                  f"linear_xeb={xeb_score:.4f}, has_reference={has_reference}, "
+                  f"heuristic_tests={tests_passed}/{total_tests}")
+
         return results
     
     def _heavy_output_test(self, counts: CountsType, n_qubits: int,
@@ -25828,13 +29735,41 @@ class ZKPModule(QMCModule):
         transpiled = self.framework.transpile_circuits([response_circuit])
         response_results = self.framework.run_on_qpu(transpiled, shots)
         
+        quantum_ok = bool(response_results)
         if response_results:
-            response_counts = response_results[0].get('counts', {})
             results['phases'].append({'name': 'response', 'status': 'success'})
-            results['success'] = True
-        else:
+
+        # [v2.7.1] VÉRIFICATION CRYPTOGRAPHIQUE RÉELLE (la partie quantique
+        # ci-dessus n'est qu'un artefact d'engagement). L'ancien code mettait
+        # success=True dès qu'un circuit renvoyait des counts non vides — aucune
+        # garantie ZK. On exécute désormais une vraie preuve Schnorr/Fiat-Shamir
+        # (ou range proof) et `success` reflète le résultat du VÉRIFICATEUR.
+        try:
+            if proof_type == 'range':
+                lower = int(kwargs.get('lower', 0))
+                upper = int(kwargs.get('upper', 100))
+                value = int(kwargs.get('value', (lower + upper) // 2))
+                zkp = builder.make_range_proof(value, lower, upper)
+                verified = builder.verify_range_proof(zkp)
+                results['zk_proof_type'] = 'range'
+            else:
+                secret_int = int.from_bytes(hashlib.sha256(secret).digest(), 'big')
+                zkp, y = builder.prove_secret_knowledge(secret_int)
+                verified = builder.verify_secret_knowledge(zkp)
+                results['zk_proof_type'] = 'knowledge'
+            results['phases'].append({
+                'name': 'classical_verification',
+                'status': 'success' if verified else 'failed',
+                'verified': bool(verified),
+            })
+            results['zk_verified'] = bool(verified)
+            results['success'] = bool(quantum_ok and verified)
+        except Exception as e:
+            results['phases'].append({'name': 'classical_verification',
+                                      'status': 'failed', 'error': str(e)})
+            results['zk_verified'] = False
             results['success'] = False
-        
+
         self._results = results
         return results
 
@@ -26291,10 +30226,15 @@ class BackendRecommender:
                 results[name] = self._analyze_backend(backend, circuit)
             else:
                 results[name] = {'error': 'Backend non trouve', 'score': 0}
-        
+
+        # [v2.7.1 FIX] Garde collection vide: max() sur un dict vide (aucun
+        # backend_name fourni) levait ValueError. On retourne un résultat neutre.
+        if not results:
+            return {'comparison': {}, 'best': None, 'best_score': 0}
+
         # Trouver le meilleur
         best_name = max(results.keys(), key=lambda k: results[k].get('score', 0))
-        
+
         return {
             'comparison': results,
             'best': best_name,
@@ -26388,16 +30328,18 @@ class ResultCache:
         """Charge l'index du cache."""
         if self._index_file.exists():
             try:
-                with open(self._index_file, 'r') as f:
+                with open(self._index_file, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding explicite
                     return json.load(f)
-            except:
-                pass
+            except Exception as e:
+                # [v2.7.1 FIX] Ne plus avaler silencieusement: tracer l'erreur
+                # (index corrompu/illisible) avant de retomber sur l'index vide.
+                self._log(f"Erreur lecture index cache: {e}", LogLevel.WARN)
         return {'entries': {}, 'stats': {'total_hits': 0, 'total_saves': 0, 'qpu_saved_s': 0}}
     
     def _save_index(self):
         """Sauvegarde l'index du cache."""
         try:
-            with open(self._index_file, 'w') as f:
+            with open(self._index_file, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding explicite
                 json.dump(self._index, f, indent=2, default=str)
         except Exception as e:
             self._log(f"Erreur sauvegarde index: {e}", LogLevel.WARN)
@@ -26490,9 +30432,9 @@ class ResultCache:
             return None
         
         try:
-            with open(cache_file, 'r') as f:
+            with open(cache_file, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding explicite
                 data = json.load(f)
-            
+
             self._stats['hits'] += 1
             self._index['stats']['total_hits'] += 1
             self._save_index()
@@ -26538,8 +30480,11 @@ class ResultCache:
         # Sauvegarder le fichier
         cache_file = self.cache_dir / f"{cache_key}.json"
         try:
-            with open(cache_file, 'w') as f:
-                json.dump(data, f, indent=2, default=str)
+            # [v2.7.1 FIX] Atomic write (tmp + os.replace).
+            class _CacheEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    return str(obj)
+            _atomic_write_json(cache_file, data, cls=_CacheEncoder)
         except Exception as e:
             self._log(f"Erreur sauvegarde cache: {e}", LogLevel.WARN)
             return None
@@ -26885,7 +30830,15 @@ class JobQueueManager:
                     
                     if status == 'DONE':
                         item['status'] = 'completed'
-                        self._results[item['id']] = job.result()
+                        # [v2.7.0] Récupération sécurisée avec timeout
+                        try:
+                            if self.framework and hasattr(self.framework, '_safe_get_job_result'):
+                                self._results[item['id']] = self.framework._safe_get_job_result(job, timeout_seconds=120.0)
+                            else:
+                                self._results[item['id']] = job.result()
+                        except Exception as res_err:
+                            self._log(f"Result retrieval failed for {item['job_id']}: {res_err}", LogLevel.WARN)
+                            self._results[item['id']] = None
                         
                         # [v2.5.14] Auto-delete si activé dans le framework
                         if getattr(self.framework, 'auto_delete_job', False):
@@ -26896,8 +30849,11 @@ class JobQueueManager:
                         
                     elif status in ['ERROR', 'CANCELLED']:
                         item['status'] = 'failed'
-                except:
-                    pass
+                except Exception as e:
+                    # [v2.7.1 FIX] Ne plus avaler silencieusement l'erreur de
+                    # lecture du statut/résultat du job: tracer pour diagnostic
+                    # (le statut de l'item reste inchangé, prochaine itération réessaiera).
+                    self._log(f"Status update failed for {item.get('job_id')}: {e}", LogLevel.WARN)
     
     def wait_all(self, timeout: float = None) -> bool:
         """Attend que tous les jobs soient terminés."""
@@ -26970,6 +30926,95 @@ class JobQueueManager:
 # =============================================================================
 # NOTIFICATION MANAGER - Système de notifications
 # =============================================================================
+
+def _is_safe_webhook_url(url: str) -> bool:
+    """[v2.7.1 FIX] Anti-SSRF: valide qu'une URL de webhook est sûre.
+
+    Exige le schéma https et rejette file://, ftp://, ainsi que les hôtes
+    pointant vers des adresses privées/loopback/link-local.
+    """
+    if not url or not isinstance(url, str):
+        return False
+    try:
+        from urllib.parse import urlparse
+        import ipaddress
+        import socket
+
+        parsed = urlparse(url.strip())
+        # Schéma autorisé: https uniquement (rejette file, ftp, http, gopher, etc.)
+        if parsed.scheme != 'https':
+            return False
+
+        host = parsed.hostname
+        if not host:
+            return False
+
+        # Résoudre tous les enregistrements et vérifier chaque IP
+        try:
+            infos = socket.getaddrinfo(host, parsed.port or 443, proto=socket.IPPROTO_TCP)
+        except Exception:
+            return False
+
+        for info in infos:
+            sockaddr = info[4]
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+            except ValueError:
+                return False
+            # Rejeter loopback / privé / link-local / réservé / multicast / non spécifié
+            if (ip.is_loopback or ip.is_private or ip.is_link_local
+                    or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+                return False
+
+        return True
+    except Exception:
+        return False
+
+
+def _safe_webhook_post(url: str, payload: bytes, headers: dict = None,
+                       timeout: float = 10) -> int:
+    """[v2.7.1 FIX R99/R100] POST anti-SSRF robuste vers un webhook.
+
+    Ferme deux contournements que `_is_safe_webhook_url` + urlopen laissaient ouverts :
+      - R99 (DNS rebinding / TOCTOU) : on résout l'hôte UNE fois, on valide l'IP, puis on
+        ÉPINGLE cette IP au connect() (urlopen, lui, re-résout le DNS et pouvait viser une
+        IP privée après coup).
+      - R100 (redirections 30x) : on utilise http.client qui NE SUIT PAS les redirections
+        (urlopen suivait les 30x, y compris un downgrade https->http vers 169.254.169.254).
+    Lève QMCSecurityError si l'URL/IP est rejetée. Renvoie le code de statut HTTP.
+    """
+    import urllib.parse, socket, ssl, ipaddress, http.client
+    if not _is_safe_webhook_url(url):
+        raise QMCSecurityError(f"webhook URL rejetée (anti-SSRF): {url}",
+                               operation="webhook_post")
+    p = urllib.parse.urlparse(url.strip())
+    host, port = p.hostname, (p.port or 443)
+    pinned_ip = None
+    for info in socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP):
+        ip = ipaddress.ip_address(info[4][0])
+        if not (ip.is_loopback or ip.is_private or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            pinned_ip = info[4][0]
+            break
+    if pinned_ip is None:
+        raise QMCSecurityError("webhook: aucune IP publique sûre résolue",
+                               operation="webhook_post")
+    path = (p.path or '/') + (('?' + p.query) if p.query else '')
+    ctx = ssl.create_default_context()
+    conn = http.client.HTTPSConnection(pinned_ip, port, timeout=timeout, context=ctx)
+    try:
+        sock = socket.create_connection((pinned_ip, port), timeout=timeout)
+        conn.sock = ctx.wrap_socket(sock, server_hostname=host)  # SNI = hôte d'origine
+        hdrs = dict(headers or {})
+        hdrs.setdefault('Host', host)
+        conn.request('POST', path, body=payload, headers=hdrs)
+        resp = conn.getresponse()
+        resp.read()
+        return resp.status  # PAS de suivi de redirection (http.client ne le fait pas)
+    finally:
+        conn.close()
+
 
 class NotificationManager:
     """
@@ -27123,19 +31168,15 @@ class NotificationManager:
     def _send_slack(self, message: str) -> bool:
         """Envoie via Slack webhook."""
         try:
-            import urllib.request
-            
+            # [v2.7.1 FIX R99/R100] envoi anti-SSRF (IP épinglée + pas de redirection)
             payload = json.dumps({'text': message}).encode()
-            req = urllib.request.Request(
-                self._config['slack_webhook'],
-                data=payload,
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status == 200:
-                    self._log("Slack notification sent")
-                    return True
+            status = _safe_webhook_post(self._config['slack_webhook'], payload,
+                                        headers={'Content-Type': 'application/json'})
+            if status == 200:
+                self._log("Slack notification sent")
+                return True
+        except QMCSecurityError as e:
+            self._log(f"Slack notification skipped (anti-SSRF): {e}", LogLevel.WARN)
         except Exception as e:
             self._log(f"Slack error: {e}", LogLevel.WARN)
         return False
@@ -27143,19 +31184,15 @@ class NotificationManager:
     def _send_discord(self, message: str) -> bool:
         """Envoie via Discord webhook."""
         try:
-            import urllib.request
-            
+            # [v2.7.1 FIX R99/R100] envoi anti-SSRF (IP épinglée + pas de redirection)
             payload = json.dumps({'content': message}).encode()
-            req = urllib.request.Request(
-                self._config['discord_webhook'],
-                data=payload,
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status in [200, 204]:
-                    self._log("Discord notification sent")
-                    return True
+            status = _safe_webhook_post(self._config['discord_webhook'], payload,
+                                        headers={'Content-Type': 'application/json'})
+            if status in (200, 204):
+                self._log("Discord notification sent")
+                return True
+        except QMCSecurityError as e:
+            self._log(f"Discord notification skipped (anti-SSRF): {e}", LogLevel.WARN)
         except Exception as e:
             self._log(f"Discord error: {e}", LogLevel.WARN)
         return False
@@ -27163,24 +31200,19 @@ class NotificationManager:
     def _send_webhook(self, message: str, data: Dict) -> bool:
         """Envoie via webhook personnalisé."""
         try:
-            import urllib.request
-            
+            # [v2.7.1 FIX R99/R100] envoi anti-SSRF (IP épinglée + pas de redirection)
             payload = json.dumps({
                 'message': message,
                 'data': data,
                 'timestamp': datetime.now().isoformat()
             }).encode()
-            
-            req = urllib.request.Request(
-                self._config['custom_webhook'],
-                data=payload,
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status in [200, 201, 204]:
-                    self._log("Webhook notification sent")
-                    return True
+            status = _safe_webhook_post(self._config['custom_webhook'], payload,
+                                        headers={'Content-Type': 'application/json'})
+            if status in (200, 201, 204):
+                self._log("Webhook notification sent")
+                return True
+        except QMCSecurityError as e:
+            self._log(f"Webhook notification skipped (anti-SSRF): {e}", LogLevel.WARN)
         except Exception as e:
             self._log(f"Webhook error: {e}", LogLevel.WARN)
         return False
@@ -27361,49 +31393,69 @@ class CircuitCostEstimator:
         
         for circuit in circuits:
             circuit_length = 0.0
+            ops = dict(circuit.count_ops())
+            n_qubits = circuit.num_qubits
             
-            for instruction in circuit.data:
-                gate_name = instruction.operation.name
-                qubits = [q._index if hasattr(q, '_index') else q for q in instruction.qubits]
-                n_qubits = len(qubits)
+            # [v2.7.0] Pour gros circuits (>40Q), utiliser count_ops() avec durées moyennes
+            # au lieu d'itérer circuit.data (trop lent: 50k+ instructions)
+            if n_qubits > 40:
+                # Durées typiques IBM moyennes (en secondes)
+                typical_durations = {
+                    'x': 35e-9, 'sx': 35e-9, 'sxdg': 35e-9, 'rz': 0,
+                    'id': 35e-9, 'delay': 0, 'h': 35e-9,
+                    'ecr': 500e-9, 'cz': 500e-9, 'cx': 500e-9, 'swap': 1500e-9,
+                    'measure': 1200e-9, 'reset': 1000e-9, 'barrier': 0,
+                }
+                for gate_name, count in ops.items():
+                    dur = typical_durations.get(gate_name, 100e-9)
+                    circuit_length += dur * count
                 
-                # Essayer d'obtenir la durée exacte du backend.target
-                duration = None
-                if backend and hasattr(backend, 'target') and backend.target:
-                    try:
-                        target = backend.target
-                        if gate_name in target:
-                            qubit_tuple = tuple(qubits)
-                            if qubit_tuple in target[gate_name]:
-                                props = target[gate_name][qubit_tuple]
-                                if props and hasattr(props, 'duration') and props.duration:
-                                    duration = props.duration
-                    except:
-                        pass
-                
-                # Si pas de durée trouvée, utiliser des estimations typiques
-                if duration is None:
-                    # Durées typiques IBM (en secondes)
-                    typical_durations = {
-                        'x': 35e-9, 'sx': 35e-9, 'rz': 0,  # RZ est virtuel
-                        'id': 35e-9, 'delay': 0,
-                        'ecr': 500e-9, 'cz': 500e-9, 'cx': 500e-9,
-                        'measure': 1200e-9,  # ~1.2µs, 56x plus long qu'une porte X
-                        'reset': 1000e-9,
-                    }
-                    duration = typical_durations.get(gate_name, 100e-9)
-                
-                circuit_length += duration
-                
-                # Stats
-                if gate_name == 'measure':
-                    total_gates_info['measure'] += 1
-                elif n_qubits == 1:
-                    total_gates_info['1q'] += 1
-                elif n_qubits >= 2:
-                    total_gates_info['2q'] += 1
-                else:
-                    total_gates_info['other'] += 1
+                # Stats rapides
+                total_gates_info['1q'] += sum(v for k, v in ops.items() 
+                    if k in ['x', 'sx', 'sxdg', 'rz', 'h', 's', 't', 'sdg', 'tdg', 'id', 'ry', 'rx'])
+                total_gates_info['2q'] += sum(v for k, v in ops.items() 
+                    if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
+                total_gates_info['measure'] += ops.get('measure', 0)
+            else:
+                # Petit circuit: itération fine avec durées backend exactes
+                for instruction in circuit.data:
+                    gate_name = instruction.operation.name
+                    qubits = [q._index if hasattr(q, '_index') else q for q in instruction.qubits]
+                    i_nq = len(qubits)
+                    
+                    # Essayer d'obtenir la durée exacte du backend.target
+                    duration = None
+                    if backend and hasattr(backend, 'target') and backend.target:
+                        try:
+                            target = backend.target
+                            if gate_name in target:
+                                qubit_tuple = tuple(qubits)
+                                if qubit_tuple in target[gate_name]:
+                                    props = target[gate_name][qubit_tuple]
+                                    if props and hasattr(props, 'duration') and props.duration:
+                                        duration = props.duration
+                        except:
+                            pass
+                    
+                    if duration is None:
+                        typical_durations = {
+                            'x': 35e-9, 'sx': 35e-9, 'rz': 0,
+                            'id': 35e-9, 'delay': 0,
+                            'ecr': 500e-9, 'cz': 500e-9, 'cx': 500e-9,
+                            'measure': 1200e-9, 'reset': 1000e-9,
+                        }
+                        duration = typical_durations.get(gate_name, 100e-9)
+                    
+                    circuit_length += duration
+                    
+                    if gate_name == 'measure':
+                        total_gates_info['measure'] += 1
+                    elif i_nq == 1:
+                        total_gates_info['1q'] += 1
+                    elif i_nq >= 2:
+                        total_gates_info['2q'] += 1
+                    else:
+                        total_gates_info['other'] += 1
             
             circuit_lengths.append(circuit_length)
         
@@ -27456,19 +31508,16 @@ class CircuitCostEstimator:
             return f"{seconds/3600:.1f}h"
     
     def _analyze_circuit(self, circuit) -> Dict:
-        """Analyse un circuit pour extraire ses caractéristiques."""
+        """Analyse un circuit pour extraire ses caractéristiques.
+        [v2.7.0] Utilise count_ops() au lieu d'itérer circuit.data."""
         try:
             num_qubits = circuit.num_qubits
             depth = circuit.depth()
+            ops = dict(circuit.count_ops())
             
-            # Compter les portes 2Q
-            two_q_gates = 0
-            total_gates = 0
-            
-            for instruction in circuit.data:
-                total_gates += 1
-                if len(instruction.qubits) >= 2:
-                    two_q_gates += 1
+            two_q_gates = sum(v for k, v in ops.items() 
+                             if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
+            total_gates = sum(ops.values())
             
             return {
                 'num_qubits': num_qubits,
@@ -27931,8 +31980,15 @@ class QDNAIDEngine:
             n_bits = len(list(counts.keys())[0])
             fidelity = (counts.get('0' * n_bits, 0) + counts.get('1' * n_bits, 0)) / total
         n_states = len(counts)
-        xeb_score = sum(1 for _, p in top_states if p > 1.5 / n_states) / len(top_states) if top_states else 0
-        dist_hash = hashlib.md5(json.dumps(sorted(counts.items())[:100], sort_keys=True).encode()).hexdigest()[:16]
+        # [v2.7.1 FIX] xeb_score over the FULL distribution (top-10 only biased it toward 1.0).
+        xeb_score = (sum(1 for c in counts.values() if (c / total) > 1.5 / n_states) / n_states) if n_states else 0
+        # [v2.7.1 FIX] Hash a QUANTIZED probability distribution (probs rounded to 3 decimals)
+        # so the signature is stable across runs with different absolute shot counts.
+        # Raw integer counts never matched across runs. MD5 marked non-security explicitly.
+        quantized = sorted(((s, round(c / total, 3)) for s, c in counts.items()), key=lambda x: x[0])[:100]
+        dist_hash = hashlib.md5(
+            json.dumps(quantized, sort_keys=True).encode(), usedforsecurity=False
+        ).hexdigest()[:16]
         return QDNACircuitSignature(circuit_type=ctype, entropy=entropy, n_states=n_states, top_states=top_states, fidelity=fidelity, xeb_score=xeb_score, distribution_hash=dist_hash)
     
     def enroll(self, n_regions: int = 6, shots: int = 4096, circuit_types: List[str] = None, skip_dry_run: bool = False, max_qubits: int = None) -> Optional[QDNATemporalFingerprint]:
@@ -27998,9 +32054,9 @@ class QDNAIDEngine:
         self._fingerprints[fingerprint.backend] = fingerprint
         try:
             fp_path = self.fw.dir_manager.run_dir / f"qdna_fingerprint_{fingerprint.backend}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(fp_path, 'w') as f: json.dump(fingerprint.to_dict(), f, indent=2, default=str)
+            with open(fp_path, 'w', encoding='utf-8') as f: json.dump(fingerprint.to_dict(), f, indent=2, default=str)  # [v2.7.1 FIX] encoding
             self._log(f"Saved: {fp_path}")
-        except: pass
+        except Exception as e: self._log(f"Fingerprint save failed: {e}", level="WARNING")  # [v2.7.1 FIX] log instead of silent pass
         self._log(f"ENROLLMENT COMPLETE - {fingerprint.total_ratios} ratios, Security: {fingerprint.get_security_level()}")
         return fingerprint
     
@@ -28081,7 +32137,7 @@ class QDNAIDEngine:
     
     def load_fingerprint(self, filepath: str) -> Optional[QDNATemporalFingerprint]:
         try:
-            with open(filepath, 'r') as f: return QDNATemporalFingerprint.from_dict(json.load(f))
+            with open(filepath, 'r', encoding='utf-8') as f: return QDNATemporalFingerprint.from_dict(json.load(f))  # [v2.7.1 FIX] encoding
         except Exception as e: self._log(f"Load error: {e}"); return None
     
     def get_stored_fingerprint(self, backend: str = None) -> Optional[QDNATemporalFingerprint]:
@@ -28299,7 +32355,7 @@ class QDNAIDEngine:
         # === ÉTAPE 8: Sauvegarder le fingerprint ===
         try:
             fp_path = self.fw.dir_manager.run_dir / f"qdna_piggyback_{fingerprint.backend}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(fp_path, 'w') as f:
+            with open(fp_path, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                 json.dump(fingerprint.to_dict(), f, indent=2, default=str)
             self._log(f"Fingerprint saved: {fp_path}")
         except Exception as e:
@@ -28588,7 +32644,7 @@ class BatchManager:
                 f'batch_checkpoint_{batch_index}.json'
             )
             
-            with open(self._checkpoint_file, 'w') as f:
+            with open(self._checkpoint_file, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                 json.dump(checkpoint, f, indent=2, default=str)
                 
         except Exception as e:
@@ -28605,9 +32661,9 @@ class BatchManager:
             Dict avec les informations de reprise ou None
         """
         try:
-            with open(checkpoint_file, 'r') as f:
+            with open(checkpoint_file, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                 checkpoint = json.load(f)
-            
+
             self._log(f"Reprise depuis batch {checkpoint['batch_index'] + 1}")
             return checkpoint
             
@@ -28662,6 +32718,8 @@ class BudgetManager:
         # Tracking
         self._usage_records: List[Dict] = []
         self._alerts_sent: Set[int] = set()  # Thresholds déjà alertés
+        # [v2.7.1 FIX] Track the active month so alert state is reset when it rolls over.
+        self._alerts_month: str = datetime.now().strftime('%Y-%m')
         self._storage_file: Optional[Path] = None
         
         # Charger l'historique si disponible
@@ -28680,7 +32738,7 @@ class BudgetManager:
             self._storage_file = home / '.qmc_budget_history.json'
             
             if self._storage_file.exists():
-                with open(self._storage_file, 'r') as f:
+                with open(self._storage_file, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                     data = json.load(f)
                     self._usage_records = data.get('records', [])
                     self._log(f"Historique chargé: {len(self._usage_records)} enregistrements")
@@ -28691,7 +32749,7 @@ class BudgetManager:
         """Sauvegarde l'historique d'usage."""
         try:
             if self._storage_file:
-                with open(self._storage_file, 'w') as f:
+                with open(self._storage_file, 'w', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                     json.dump({
                         'records': self._usage_records,
                         'monthly_budget': self.monthly_budget,
@@ -28748,24 +32806,42 @@ class BudgetManager:
         Returns:
             True si OK, False si dépasserait le budget
         """
+        # [v2.7.1 FIX] Roll the monthly alert state before evaluating, so a fresh month
+        # re-enables alerts and the remaining budget reflects the current month.
+        self._maybe_roll_month()
+
         remaining = self.get_remaining_budget()
-        
+
+        # Vérifier les alertes en premier (état d'alerte à jour)
+        self._check_alerts()
+
         if estimated_minutes > remaining:
             self._log(f"⚠️ Budget insuffisant! Estimé: {estimated_minutes:.2f}min, "
                      f"Restant: {remaining:.2f}min", LogLevel.WARN)
-            
+
+            # [v2.7.1 FIX] Enforce the limit: block when configured to do so.
             if self.block_on_exceed:
                 return False
-        
-        # Vérifier les alertes
-        self._check_alerts()
-        
+
         return True
     
+    def _maybe_roll_month(self):
+        """[v2.7.1 FIX] Reset monthly alert state when the calendar month rolls over.
+
+        get_current_month_usage() resets to 0 at month change, but _alerts_sent
+        previously kept last month's thresholds, suppressing this month's alerts.
+        """
+        current_month = datetime.now().strftime('%Y-%m')
+        if current_month != self._alerts_month:
+            self._alerts_month = current_month
+            self._alerts_sent.clear()
+
     def _check_alerts(self):
         """Vérifie et envoie les alertes de seuil."""
+        # [v2.7.1 FIX] Roll month before evaluating alerts.
+        self._maybe_roll_month()
         usage_pct = self.get_usage_percent()
-        
+
         # Alertes à 50%, 75%, 90%, 100%
         thresholds = [50, 75, 90, 100]
         
@@ -28883,6 +32959,8 @@ class BudgetManager:
     def reset_month(self):
         """Réinitialise le compteur pour le nouveau mois."""
         self._alerts_sent.clear()
+        # [v2.7.1 FIX] Keep the tracked month in sync so the auto-roll logic stays consistent.
+        self._alerts_month = datetime.now().strftime('%Y-%m')
         self._log("🔄 Compteur mensuel réinitialisé")
 
 
@@ -29267,7 +33345,34 @@ class ResultComparator:
         # Normaliser en distributions de probabilité
         total_a = sum(counts_a.values())
         total_b = sum(counts_b.values())
-        
+
+        # [v2.7.1 FIX] Guard against empty distribution -> ZeroDivisionError.
+        if not counts_a or not counts_b or total_a == 0 or total_b == 0:
+            comparison['metrics'] = {
+                'total_shots_a': total_a,
+                'total_shots_b': total_b,
+                'unique_outcomes_a': len(counts_a),
+                'unique_outcomes_b': len(counts_b),
+                'common_outcomes': len(set(counts_a.keys()) & set(counts_b.keys())),
+                'total_outcomes': len(set(counts_a.keys()) | set(counts_b.keys())),
+            }
+            comparison['divergence'] = {
+                'tvd': 1.0,
+                'hellinger_fidelity': 0.0,
+                'fidelity': 0.0,
+                'kl_divergence': float('inf'),
+                'js_divergence': float('inf'),
+                'chi_squared': float('inf'),
+                'qiskit_native': False,
+            }
+            comparison['summary'] = {
+                'quality': "EMPTY",
+                'color': "grey",
+                'emoji': "⚪",
+                'interpretation': "One or both distributions are empty - cannot compare.",
+            }
+            return comparison
+
         all_keys = set(counts_a.keys()) | set(counts_b.keys())
         
         prob_a = {k: counts_a.get(k, 0) / total_a for k in all_keys}
@@ -29361,12 +33466,22 @@ class ResultComparator:
             quality = "POOR"
             color = "red"
         
+        # [v2.7.1 FIX] Add 'emoji' to summary (display_comparison reads summary['emoji']).
+        quality_emoji = {
+            "EXCELLENT": "🟢",
+            "GOOD": "🟢",
+            "ACCEPTABLE": "🟡",
+            "MEDIOCRE": "🟠",
+            "POOR": "🔴",
+        }.get(quality, "⚪")
+
         comparison['summary'] = {
             'quality': quality,
             'color': color,
+            'emoji': quality_emoji,
             'interpretation': self._interpret_results(tvd, hellinger_fid, comparison['metrics'])
         }
-        
+
         return comparison
     
     # v2.5.21: Nouvelle méthode pour analyse complète avec Qiskit
@@ -29479,7 +33594,7 @@ class ResultComparator:
         print("  ╠════════════════════════════════════════════════════════════════════════════╣")
         print(f"  ║  📍 {labels[0]} vs {labels[1]:<62} ║")
         print("  ╠════════════════════════════════════════════════════════════════════════════╣")
-        print(f"  ║  {summary['emoji']} Qualité: {summary['quality']:<60} ║")
+        print(f"  ║  {summary.get('emoji', '⚪')} Qualité: {summary['quality']:<60} ║")  # [v2.7.1 FIX] safe emoji read
         print("  ╠════════════════════════════════════════════════════════════════════════════╣")
         print("  ║  📈 MÉTRIQUES DE DIVERGENCE                                                ║")
         print("  ╠════════════════════════════════════════════════════════════════════════════╣")
@@ -29669,7 +33784,7 @@ class ExecutionArchive:
     def __init__(self, framework: 'QMCFramework' = None,
                  output_dir: str = None,
                  logger: Logger = None,
-                 compress: bool = False,
+                 compress: bool = True,  # [v2.7.1] gzip par défaut (~80% d'espace économisé)
                  include_instructions: bool = True,
                  include_raw_memory: bool = True,
                  max_qasm_size: int = 100000):
@@ -29678,7 +33793,7 @@ class ExecutionArchive:
             framework: Instance QMCFramework
             output_dir: Répertoire de sortie
             logger: Logger pour les messages
-            compress: Compresser en .json.gz (défaut: False)
+            compress: Compresser en .json.gz (défaut: True — ~80% plus petit)
             include_instructions: Inclure les instructions détaillées des circuits
             include_raw_memory: Inclure les shots individuels
             max_qasm_size: Taille max du QASM par circuit (défaut: 100KB)
@@ -29735,6 +33850,7 @@ class ExecutionArchive:
             results = []
         
         # Collecter TOUTES les données
+        self._log(f"  📦 Archive: collecte des données (34 sections)...")
         archive = self._build_complete_archive(
             results=results,
             circuits=circuits,
@@ -29765,9 +33881,12 @@ class ExecutionArchive:
         else:
             filename = f"archive_{timestamp}_{job_id}_{status}.json"
             filepath = output_dir / filename
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(archive, f, indent=2, default=str, ensure_ascii=False)
-        
+            # [v2.7.1 FIX] Atomic write so a partial archive is never left on disk.
+            class _ArchiveEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    return str(obj)
+            _atomic_write_json(filepath, archive, cls=_ArchiveEncoder)
+
         self._last_archive_path = filepath
         size_kb = filepath.stat().st_size / 1024
         size_mb = size_kb / 1024
@@ -30023,7 +34142,9 @@ class ExecutionArchive:
                 results_str = json.dumps(results, sort_keys=True, default=str)
                 archive['integrity']['results_hash'] = hashlib.sha256(results_str.encode()).hexdigest()
             if circuits:
-                circuits_repr = str([str(c) for c in circuits[:20]])
+                # [v2.7.1 FIX] Hash ALL circuits, not just the first 20, so the integrity
+                # checksum actually reflects the full batch (was circuits[:20]).
+                circuits_repr = str([str(c) for c in circuits])
                 archive['integrity']['circuits_hash'] = hashlib.sha256(circuits_repr.encode()).hexdigest()
             if archive['qpu_state'] and archive['qpu_state'].get('qubits'):
                 qpu_str = json.dumps(archive['qpu_state']['qubits'], sort_keys=True, default=str)
@@ -30188,7 +34309,7 @@ class ExecutionArchive:
         info = {'distribution': None, 'kernel': platform.release()}
         try:
             if os.path.exists('/etc/os-release'):
-                with open('/etc/os-release', 'r') as f:
+                with open('/etc/os-release', 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                     for line in f:
                         if line.startswith('PRETTY_NAME='):
                             info['distribution'] = line.split('=')[1].strip().strip('"')
@@ -30681,9 +34802,12 @@ class ExecutionArchive:
         """
         [v3.0] Collecte les circuits avec TOUTES les informations pour reconstruction.
         
+        [v2.7.0 FIX] Skip QASM serialization pour circuits >40 qubits (trop lent,
+        qasm2_dumps() prend 5-30s par circuit 156Q). Garde uniquement les métriques.
+        
         Contient:
-        - QASM complet (pour from_qasm_str)
-        - Liste des instructions détaillées
+        - QASM complet (pour from_qasm_str) — sauf circuits >40Q
+        - Liste des instructions détaillées — sauf circuits >1000 instructions
         - Paramètres si circuit paramétré
         - Layout après transpilation
         """
@@ -30692,14 +34816,20 @@ class ExecutionArchive:
         
         circuits_info = []
         
+        # [v2.7.0] Seuil pour skip QASM (trop lent sur gros circuits)
+        MAX_QUBITS_FOR_QASM = 40
+        
         for i, circuit in enumerate(circuits):
             try:
+                n_qubits = circuit.num_qubits
+                ops = dict(circuit.count_ops())
+                
                 c_info = {
                     'index': i,
                     'name': getattr(circuit, 'name', f'{prefix}_{i}'),
                     
-                    # Métriques
-                    'num_qubits': circuit.num_qubits,
+                    # Métriques (toujours rapides)
+                    'num_qubits': n_qubits,
                     'num_clbits': circuit.num_clbits,
                     'depth': circuit.depth(),
                     'size': circuit.size(),
@@ -30707,11 +34837,15 @@ class ExecutionArchive:
                     'num_parameters': circuit.num_parameters,
                     'global_phase': str(circuit.global_phase),
                     
-                    # Comptage gates
-                    'gate_counts': dict(circuit.count_ops()),
-                    'num_1q_gates': sum(1 for inst in circuit.data if len(inst.qubits) == 1),
-                    'num_2q_gates': sum(1 for inst in circuit.data if len(inst.qubits) == 2),
-                    'num_3q_plus': sum(1 for inst in circuit.data if len(inst.qubits) >= 3),
+                    # Comptage gates (depuis ops, rapide)
+                    'gate_counts': ops,
+                    'num_1q_gates': sum(v for k, v in ops.items() 
+                                       if k in ['h', 'x', 'y', 'z', 'rz', 'rx', 'ry', 's', 't', 
+                                                'sdg', 'tdg', 'sx', 'sxdg', 'u1', 'u2', 'u3', 'id']),
+                    'num_2q_gates': sum(v for k, v in ops.items() 
+                                       if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy']),
+                    'num_3q_plus': sum(v for k, v in ops.items() 
+                                      if k in ['ccx', 'cswap', 'ccz']),
                     
                     # QASM pour reconstruction
                     'qasm': None,
@@ -30727,22 +34861,29 @@ class ExecutionArchive:
                     'layout': None,
                 }
                 
-                # QASM complet
-                try:
-                    from qiskit.qasm2 import dumps as qasm2_dumps
-                    qasm_str = qasm2_dumps(circuit)
-                    if len(qasm_str) <= self.max_qasm_size:
-                        c_info['qasm'] = qasm_str
-                    else:
-                        c_info['qasm'] = qasm_str[:self.max_qasm_size] + '\n// ... TRUNCATED ...'
-                        c_info['qasm_truncated'] = True
-                except:
+                # [v2.7.0] Skip QASM pour gros circuits (trop lent: 5-30s par circuit 156Q)
+                if n_qubits > MAX_QUBITS_FOR_QASM:
+                    c_info['qasm'] = f"// SKIPPED: {n_qubits}Q circuit too large for QASM serialization (>{MAX_QUBITS_FOR_QASM}Q threshold)"
+                    c_info['qasm_truncated'] = True
+                    if i == 0:
+                        self._log(f"[ARCHIVE] ⏭️ Skip QASM: {n_qubits}Q > {MAX_QUBITS_FOR_QASM}Q threshold ({len(circuits)} circuits)")
+                else:
+                    # QASM complet (circuits petits/moyens seulement)
                     try:
-                        qasm_str = circuit.qasm()
+                        from qiskit.qasm2 import dumps as qasm2_dumps
+                        qasm_str = qasm2_dumps(circuit)
                         if len(qasm_str) <= self.max_qasm_size:
                             c_info['qasm'] = qasm_str
+                        else:
+                            c_info['qasm'] = qasm_str[:self.max_qasm_size] + '\n// ... TRUNCATED ...'
+                            c_info['qasm_truncated'] = True
                     except:
-                        pass
+                        try:
+                            qasm_str = circuit.qasm()
+                            if len(qasm_str) <= self.max_qasm_size:
+                                c_info['qasm'] = qasm_str
+                        except:
+                            pass
                 
                 # Instructions détaillées
                 if self.include_instructions and len(circuit.data) <= 1000:
@@ -30949,11 +35090,15 @@ class ExecutionArchive:
                 depth_before = orig.depth()
                 depth_after = trans.depth()
                 
-                gates_2q_before = sum(1 for inst in orig.data if len(inst.qubits) == 2)
-                gates_2q_after = sum(1 for inst in trans.data if len(inst.qubits) == 2)
-                
-                # Compter les SWAPs ajoutés
+                # [v2.7.0] Utiliser count_ops() au lieu d'itérer circuit.data
+                orig_ops = dict(orig.count_ops())
                 trans_ops = dict(trans.count_ops())
+                gates_2q_before = sum(v for k, v in orig_ops.items() 
+                                     if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
+                gates_2q_after = sum(v for k, v in trans_ops.items() 
+                                    if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy'])
+                
+                # Compter les SWAPs ajoutés (déjà dans trans_ops)
                 swaps = trans_ops.get('swap', 0)
                 
                 metrics = {
@@ -31026,25 +35171,33 @@ class ExecutionArchive:
         try:
             all_counts = {}
             total_bits = 0
+            n_qubits = 0
             for r in results:
                 if isinstance(r, dict) and 'counts' in r:
                     for bitstring, count in r['counts'].items():
+                        # [v2.7.1 FIX] Strip register-separator spaces before counting bits;
+                        # otherwise the ' ' separators were tallied as "bits" and diluted the
+                        # ones/zeros ratios. Derive n_qubits from the stripped bitstring.
+                        clean_bits = bitstring.replace(' ', '')
+                        if not n_qubits and clean_bits:
+                            n_qubits = len(clean_bits)
                         for c in range(count):
-                            for bit in bitstring:
+                            for bit in clean_bits:
                                 if bit in all_counts:
                                     all_counts[bit] += 1
                                 else:
                                     all_counts[bit] = 1
                                 total_bits += 1
-            
+
             if total_bits > 0:
                 ones = all_counts.get('1', 0)
                 zeros = all_counts.get('0', 0)
                 ratio = ones / total_bits if total_bits > 0 else 0
-                
+
                 analysis['randomness'] = {
                     'available': True,
                     'total_bits': total_bits,
+                    'n_qubits': n_qubits,
                     'ones_ratio': round(ratio, 4),
                     'zeros_ratio': round(1 - ratio, 4),
                     'balance': round(1 - abs(ratio - 0.5) * 2, 4),  # 1 = parfait, 0 = biaisé
@@ -31162,18 +35315,34 @@ class ExecutionArchive:
             used_connections = set()
             
             for circuit in transpiled_circuits:
-                for inst in circuit.data:
-                    qubits = []
-                    for q in inst.qubits:
-                        idx = q._index if hasattr(q, '_index') else None
-                        if idx is not None:
-                            used_qubits.add(idx)
-                            qubits.append(idx)
-                    
-                    # Connexions 2Q
-                    if len(qubits) == 2:
-                        conn = tuple(sorted(qubits))
-                        used_connections.add(conn)
+                n_qubits = circuit.num_qubits
+                
+                # [v2.7.0] Pour gros circuits, utiliser layout info au lieu d'itérer circuit.data
+                if n_qubits > 40:
+                    # Approximation rapide: tous les qubits du circuit sont "utilisés"
+                    if hasattr(circuit, 'layout') and circuit.layout:
+                        try:
+                            for j in range(circuit.num_qubits):
+                                phys = circuit.layout.final_index_layout()[j]
+                                used_qubits.add(phys)
+                        except:
+                            used_qubits.update(range(n_qubits))
+                    else:
+                        used_qubits.update(range(n_qubits))
+                    # Skip connection extraction (trop lent pour gros circuits)
+                else:
+                    for inst in circuit.data:
+                        qubits = []
+                        for q in inst.qubits:
+                            idx = q._index if hasattr(q, '_index') else None
+                            if idx is not None:
+                                used_qubits.add(idx)
+                                qubits.append(idx)
+                        
+                        # Connexions 2Q
+                        if len(qubits) == 2:
+                            conn = tuple(sorted(qubits))
+                            used_connections.add(conn)
             
             analysis['available'] = True
             analysis['qubits_used'] = sorted(list(used_qubits))
@@ -31377,7 +35546,10 @@ class ExecutionArchive:
         return qdna
 
     def _collect_dependencies_versions(self) -> Dict:
-        
+        # [v2.7.1 FIX] Initialize the result dict; it was used below (deps[...]) but
+        # never created, raising NameError when collecting dependency versions.
+        deps = {}
+
         # Core Qiskit
         packages = [
             ('qiskit', 'qiskit'),
@@ -31454,7 +35626,7 @@ class ExecutionArchive:
         elif info['os'] == 'Linux':
             try:
                 # Essayer de lire /etc/os-release
-                with open('/etc/os-release', 'r') as f:
+                with open('/etc/os-release', 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] encoding
                     lines = f.readlines()
                     for line in lines:
                         if line.startswith('PRETTY_NAME='):
@@ -31982,18 +36154,25 @@ class ExecutionArchive:
         return calib
     
     def _collect_circuits_info(self, circuits, prefix: str = '') -> List[Dict]:
-        """Collecte les informations des circuits."""
+        """Collecte les informations des circuits.
+        
+        [v2.7.0 FIX] Skip QASM et iteration sur circuit.data pour circuits >40Q.
+        """
         if not circuits:
             return []
         
+        MAX_QUBITS_FOR_QASM = 40
         circuits_info = []
         
         for i, circuit in enumerate(circuits):
             try:
+                n_qubits = circuit.num_qubits
+                ops = dict(circuit.count_ops())
+                
                 c_info = {
                     'index': i,
                     'name': getattr(circuit, 'name', f'{prefix}_{i}'),
-                    'num_qubits': circuit.num_qubits,
+                    'num_qubits': n_qubits,
                     'num_clbits': circuit.num_clbits,
                     'depth': circuit.depth(),
                     'size': circuit.size(),
@@ -32001,17 +36180,21 @@ class ExecutionArchive:
                     'num_parameters': circuit.num_parameters,
                     'global_phase': str(circuit.global_phase),
                     
-                    # Analyse des gates
-                    'gate_counts': dict(circuit.count_ops()),
-                    'num_1q_gates': sum(1 for inst in circuit.data if len(inst.qubits) == 1),
-                    'num_2q_gates': sum(1 for inst in circuit.data if len(inst.qubits) == 2),
-                    'num_3q_plus_gates': sum(1 for inst in circuit.data if len(inst.qubits) >= 3),
+                    # Analyse des gates (rapide via count_ops)
+                    'gate_counts': ops,
+                    'num_1q_gates': sum(v for k, v in ops.items() 
+                                       if k in ['h', 'x', 'y', 'z', 'rz', 'rx', 'ry', 's', 't', 
+                                                'sdg', 'tdg', 'sx', 'sxdg', 'u1', 'u2', 'u3', 'id']),
+                    'num_2q_gates': sum(v for k, v in ops.items() 
+                                       if k in ['cx', 'cz', 'ecr', 'swap', 'rzz', 'rxx', 'ryy']),
+                    'num_3q_plus_gates': sum(v for k, v in ops.items() 
+                                            if k in ['ccx', 'cswap', 'ccz']),
                     
-                    # Qubits utilisés
-                    'qubits_used': sorted(list(set(
-                        q._index if hasattr(q, '_index') else i 
+                    # Qubits utilisés — skip iteration sur circuit.data pour gros circuits
+                    'qubits_used': list(range(n_qubits)) if n_qubits > MAX_QUBITS_FOR_QASM else sorted(list(set(
+                        q._index if hasattr(q, '_index') else j 
                         for inst in circuit.data 
-                        for i, q in enumerate(inst.qubits)
+                        for j, q in enumerate(inst.qubits)
                     ))),
                     
                     # Layout si disponible
@@ -32036,20 +36219,24 @@ class ExecutionArchive:
                         pass
                 
                 # QASM (limité pour éviter fichiers trop gros)
-                try:
-                    from qiskit.qasm2 import dumps as qasm2_dumps
-                    qasm_str = qasm2_dumps(circuit)
-                    if len(qasm_str) < 50000:  # Max 50KB par circuit
-                        c_info['qasm'] = qasm_str
-                    else:
-                        c_info['qasm'] = f"[TRUNCATED - {len(qasm_str)} bytes]"
-                except:
+                # [v2.7.0] Skip pour gros circuits (qasm2_dumps trop lent)
+                if n_qubits > MAX_QUBITS_FOR_QASM:
+                    c_info['qasm'] = f"// SKIPPED: {n_qubits}Q > {MAX_QUBITS_FOR_QASM}Q threshold"
+                else:
                     try:
-                        qasm_str = circuit.qasm()
-                        if len(qasm_str) < 50000:
+                        from qiskit.qasm2 import dumps as qasm2_dumps
+                        qasm_str = qasm2_dumps(circuit)
+                        if len(qasm_str) < 50000:  # Max 50KB par circuit
                             c_info['qasm'] = qasm_str
+                        else:
+                            c_info['qasm'] = f"[TRUNCATED - {len(qasm_str)} bytes]"
                     except:
-                        pass
+                        try:
+                            qasm_str = circuit.qasm()
+                            if len(qasm_str) < 50000:
+                                c_info['qasm'] = qasm_str
+                        except:
+                            pass
                 
                 circuits_info.append(c_info)
                 
@@ -32120,10 +36307,12 @@ class ExecutionArchive:
                         'enabled': summary['dynamical_decoupling'].get('enabled', False),
                         'sequence': summary['dynamical_decoupling'].get('sequence'),
                     }
-                    
-            except:
-                pass
-        
+
+            except Exception as e:
+                # [v2.7.1 FIX] log instead of silently swallowing the mitigation-config
+                # read failure (control flow unchanged: config keeps its defaults)
+                self._log(f"Mitigation config collection failed: {e}", LogLevel.DEBUG)
+
         return config
     
     def _collect_execution_info(self, run_context: Dict) -> Dict:
@@ -32153,7 +36342,15 @@ class ExecutionArchive:
         }
     
     def _collect_results(self, results: List[Dict]) -> List[Dict]:
-        """Collecte les résultats COMPLETS."""
+        """
+        Collecte les résultats COMPLETS.
+        
+        [v2.7.0] Supporte deux formats:
+        - Sampler: counts={'01001': 4521, ...}
+        - Estimator: expectation_value=0.342, std_error=0.005
+        
+        Préserve TOUS les champs additionnels du résultat (metadata, observable, etc.)
+        """
         if not results:
             return []
         
@@ -32167,40 +36364,59 @@ class ExecutionArchive:
             counts = r.get('counts', {})
             total_shots = sum(counts.values()) if counts else 0
             
+            # Détecter le type de résultat
+            is_estimator = 'expectation_value' in r
+            
             result_data = {
                 'index': i,
                 'shots': r.get('shots', total_shots),
-                'num_outcomes': len(counts),
-                
-                # Counts complets (tous les bitstrings)
-                'counts': counts,
-                
-                # Probabilités
-                'probabilities': {k: v / total_shots for k, v in counts.items()} if total_shots > 0 else {},
-                
-                # Top 10 bitstrings
-                'top_10': sorted(
+                'result_type': 'estimator' if is_estimator else 'sampler',
+            }
+            
+            if is_estimator:
+                # === ESTIMATOR: expectation values ===
+                result_data['expectation_value'] = r.get('expectation_value')
+                result_data['std_error'] = r.get('std_error', 0.0)
+                result_data['observable'] = r.get('observable', '')
+                result_data['resilience_level'] = r.get('resilience_level')
+                # Counts vides mais présents pour compatibilité
+                result_data['counts'] = counts
+                result_data['num_outcomes'] = 0
+                result_data['probabilities'] = {}
+                result_data['top_10'] = []
+            else:
+                # === SAMPLER: counts ===
+                result_data['num_outcomes'] = len(counts)
+                result_data['counts'] = counts
+                result_data['probabilities'] = {k: v / total_shots for k, v in counts.items()} if total_shots > 0 else {}
+                result_data['top_10'] = sorted(
                     [{'bitstring': k, 'count': v, 'probability': v / total_shots if total_shots > 0 else 0}
                      for k, v in counts.items()],
                     key=lambda x: x['count'],
                     reverse=True
-                )[:10],
-                
-                # Métadonnées du circuit si présentes
-                'circuit_depth': r.get('depth'),
-                'circuit_name': r.get('name'),
-                'fidelity': r.get('fidelity'),
-                
-                # Mémoire brute si disponible
-                'memory': r.get('memory'),  # Liste des shots individuels
-            }
+                )[:10]
+            
+            # Métadonnées du circuit si présentes
+            result_data['circuit_depth'] = r.get('depth')
+            result_data['circuit_name'] = r.get('name')
+            result_data['fidelity'] = r.get('fidelity')
+            result_data['memory'] = r.get('memory')
+            
+            # [v2.7.0] Préserver TOUS les champs additionnels (metadata, observable, etc.)
+            for key, value in r.items():
+                if key not in result_data and key not in ('counts',):
+                    result_data[key] = value
             
             collected.append(result_data)
         
         return collected
     
     def _compute_statistics(self, results: List[Dict]) -> Dict:
-        """Calcule les statistiques avancées."""
+        """
+        Calcule les statistiques avancées.
+        
+        [v2.7.0] Supporte Sampler (counts) et Estimator (expectation values).
+        """
         stats = {
             'global': {},
             'per_circuit': [],
@@ -32209,6 +36425,61 @@ class ExecutionArchive:
         if not results:
             return stats
         
+        # [v2.7.0] Détecter le type de résultat
+        is_estimator = any(r.get('expectation_value') is not None for r in results if isinstance(r, dict))
+        
+        if is_estimator:
+            # === ESTIMATOR STATISTICS ===
+            evs_values = []
+            std_values = []
+            
+            for i, r in enumerate(results):
+                if not isinstance(r, dict):
+                    continue
+                
+                evs = r.get('expectation_value')
+                std = r.get('std_error', 0.0)
+
+                if evs is not None:
+                    # [v2.7.1 FIX R141] expectation_value peut être une LISTE (PUB
+                    # multi-observables). On APLATIT en échantillons scalaires pour que
+                    # np.array/np.mean ne plantent pas (numpy 2.x: shape inhomogène) et
+                    # qu'aucune moyenne ne soit silencieusement écrasée.
+                    if isinstance(evs, (list, tuple)):
+                        evs_values.extend(float(x) for x in evs)
+                    else:
+                        evs_values.append(float(evs))
+                    if isinstance(std, (list, tuple)):
+                        std_values.extend((float(x) if x else 0.0) for x in std)
+                    else:
+                        std_values.append(float(std) if std else 0.0)
+
+                    stats['per_circuit'].append({
+                        'index': i,
+                        'result_type': 'estimator',
+                        'expectation_value': evs,
+                        'std_error': std,
+                        'observable': r.get('observable', ''),
+                    })
+            
+            if evs_values:
+                # numpy already imported as np at module level
+                evs_arr = np.array(evs_values)
+                stats['global'] = {
+                    'result_type': 'estimator',
+                    'total_pubs': len(results),
+                    'n_valid': len(evs_values),
+                    'mean_expectation': round(float(np.mean(evs_arr)), 6),
+                    'std_expectation': round(float(np.std(evs_arr)), 6),
+                    'min_expectation': round(float(np.min(evs_arr)), 6),
+                    'max_expectation': round(float(np.max(evs_arr)), 6),
+                    'median_expectation': round(float(np.median(evs_arr)), 6),
+                    'mean_std_error': round(float(np.mean(std_values)), 6),
+                }
+            
+            return stats
+        
+        # === SAMPLER STATISTICS (original) ===
         entropies = []
         uniformities = []
         top_probs = []
@@ -32223,7 +36494,9 @@ class ExecutionArchive:
             
             total = sum(counts.values())
             n_outcomes = len(counts)
-            n_qubits = len(list(counts.keys())[0]) if counts else 0
+            # [v2.7.1 FIX] strip register-separator spaces so multi-register bitstrings
+            # (e.g. '01 10') don't overcount qubits and inflate max_possible_outcomes
+            n_qubits = len(next(iter(counts.keys())).replace(' ', '')) if counts else 0
             max_possible_outcomes = 2 ** n_qubits if n_qubits > 0 else 1
             
             # Entropie de Shannon
@@ -32240,25 +36513,19 @@ class ExecutionArchive:
             sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
             top_prob = (sorted_counts[0][1] / total * 100) if sorted_counts else 0
             
-            # Statistiques par circuit
             circuit_stats = {
                 'index': i,
+                'result_type': 'sampler',
                 'shots': total,
                 'unique_outcomes': n_outcomes,
                 'max_possible_outcomes': max_possible_outcomes,
                 'outcome_ratio': n_outcomes / max_possible_outcomes if max_possible_outcomes > 0 else 0,
-                
-                # Entropie
                 'entropy_bits': round(entropy, 4),
                 'max_entropy_bits': round(max_entropy, 4),
                 'uniformity_pct': round(uniformity, 2),
-                
-                # Distribution
                 'top_bitstring': sorted_counts[0][0] if sorted_counts else None,
                 'top_probability_pct': round(top_prob, 2),
                 'bottom_probability_pct': round(sorted_counts[-1][1] / total * 100, 4) if sorted_counts else 0,
-                
-                # Moments statistiques
                 'mean_count': round(total / n_outcomes, 2) if n_outcomes > 0 else 0,
                 'std_count': round(
                     math.sqrt(sum((c - total/n_outcomes)**2 for c in counts.values()) / n_outcomes), 2
@@ -32270,9 +36537,9 @@ class ExecutionArchive:
             uniformities.append(uniformity)
             top_probs.append(top_prob)
         
-        # Statistiques globales
         if entropies:
             stats['global'] = {
+                'result_type': 'sampler',
                 'total_circuits': len(results),
                 'total_shots': sum(sum(r.get('counts', {}).values()) for r in results if isinstance(r, dict)),
                 'avg_entropy_bits': round(sum(entropies) / len(entropies), 4),
@@ -32757,8 +37024,15 @@ class AutoReportGenerator:
         data['circuits_details'] = self._collect_circuits_details()
         
         # [v2.5.21] Générer les visualisations des circuits (images base64)
-        # Générer TOUTES les images (pas de limite)
-        n_circuits = len(data['circuits_details']) if data['circuits_details'] else 0
+        # [v2.7.0 FIX] Ne pas limiter par circuits_details (peut être vide)
+        # Utiliser directement les circuits stockés dans self._transpiled_circuits
+        # ou framework._last_transpiled_circuits
+        n_circuits = None  # None = pas de limite, _generate_circuit_images trouvera les circuits
+        if self._transpiled_circuits:
+            n_circuits = len(self._transpiled_circuits)
+        elif self.framework and hasattr(self.framework, '_last_transpiled_circuits'):
+            if self.framework._last_transpiled_circuits:
+                n_circuits = len(self.framework._last_transpiled_circuits)
         data['circuit_images'] = self._generate_circuit_images(max_circuits=n_circuits)
         
         # [v2.5.18] Générer les visualisations Qiskit professionnelles
@@ -32776,7 +37050,10 @@ class AutoReportGenerator:
         return data
     
     def _collect_transpilation_data(self) -> Dict:
-        """[v2.5.18] Collecte les données de transpilation."""
+        """
+        [v2.5.18] Collecte les données de transpilation.
+        [v2.7.0 FIX] Calcule depuis les circuits si stats manquantes.
+        """
         trans = {
             'available': False,
             'score': None,
@@ -32802,6 +37079,57 @@ class AutoReportGenerator:
             trans['depth_expansion'] = stats.get('depth_expansion')
             trans['before'] = stats.get('before', {})
             trans['after'] = stats.get('after', {})
+            return trans
+        
+        # [v2.7.0] Fallback: calculer depuis les circuits transpilés
+        circuits = (
+            getattr(self, '_transpiled_circuits', None) or
+            getattr(self.framework, '_last_transpiled_circuits', None) or
+            getattr(self.framework, '_collected_circuits', None)
+        )
+        
+        if circuits and len(circuits) > 0:
+            try:
+                # Calculer les métriques moyennes
+                depths = []
+                gates_2q = []
+                total_gates = []
+                
+                for circ in circuits:
+                    if hasattr(circ, 'depth'):
+                        depths.append(circ.depth())
+                    if hasattr(circ, 'data'):
+                        n_2q = sum(1 for inst in circ.data if len(inst.qubits) == 2)
+                        gates_2q.append(n_2q)
+                        total_gates.append(len(circ.data))
+                
+                avg_depth = sum(depths) / len(depths) if depths else 0
+                avg_2q = sum(gates_2q) / len(gates_2q) if gates_2q else 0
+                
+                trans['available'] = True
+                trans['after'] = {
+                    'depth': int(avg_depth),
+                    'gates_2q': int(avg_2q),
+                    'n_circuits': len(circuits),
+                }
+                
+                # Score basé sur profondeur (heuristique simple)
+                # < 50 = excellent, 50-100 = good, 100-200 = ok, > 200 = poor
+                if avg_depth < 50:
+                    trans['score'] = 90
+                    trans['recommendation'] = 'EXCELLENT'
+                elif avg_depth < 100:
+                    trans['score'] = 75
+                    trans['recommendation'] = 'GOOD'
+                elif avg_depth < 200:
+                    trans['score'] = 55
+                    trans['recommendation'] = 'OK'
+                else:
+                    trans['score'] = 35
+                    trans['recommendation'] = 'DEEP'
+                
+            except Exception as e:
+                self._log(f"[TRANSPILATION] Erreur calcul stats: {e}", LogLevel.WARN)
         
         return trans
     
@@ -32852,31 +37180,76 @@ class AutoReportGenerator:
         return types.get(extension, 'other')
     
     def _collect_circuits_details(self) -> List[Dict]:
-        """[v2.5.18] Collecte les détails de tous les circuits transpilés."""
-        circuits = []
+        """
+        [v2.5.18] Collecte les détails de tous les circuits transpilés.
+        [v2.7.0 FIX] Utilise les mêmes sources que _generate_circuit_images()
+        """
+        circuits_details = []
         
         if not self.framework:
-            return circuits
+            return circuits_details
         
-        # Récupérer les infos depuis le rapport interne du framework
-        report = getattr(self.framework, 'report', None)
-        if report:
-            transpiled_info = report.get('circuits_transpiled', section='transpilation')
-            if transpiled_info:
-                return transpiled_info
+        # [v2.7.0] Récupérer les circuits depuis plusieurs sources (même logique que _generate_circuit_images)
+        circuits = None
+        source = None
         
-        # Fallback: lire depuis le fichier circuits.json si disponible
-        run_dir = self._get_output_dir()
-        circuits_file = run_dir / 'circuits.json' if run_dir else None
-        if circuits_file and circuits_file.exists():
-            try:
-                with open(circuits_file) as f:
-                    data = json.load(f)
-                    return data.get('circuits', [])
-            except Exception:
-                pass
+        # Source 1: Circuits passés directement à generate()
+        circuits = getattr(self, '_transpiled_circuits', None)
+        if circuits:
+            source = "self._transpiled_circuits"
         
-        return circuits
+        # Fallback 2: Circuits stockés dans le framework
+        if not circuits and self.framework:
+            circuits = getattr(self.framework, '_last_transpiled_circuits', None)
+            if circuits:
+                source = "framework._last_transpiled_circuits"
+        
+        # Fallback 3: Circuits collectés (mode collection)
+        if not circuits and self.framework:
+            circuits = getattr(self.framework, '_collected_circuits', None)
+            if circuits:
+                source = "framework._collected_circuits"
+        
+        # Fallback 4: Rapport interne (ancienne méthode)
+        if not circuits:
+            report = getattr(self.framework, 'report', None)
+            if report:
+                transpiled_info = report.get('circuits_transpiled', section='transpilation')
+                if transpiled_info:
+                    return transpiled_info
+        
+        # Fallback 5: Fichier circuits.json
+        if not circuits:
+            run_dir = self._get_output_dir()
+            circuits_file = run_dir / 'circuits.json' if run_dir else None
+            if circuits_file and circuits_file.exists():
+                try:
+                    with open(circuits_file, encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (circuits.json is UTF-8; avoid platform cp1252 mojibake)
+                        data = json.load(f)
+                        return data.get('circuits', [])
+                except Exception:
+                    pass
+        
+        # Extraire les détails des circuits Qiskit
+        if circuits:
+            for i, circ in enumerate(circuits):
+                try:
+                    detail = {
+                        'index': i,
+                        'name': getattr(circ, 'name', f'circuit_{i}'),
+                        'n_qubits': circ.num_qubits if hasattr(circ, 'num_qubits') else 0,
+                        'depth': circ.depth() if hasattr(circ, 'depth') else 0,
+                        'gates_2q': sum(1 for inst in circ.data if len(inst.qubits) == 2) if hasattr(circ, 'data') else 0,
+                    }
+                    circuits_details.append(detail)
+                except Exception as e:
+                    circuits_details.append({
+                        'index': i,
+                        'name': f'circuit_{i}',
+                        'error': str(e)
+                    })
+        
+        return circuits_details
 
     def _generate_circuit_images(self, max_circuits: int = None, max_depth: int = 50) -> List[Dict]:
         """
@@ -32951,14 +37324,31 @@ class AutoReportGenerator:
                 depth = circuit.depth()
                 n_qubits = circuit.num_qubits
                 
-                # Vérifier si le circuit est trop profond
-                truncated = False
-                circuit_to_draw = circuit
+                # [v2.7.0 FIX] Skip le dessin pour circuits trop larges (freeze matplotlib)
+                # Seuil: >40 qubits OU depth>200 → trop lent (30-90s par circuit)
+                MAX_QUBITS_FOR_DRAW = 40
+                MAX_DEPTH_FOR_DRAW = 200
                 
-                if depth > max_depth:
-                    # Pour les circuits très profonds, on dessine seulement les premières gates
-                    truncated = True
-                    # On ne peut pas facilement tronquer, donc on note juste que c'est tronqué
+                if n_qubits > MAX_QUBITS_FOR_DRAW or depth > MAX_DEPTH_FOR_DRAW:
+                    images.append({
+                        'index': i,
+                        'name': name[:40] + '...' if len(name) > 40 else name,
+                        'full_name': name,
+                        'image_base64': None,
+                        'n_qubits': n_qubits,
+                        'depth': depth,
+                        'truncated': True,
+                        'skip_reason': f"Circuit trop large ({n_qubits}Q, depth={depth}) — "
+                                      f"seuil: {MAX_QUBITS_FOR_DRAW}Q / depth {MAX_DEPTH_FOR_DRAW}",
+                    })
+                    if i == 0:
+                        self._log(f"[CIRCUIT_VIZ] ⏭️ Skip dessin: {n_qubits}Q × depth={depth} "
+                                 f"(>{MAX_QUBITS_FOR_DRAW}Q ou >{MAX_DEPTH_FOR_DRAW} depth)", LogLevel.INFO)
+                    continue
+                
+                # Vérifier si le circuit est trop profond (mais encore dessinable)
+                truncated = depth > max_depth
+                circuit_to_draw = circuit
                 
                 # Créer la figure avec Qiskit
                 fig = circuit_to_draw.draw(
@@ -33949,10 +38339,13 @@ class AutoReportGenerator:
         trans_final_depth = trans_after.get('depth', 'N/A')
         
         # JSON pour charts
-        charts_data = json.dumps(data.get('charts_data', {}), indent=2)
-        full_data = json.dumps({k: v for k, v in data.items() 
-                               if k not in ['circuit_images', 'qiskit_visualizations']}, 
-                              indent=2, default=str)
+        # [v2.7.1 FIX] prevent HTML/script breakout from JSON embedded in <pre>/<script>
+        def _json_safe(s: str) -> str:
+            return s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+        charts_data = _json_safe(json.dumps(data.get('charts_data', {}), indent=2))
+        full_data = _json_safe(json.dumps({k: v for k, v in data.items()
+                               if k not in ['circuit_images', 'qiskit_visualizations']},
+                              indent=2, default=str))
         
         # CSS Professionnel - IBM Carbon Design System
         css = '''
@@ -34386,7 +38779,7 @@ code, pre, .mono {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{_qmc_html_escape(title)}</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>{css}</style>
@@ -34397,10 +38790,10 @@ code, pre, .mono {
             <div class="header-content">
                 <div class="header-title">
                     <h1>QMC Quantum Execution Report</h1>
-                    <p class="header-subtitle">{data.get('project', 'QMC Research Lab')} | {data.get('backend_name', 'N/A')}</p>
+                    <p class="header-subtitle">{_qmc_html_escape(data.get('project', 'QMC Research Lab'))} | {_qmc_html_escape(data.get('backend_name', 'N/A'))}</p>
                 </div>
                 <div class="header-meta">
-                    <span class="status-indicator {status_class}">{status}</span>
+                    <span class="status-indicator {status_class}">{_qmc_html_escape(status)}</span>
                     <div class="header-details">
                         Framework v{data.get('framework_version', __version__)}<br>
                         {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -34441,7 +38834,7 @@ code, pre, .mono {
                 <div class="timeline-step">
                     <div class="timeline-dot"></div>
                     <div class="timeline-label">Submitted</div>
-                    <div class="timeline-value">{run_ctx.get('submitted_at', 'N/A')}</div>
+                    <div class="timeline-value">{_qmc_html_escape(run_ctx.get('submitted_at', 'N/A'))}</div>
                 </div>
                 <div class="timeline-step">
                     <div class="timeline-dot"></div>
@@ -34461,7 +38854,7 @@ code, pre, .mono {
                 <div class="timeline-step">
                     <div class="timeline-dot"></div>
                     <div class="timeline-label">Completed</div>
-                    <div class="timeline-value">{run_ctx.get('completed_at', 'N/A')}</div>
+                    <div class="timeline-value">{_qmc_html_escape(run_ctx.get('completed_at', 'N/A'))}</div>
                 </div>
             </div>
             
@@ -34475,19 +38868,19 @@ code, pre, .mono {
                     <div class="info-grid">
                         <div class="info-item">
                             <span class="info-label">Name</span>
-                            <span class="info-value">{data.get('backend_name', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(data.get('backend_name', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Qubits</span>
-                            <span class="info-value">{calib.get('num_qubits') or data.get('backend_info', {}).get('num_qubits', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(calib.get('num_qubits') or data.get('backend_info', {}).get('num_qubits', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Version</span>
-                            <span class="info-value">{calib.get('backend_version') or data.get('backend_info', {}).get('version', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(calib.get('backend_version') or data.get('backend_info', {}).get('version', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Job ID</span>
-                            <span class="info-value" style="font-family: monospace; font-size: 0.8rem;">{run_ctx.get('job_id', 'N/A')}</span>
+                            <span class="info-value" style="font-family: monospace; font-size: 0.8rem;">{_qmc_html_escape(run_ctx.get('job_id', 'N/A'))}</span>
                         </div>
                     </div>
                 </div>
@@ -34500,7 +38893,7 @@ code, pre, .mono {
                         </div>
                         <div class="info-item">
                             <span class="info-label">Layout</span>
-                            <span class="info-value">{run_ctx.get('layout_strategy', 'auto')}</span>
+                            <span class="info-value">{_qmc_html_escape(run_ctx.get('layout_strategy', 'auto'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Shots</span>
@@ -34521,19 +38914,19 @@ code, pre, .mono {
                     <div class="info-grid">
                         <div class="info-item">
                             <span class="info-label">OS</span>
-                            <span class="info-value">{data.get('system_info', {}).get('os_full', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(data.get('system_info', {}).get('os_full', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Architecture</span>
-                            <span class="info-value">{data.get('system_info', {}).get('architecture', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(data.get('system_info', {}).get('architecture', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Python</span>
-                            <span class="info-value">{data.get('system_info', {}).get('python_version', 'N/A')}</span>
+                            <span class="info-value">{_qmc_html_escape(data.get('system_info', {}).get('python_version', 'N/A'))}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Hostname</span>
-                            <span class="info-value" style="font-family: monospace; font-size: 0.75rem;">{data.get('system_info', {}).get('hostname', 'N/A')}</span>
+                            <span class="info-value" style="font-family: monospace; font-size: 0.75rem;">{_qmc_html_escape(data.get('system_info', {}).get('hostname', 'N/A'))}</span>
                         </div>
                     </div>
                 </div>
@@ -34655,13 +39048,13 @@ code, pre, .mono {
         <div class="score-display">
             <div class="score-circle {score_class}">
                 <span class="score-value">{score}</span>
-                <span class="score-label">{rec}</span>
+                <span class="score-label">{_qmc_html_escape(rec)}</span>
             </div>
             <div class="score-details">
                 <div class="info-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="info-item">
                         <span class="info-label">2Q Overhead</span>
-                        <span class="info-value">+{trans.get('overhead_2q_percent', 0):.1f}%</span>
+                        <span class="info-value">+{(trans.get('overhead_2q_percent') or 0):.1f}%</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Est. SWAPs</span>
@@ -34669,11 +39062,11 @@ code, pre, .mono {
                     </div>
                     <div class="info-item">
                         <span class="info-label">Depth Exp.</span>
-                        <span class="info-value">{trans.get('depth_expansion', 1):.2f}x</span>
+                        <span class="info-value">{(trans.get('depth_expansion') or 1):.2f}x</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Final Depth</span>
-                        <span class="info-value">{final_depth}</span>
+                        <span class="info-value">{_qmc_html_escape(final_depth)}</span>
                     </div>
                 </div>
             </div>
@@ -34707,7 +39100,7 @@ code, pre, .mono {
             rows += f'''
             <tr>
                 <td class="numeric">{i}</td>
-                <td>{c.get('name', f'circuit_{i}')[:35]}</td>
+                <td>{_qmc_html_escape(c.get('name', f'circuit_{i}')[:35])}</td>
                 <td class="numeric">{n_qubits}</td>
                 <td class="numeric">{depth}</td>
                 <td class="numeric">{gates_2q}</td>
@@ -34736,7 +39129,7 @@ code, pre, .mono {
         for img in images:
             items += f'''
             <div class="viz-item">
-                <div class="viz-item-header">{img.get('name', 'Circuit')} | {img.get('n_qubits', '?')}q, d={img.get('depth', '?')}</div>
+                <div class="viz-item-header">{_qmc_html_escape(img.get('name', 'Circuit'))} | {img.get('n_qubits', '?')}q, d={img.get('depth', '?')}</div>
                 <img src="data:image/png;base64,{img.get('image_base64', '')}" onclick="openModal(this.src)" loading="lazy">
             </div>
             '''
@@ -34888,13 +39281,13 @@ code, pre, .mono {
             <div style="flex:1;">
                 <div style="font-size:1.3rem;font-weight:700;color:{health_color};">{health_icon} {health_status}</div>
                 <div style="font-size:0.9rem;color:#161616;margin-top:0.25rem;font-weight:500;">
-                    {calib.get('backend_name', 'N/A')}
+                    {_qmc_html_escape(calib.get('backend_name', 'N/A'))}
                 </div>
                 <div style="font-size:0.8rem;color:#525252;margin-top:0.25rem;">
                     {total_qubits} qubits • {total_2q_gates} 2Q connections • {operational} operational
                 </div>
                 <div style="font-size:0.7rem;color:#8d8d8d;margin-top:0.5rem;">
-                    📅 Last calibration: {calib_date}
+                    📅 Last calibration: {_qmc_html_escape(calib_date)}
                 </div>
             </div>
             <div style="width:180px;height:180px;">
@@ -34958,6 +39351,7 @@ code, pre, .mono {
                     <span><span style="display:inline-block;width:12px;height:12px;background:#ff832b;border-radius:2px;margin-right:4px;"></span>Fair (3-5%)</span>
                     <span><span style="display:inline-block;width:12px;height:12px;background:#da1e28;border-radius:2px;margin-right:4px;"></span>Poor (&gt;5%)</span>
                     <span><span style="display:inline-block;width:12px;height:12px;background:#161616;border-radius:2px;margin-right:4px;"></span>Faulty</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;background:#8d8d8d;border-radius:2px;margin-right:4px;"></span>Unknown</span>
                 </div>
             </div>
             
@@ -34998,7 +39392,7 @@ code, pre, .mono {
                 <div class="info-panel-header">Gate Info</div>
                 <div class="info-grid">
                     <div class="info-item"><span class="info-label">2Q Connections</span><span class="info-value">{total_2q_gates}</span></div>
-                    <div class="info-item"><span class="info-label">Basis Gates</span><span class="info-value" style="font-size:0.7rem;">{basis_gates_str}</span></div>
+                    <div class="info-item"><span class="info-label">Basis Gates</span><span class="info-value" style="font-size:0.7rem;">{_qmc_html_escape(basis_gates_str)}</span></div>
                     <div class="info-item"><span class="info-label">Avg CX Error</span><span class="info-value">{avg_2q_error:.3f}%</span></div>
                     <div class="info-item"><span class="info-label">Best Connection</span><span class="info-value">{best_2q_error:.4f}%</span></div>
                 </div>
@@ -35092,13 +39486,13 @@ code, pre, .mono {
         # D'abord les packages prioritaires
         for pkg in priority_packages:
             if pkg in deps:
-                lines.append(f'<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #e0e0e0;"><span>{pkg}</span><code style="color:#0f62fe;">{deps[pkg]}</code></div>')
-        
+                lines.append(f'<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #e0e0e0;"><span>{_qmc_html_escape(pkg)}</span><code style="color:#0f62fe;">{_qmc_html_escape(deps[pkg])}</code></div>')
+
         # Puis les autres (max 10 de plus)
         other_count = 0
         for pkg, version in sorted(deps.items()):
             if pkg not in priority_packages and other_count < 10:
-                lines.append(f'<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #e0e0e0;"><span>{pkg}</span><code style="color:#525252;">{version}</code></div>')
+                lines.append(f'<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #e0e0e0;"><span>{_qmc_html_escape(pkg)}</span><code style="color:#525252;">{_qmc_html_escape(version)}</code></div>')
                 other_count += 1
         
         remaining = len(deps) - len(priority_packages) - other_count
@@ -35136,11 +39530,17 @@ code, pre, .mono {
             y = row * (cell_size + padding) + 10
             
             # Couleur basée sur l'erreur de lecture
-            readout = q_info.get('readout_error', 0) or 0  # Toujours définir readout
+            # [v2.7.1 FIX] Keep None when calibration data is absent so we render grey
+            # "unknown" instead of falsely coloring missing data green ("Excellent <1%").
+            readout = q_info.get('readout_error', None)
             if q_idx in faulty_qubits:
                 color = '#161616'  # Noir pour faulty
                 text_color = '#fff'
                 readout_str = 'FAULTY'
+            elif readout is None:
+                color = '#8d8d8d'  # Gris pour données inconnues
+                text_color = '#fff'
+                readout_str = 'unknown'
             else:
                 if readout < 1:
                     color = '#198038'  # Vert
@@ -35190,8 +39590,13 @@ code, pre, .mono {
             return '<div style="color:#8d8d8d;">No operational qubits</div>'
         
         sorted_qubits = sorted(scored_qubits, key=lambda x: x[1], reverse=True)
-        best_5 = sorted_qubits[:5]
-        worst_5 = sorted_qubits[-5:][::-1] if len(sorted_qubits) >= 5 else []
+        # [v2.7.1 FIX] Make best/worst sets DISJOINT. Previously best=[:5] and worst=[-5:]
+        # overlapped for 5-9 operational qubits, and worst vanished entirely for <5.
+        # Split the ranking in half so each side draws from a non-overlapping partition.
+        n = len(sorted_qubits)
+        k = min(5, n // 2) if n >= 2 else 0
+        best_5 = sorted_qubits[:k]
+        worst_5 = sorted_qubits[-k:][::-1] if k > 0 else []
         
         html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">'
         
@@ -35586,7 +39991,7 @@ code, pre, .mono {
         if histograms:
             items = ''.join([f'''
             <div class="viz-item">
-                <div class="viz-item-header">Circuit {h.get('index', '?')}: {h.get('name', 'Unknown')[:25]}</div>
+                <div class="viz-item-header">Circuit {h.get('index', '?')}: {_qmc_html_escape(h.get('name', 'Unknown')[:25])}</div>
                 <img src="data:image/png;base64,{h.get('image_base64', '')}" onclick="openModal(this.src)" loading="lazy">
             </div>
             ''' for h in histograms])
@@ -35596,7 +40001,7 @@ code, pre, .mono {
         if comparison:
             items = ''.join([f'''
             <div class="viz-item" style="grid-column: 1 / -1;">
-                <div class="viz-item-header">{c.get('name', 'Comparison')}</div>
+                <div class="viz-item-header">{_qmc_html_escape(c.get('name', 'Comparison'))}</div>
                 <img src="data:image/png;base64,{c.get('image_base64', '')}" onclick="openModal(this.src)" loading="lazy">
             </div>
             ''' for c in comparison])
@@ -35629,9 +40034,9 @@ code, pre, .mono {
         
         rows = ''.join([f'''
         <tr>
-            <td>{f.get('name', 'unknown')}</td>
-            <td class="numeric">{f.get('size_kb', 0):.1f} KB</td>
-            <td>{f.get('type', 'other')}</td>
+            <td>{_qmc_html_escape(f.get('name', 'unknown'))}</td>
+            <td class="numeric">{(f.get('size_kb') or 0):.1f} KB</td>
+            <td>{_qmc_html_escape(f.get('type', 'other'))}</td>
         </tr>
         ''' for f in files])
         
@@ -35654,15 +40059,19 @@ code, pre, .mono {
         status_emoji = '✅' if status == 'SUCCESS' else '❌'
         
         # Préparer les données JSON pour JavaScript
-        charts_data_json = json.dumps(data.get('charts_data', {}), indent=2)
-        stats_json = json.dumps(data.get('statistics', {}), indent=2)
+        # [v2.7.1 FIX] prevent </script> breakout from JSON embedded in <script>
+        def _json_safe(s: str) -> str:
+            return s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+        charts_data_json = _json_safe(json.dumps(data.get('charts_data', {}), indent=2))
+        stats_json = _json_safe(json.dumps(data.get('statistics', {}), indent=2))
+        full_data_json = _json_safe(json.dumps(data, indent=2, default=str))
         
         html = f'''<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{_qmc_html_escape(title)}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {{
@@ -36070,11 +40479,11 @@ code, pre, .mono {
                     QMC Quantum Report
                 </h1>
                 <p style="margin-top: 10px; opacity: 0.9;">
-                    {data.get('project', 'QMC')} | {data.get('backend_name', 'N/A')}
+                    {_qmc_html_escape(data.get('project', 'QMC'))} | {_qmc_html_escape(data.get('backend_name', 'N/A'))}
                 </p>
             </div>
             <div class="meta-info">
-                <div class="status-badge">{status_emoji} {status}</div>
+                <div class="status-badge">{status_emoji} {_qmc_html_escape(status)}</div>
                 <p style="margin-top: 10px;">Framework v{data.get('framework_version', __version__)}</p>
                 <p>{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</p>
             </div>
@@ -36112,7 +40521,7 @@ code, pre, .mono {
                 <div class="timeline-item">
                     <div class="timeline-dot">📤</div>
                     <div class="timeline-label">Soumission</div>
-                    <div class="timeline-value">{data.get('run_context', {}).get('submitted_at', 'N/A')}</div>
+                    <div class="timeline-value">{_qmc_html_escape(data.get('run_context', {}).get('submitted_at', 'N/A'))}</div>
                 </div>
                 <div class="timeline-item">
                     <div class="timeline-dot">⏳</div>
@@ -36127,7 +40536,7 @@ code, pre, .mono {
                 <div class="timeline-item">
                     <div class="timeline-dot">✅</div>
                     <div class="timeline-label">Terminé</div>
-                    <div class="timeline-value">{data.get('run_context', {}).get('completed_at', 'N/A')}</div>
+                    <div class="timeline-value">{_qmc_html_escape(data.get('run_context', {}).get('completed_at', 'N/A'))}</div>
                 </div>
             </div>
         </div>
@@ -36141,10 +40550,10 @@ code, pre, .mono {
                     <h3>Backend & Environnement</h3>
                 </div>
                 <table>
-                    <tr><td>Backend</td><td><strong>{data.get('backend_name', 'N/A')}</strong></td></tr>
-                    <tr><td>Qubits</td><td><strong>{data.get('backend_info', {}).get('num_qubits', 'N/A')}</strong></td></tr>
-                    <tr><td>Backend Version</td><td>{data.get('backend_info', {}).get('version', 'N/A')}</td></tr>
-                    <tr><td>Job ID</td><td><code>{data.get('run_context', {}).get('job_id', 'N/A')}</code></td></tr>
+                    <tr><td>Backend</td><td><strong>{_qmc_html_escape(data.get('backend_name', 'N/A'))}</strong></td></tr>
+                    <tr><td>Qubits</td><td><strong>{_qmc_html_escape(data.get('backend_info', {}).get('num_qubits', 'N/A'))}</strong></td></tr>
+                    <tr><td>Backend Version</td><td>{_qmc_html_escape(data.get('backend_info', {}).get('version', 'N/A'))}</td></tr>
+                    <tr><td>Job ID</td><td><code>{_qmc_html_escape(data.get('run_context', {}).get('job_id', 'N/A'))}</code></td></tr>
                     <tr><td>Framework</td><td>QMC v{data.get('framework_version', __version__)}</td></tr>
                 </table>
             </div>
@@ -36157,7 +40566,7 @@ code, pre, .mono {
                     <tr><td>Shots</td><td><strong>{data.get('run_context', {}).get('shots', 0):,}</strong></td></tr>
                     <tr><td>Circuits</td><td>{data.get('run_context', {}).get('circuits_count', 0)}</td></tr>
                     <tr><td>Optimization Level</td><td>{data.get('run_context', {}).get('optimization_level', 3)}</td></tr>
-                    <tr><td>Layout Strategy</td><td>{data.get('run_context', {}).get('layout_strategy', 'auto')}</td></tr>
+                    <tr><td>Layout Strategy</td><td>{_qmc_html_escape(data.get('run_context', {}).get('layout_strategy', 'auto'))}</td></tr>
                 </table>
             </div>
         </div>
@@ -36170,10 +40579,10 @@ code, pre, .mono {
                     <h3>Système</h3>
                 </div>
                 <table>
-                    <tr><td>OS</td><td><strong>{data.get('system_info', {}).get('os_full', 'N/A')}</strong></td></tr>
-                    <tr><td>Architecture</td><td>{data.get('system_info', {}).get('architecture', 'N/A')}</td></tr>
-                    <tr><td>Python</td><td>{data.get('system_info', {}).get('python_version', 'N/A')} ({data.get('system_info', {}).get('python_implementation', 'CPython')})</td></tr>
-                    <tr><td>Hostname</td><td><code>{data.get('system_info', {}).get('hostname', 'N/A')}</code></td></tr>
+                    <tr><td>OS</td><td><strong>{_qmc_html_escape(data.get('system_info', {}).get('os_full', 'N/A'))}</strong></td></tr>
+                    <tr><td>Architecture</td><td>{_qmc_html_escape(data.get('system_info', {}).get('architecture', 'N/A'))}</td></tr>
+                    <tr><td>Python</td><td>{_qmc_html_escape(data.get('system_info', {}).get('python_version', 'N/A'))} ({_qmc_html_escape(data.get('system_info', {}).get('python_implementation', 'CPython'))})</td></tr>
+                    <tr><td>Hostname</td><td><code>{_qmc_html_escape(data.get('system_info', {}).get('hostname', 'N/A'))}</code></td></tr>
                 </table>
             </div>
             <div class="card">
@@ -36284,7 +40693,7 @@ code, pre, .mono {
     
     <script>
         // Données complètes pour export
-        const fullData = {json.dumps(data, indent=2, default=str)};
+        const fullData = {full_data_json};
         const chartsData = {charts_data_json};
         const statsData = {stats_json};
         
@@ -36319,7 +40728,8 @@ code, pre, .mono {
                     html += '<div class="json-content">';
                     keys.forEach((key, i) => {{
                         html += '<div class="json-item">';
-                        html += `<span class="json-key">"${{key}}"</span>: `;
+                        // [v2.7.1 FIX R115] échapper la clé (sink innerHTML) — anti-XSS DOM
+                        html += `<span class="json-key">"${{String(key).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}}"</span>: `;
                         html += renderJsonViewer(data[key], null, level + 1);
                         if (i < keys.length - 1) html += '<span class="json-comma">,</span>';
                         html += '</div>';
@@ -36328,7 +40738,8 @@ code, pre, .mono {
                     html += '<span class="json-bracket">}}</span>';
                 }}
             }} else if (typeof data === 'string') {{
-                html = `<span class="json-string">"${{data}}"</span>`;
+                // [v2.7.1 FIX R115] échapper la valeur chaîne (sink innerHTML) — anti-XSS DOM
+                html = `<span class="json-string">"${{data.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}}"</span>`;
             }} else if (typeof data === 'number') {{
                 html = `<span class="json-number">${{data}}</span>`;
             }} else if (typeof data === 'boolean') {{
@@ -36434,12 +40845,12 @@ code, pre, .mono {
         return f'''
         <div class="error-section">
             <h3>❌ Erreur Rencontrée</h3>
-            <p><strong>Type:</strong> {error.get('type', 'Unknown')}</p>
-            <p><strong>Message:</strong> {error.get('message', 'No message')}</p>
+            <p><strong>Type:</strong> {_qmc_html_escape(error.get('type', 'Unknown'))}</p>
+            <p><strong>Message:</strong> {_qmc_html_escape(error.get('message', 'No message'))}</p>
             <details style="margin-top: 15px;">
                 <summary style="cursor: pointer; color: var(--danger);">Voir le traceback complet</summary>
                 <div class="code-block" style="margin-top: 10px;">
-                    <pre>{error.get('traceback', 'No traceback available')}</pre>
+                    <pre>{_qmc_html_escape(error.get('traceback', 'No traceback available'))}</pre>
                 </div>
             </details>
         </div>
@@ -36454,7 +40865,7 @@ code, pre, .mono {
             return f'''
             <h2 class="section-title">📡 État du QPU</h2>
             <div class="card">
-                <p style="color: var(--warning);">⚠️ {error_msg}</p>
+                <p style="color: var(--warning);">⚠️ {_qmc_html_escape(error_msg)}</p>
                 <p style="color: var(--text-muted); margin-top: 10px;">
                     Pour obtenir les données de calibration, assurez-vous que:
                     <br>• Le framework est connecté à un backend IBM réel
@@ -36640,9 +41051,10 @@ code, pre, .mono {
         
         score = trans.get('score', 0)
         recommendation = trans.get('recommendation', 'WARN')
-        overhead = trans.get('overhead_2q_percent', 0)
+        # [v2.7.1 FIX] guard None values from the v2.7.0 fallback path before formatting/comparison
+        overhead = trans.get('overhead_2q_percent') or 0
         swaps = trans.get('swaps_estimated', 0)
-        depth_exp = trans.get('depth_expansion', 1)
+        depth_exp = trans.get('depth_expansion') or 1
         
         # Couleurs selon recommandation
         if recommendation == 'GO':
@@ -36729,7 +41141,7 @@ code, pre, .mono {
             rows += f'''
             <tr>
                 <td>{c.get('index', '?')}</td>
-                <td title="{c.get('name', '')}">{name}</td>
+                <td title="{_qmc_html_escape(c.get('name', ''))}">{_qmc_html_escape(name)}</td>
                 <td>{n_qubits}</td>
                 <td>{depth_warning} {depth}</td>
                 <td>{gates_2q}</td>
@@ -36802,7 +41214,7 @@ code, pre, .mono {
             image_cards += f'''
             <div class="circuit-card">
                 <div class="circuit-header">
-                    <span class="circuit-name" title="{img.get('full_name', name)}">{name}</span>
+                    <span class="circuit-name" title="{_qmc_html_escape(img.get('full_name', name))}">{_qmc_html_escape(name)}</span>
                     {truncated_badge}
                 </div>
                 <div class="circuit-image-container" onclick="openCircuitModal(this)">
@@ -37032,7 +41444,7 @@ code, pre, .mono {
                 hist_cards += f'''
                 <div class="viz-card">
                     <div class="viz-header">
-                        <span class="viz-title">Circuit {h.get('index', '?')}: {h.get('name', 'Unknown')[:30]}</span>
+                        <span class="viz-title">Circuit {h.get('index', '?')}: {_qmc_html_escape(h.get('name', 'Unknown')[:30])}</span>
                         <span class="viz-meta">{h.get('total_shots', 0):,} shots • {h.get('unique_outcomes', 0)} outcomes</span>
                     </div>
                     <div class="viz-image" onclick="openVizModal(this)">
@@ -37058,10 +41470,10 @@ code, pre, .mono {
                 comp_cards += f'''
                 <div class="viz-card wide">
                     <div class="viz-header">
-                        <span class="viz-title">{c.get('name', 'Comparaison')}</span>
+                        <span class="viz-title">{_qmc_html_escape(c.get('name', 'Comparaison'))}</span>
                     </div>
                     <div class="viz-image" onclick="openVizModal(this)">
-                        <img src="data:image/png;base64,{c.get('image_base64', '')}" alt="{c.get('name')}" loading="lazy" />
+                        <img src="data:image/png;base64,{c.get('image_base64', '')}" alt="{_qmc_html_escape(c.get('name'))}" loading="lazy" />
                     </div>
                 </div>
                 '''
@@ -37099,7 +41511,7 @@ code, pre, .mono {
             <div class="viz-section">
                 <h3 class="viz-section-title">🗺️ Carte d'Erreurs du Backend</h3>
                 <p class="viz-description">
-                    Visualisation Qiskit des erreurs pour {error_map.get('backend_name', 'Unknown')}.
+                    Visualisation Qiskit des erreurs pour {_qmc_html_escape(error_map.get('backend_name', 'Unknown'))}.
                     Les couleurs indiquent les taux d'erreur des qubits et des connexions.
                 </p>
                 <div class="viz-card wide">
@@ -37343,8 +41755,8 @@ code, pre, .mono {
             <div class="file-item">
                 <div class="file-icon">{icon}</div>
                 <div class="file-info">
-                    <div class="file-name" title="{name}">{display_name}</div>
-                    <div class="file-meta">{size} KB • {modified}</div>
+                    <div class="file-name" title="{_qmc_html_escape(name)}">{_qmc_html_escape(display_name)}</div>
+                    <div class="file-meta">{size} KB • {_qmc_html_escape(modified)}</div>
                 </div>
             </div>
             '''
@@ -37395,9 +41807,14 @@ HTMLDashboard = AutoReportGenerator
 # FRAMEWORK v2.5.1 EXTENSION WITH QDNA-ID
 # =============================================================================
 
-class QMCFrameworkV2_4(QMCFramework):
+class QMCFramework(QMCFrameworkExtended):
     """
-    QMC Framework v2.6.0 avec optimisations Qiskit 2.3 + Runtime 0.45.
+    QMCFramework — classe principale CONCRÈTE et complète (v2.7.1).
+
+    [v2.7.1] Anciennement nommée QMCFramework (relique de versionnage). Le nom
+    canonique est désormais `QMCFramework` ; il n'y a plus d'alias QMCFramework.
+
+    Inclut les optimisations Qiskit 2.3+ / Runtime 0.45+ (héritées de v2.6.0).
     
     ═══════════════════════════════════════════════════════════════════════
     NOUVEAUTÉS v2.6.0 - OPTIMISATIONS QISKIT 2.3
@@ -37426,14 +41843,14 @@ class QMCFrameworkV2_4(QMCFramework):
     
     Usage v2.6.0:
         # Pour circuits Ising/Trotter (HAWKING):
-        fw = QMCFrameworkV2_4(
+        fw = QMCFramework(
             project='HAWKING_V6',
             backend_name='ibm_fez',
             use_fractional_gates=True  # ← -600% depth!
         )
         
         # Pour circuits statiques sans rotations:
-        fw = QMCFrameworkV2_4(
+        fw = QMCFramework(
             project='QMC_TEST',
             backend_name='ibm_fez',
             gen3_turbo=True  # ← 75x speedup!
@@ -37456,7 +41873,7 @@ class QMCFrameworkV2_4(QMCFramework):
     - BackendRecommender, ResultCache, JobQueueManager
     """
     
-    VERSION = "2.6.0"
+    VERSION = "2.7.1"
     
     def __init__(self, *args, enable_cache: bool = True, 
                  cache_dir: str = '.qmc_cache', **kwargs):
@@ -37494,7 +41911,81 @@ class QMCFrameworkV2_4(QMCFramework):
         self._html_dashboard = None  # Lazy init
         
         self._enable_cache = enable_cache
-    
+
+        # === ADDONS IBM (M3, EPLG, CLOPS, Trotter) ===
+        # [v2.7.1] Initialisés ICI, dans le vrai __init__ (auparavant injectés par
+        # monkey-patch en fin de fichier, source de fragilité/RecursionError au reload).
+        self._m3_wrapper = None
+        self._eplg_calculator = None
+        self._clops_calculator = None
+        self._trotter_optimizer = None
+
+    # =========================================================================
+    # [v2.7.1] ADDONS IBM — propriétés & méthodes (anciennement monkey-patchées)
+    # =========================================================================
+
+    @property
+    def m3(self) -> 'M3MitigationWrapper':
+        """[v2.6.0] Accès au wrapper M3 (lazy)."""
+        if self._m3_wrapper is None:
+            self._m3_wrapper = M3MitigationWrapper(backend=getattr(self, 'backend', None),
+                                                   logger=self.logger)
+        return self._m3_wrapper
+
+    @property
+    def eplg_calculator(self) -> 'EPLGCalculator':
+        """[v2.6.0] Accès au calculateur EPLG (lazy)."""
+        if self._eplg_calculator is None:
+            self._eplg_calculator = EPLGCalculator(framework=self, logger=self.logger)
+        return self._eplg_calculator
+
+    @property
+    def clops_calculator(self) -> 'CLOPSCalculator':
+        """[v2.6.0] Accès au calculateur CLOPS (lazy)."""
+        if self._clops_calculator is None:
+            self._clops_calculator = CLOPSCalculator(framework=self, logger=self.logger)
+        return self._clops_calculator
+
+    @property
+    def trotter_optimizer(self) -> 'TrotterOptimizer':
+        """[v2.6.0] Accès à l'optimiseur Trotter (lazy)."""
+        if self._trotter_optimizer is None:
+            self._trotter_optimizer = TrotterOptimizer(framework=self, logger=self.logger)
+        return self._trotter_optimizer
+
+    def calibrate_m3(self, qubits: List[int] = None, shots: int = 8192) -> bool:
+        """[v2.6.0] Calibre M3 pour les qubits spécifiés."""
+        return self.m3.calibrate(qubits=qubits, shots=shots)
+
+    def mitigate_with_m3(self, counts: Dict[str, int],
+                         qubits: List[int] = None) -> Dict[str, int]:
+        """[v2.6.0] Applique la mitigation M3 aux counts."""
+        return self.m3.apply_mitigation(counts, qubits=qubits)
+
+    def estimate_eplg(self) -> Dict[str, float]:
+        """[v2.6.0] Estime EPLG à partir des données de calibration."""
+        return self.eplg_calculator.estimate_from_calibration()
+
+    def estimate_clops(self, avg_job_time: float = None) -> float:
+        """[v2.6.0] Estime CLOPS."""
+        return self.clops_calculator.estimate_clops(avg_job_time)
+
+    def get_ibm_addons_status(self) -> Dict[str, Any]:
+        """[v2.6.0] Retourne le statut de tous les addons IBM."""
+        return {
+            'm3': {
+                'available': self.m3.is_available,
+                'calibrated': self.m3._calibrated if hasattr(self.m3, '_calibrated') else False,
+            },
+            'aqc_tensor': self.trotter_optimizer.aqc_available,
+            'mpf': self.trotter_optimizer.mpf_available,
+            'install_commands': {
+                'm3': 'pip install qiskit-addon-mthree',
+                'aqc_tensor': 'pip install qiskit-addon-aqc-tensor',
+                'mpf': 'pip install qiskit-addon-mpf',
+            }
+        }
+
     # =========================================================================
     # v2.5.16 - ACCÈS AUX NOUVEAUX OUTILS
     # =========================================================================
@@ -38008,9 +42499,20 @@ class QMCFrameworkV2_4(QMCFramework):
                     # Créer un PropertySet avec notre ErrorMap
                     prop_set = PropertySet()
                     prop_set['vf2_avg_error_map'] = error_map
-                    
-                    # Exécuter avec notre ErrorMap
-                    t_qc = vf2_pm.run(t_qc)
+
+                    # [v2.7.1 FIX] Pass the PropertySet into run() so VF2PostLayout
+                    # actually consumes our fresh ErrorMap. Previously prop_set was
+                    # built but never passed, making the fresh ErrorMap a silent no-op.
+                    # Some Qiskit versions don't accept property_set kwarg on run();
+                    # fall back to seeding vf2_pm.property_set directly in that case.
+                    try:
+                        t_qc = vf2_pm.run(t_qc, property_set=prop_set)
+                    except TypeError:
+                        try:
+                            vf2_pm.property_set['vf2_avg_error_map'] = error_map
+                        except (AttributeError, TypeError):
+                            pass
+                        t_qc = vf2_pm.run(t_qc)
                     
                     if i == 0:
                         self.logger.info(f"[OPTIMIZER] VF2 avec ErrorMap fraîche ({vf2_max_trials} trials)")
@@ -38641,21 +43143,53 @@ class SimulatorComparator:
                 'median': float(np.median(values))
             }
         
-        # Verdict global
-        fidelity_mean = results['summary'].get('fidelity', {}).get('mean', 0)
-        if fidelity_mean >= 0.95:
-            results['verdict'] = 'EXCELLENT'
-            results['verdict_emoji'] = '🟢'
-        elif fidelity_mean >= 0.85:
-            results['verdict'] = 'GOOD'
-            results['verdict_emoji'] = '🟡'
-        elif fidelity_mean >= 0.70:
-            results['verdict'] = 'ACCEPTABLE'
-            results['verdict_emoji'] = '🟠'
+        # [v2.7.1 FIX] Verdict global basé sur les métriques RÉELLEMENT présentes.
+        # L'ancien code lisait uniquement 'fidelity'; si la fidélité n'était pas
+        # demandée, fidelity_mean=0 -> verdict toujours POOR. On dérive maintenant
+        # un "score de similarité" (0..1, plus haut = mieux) depuis n'importe quelle
+        # métrique disponible: fidelity (directe), ou 1-distance pour tvd/hellinger,
+        # ou exp(-KL) pour la divergence KL.
+        summary = results['summary']
+        score = None
+        score_source = None
+        if 'fidelity' in summary:
+            score = summary['fidelity'].get('mean', 0.0)
+            score_source = 'fidelity'
+        elif 'hellinger' in summary:
+            score = 1.0 - summary['hellinger'].get('mean', 1.0)
+            score_source = 'hellinger'
+        elif 'tvd' in summary:
+            score = 1.0 - summary['tvd'].get('mean', 1.0)
+            score_source = 'tvd'
+        elif 'kl_divergence' in summary:
+            score = float(np.exp(-summary['kl_divergence'].get('mean', float('inf'))))
+            score_source = 'kl_divergence'
+        elif 'xeb' in summary:
+            # XEB ~1 pour distribution idéale, ~0 pour bruit total
+            score = max(0.0, min(1.0, summary['xeb'].get('mean', 0.0)))
+            score_source = 'xeb'
+
+        if score is None:
+            results['verdict'] = 'UNKNOWN'
+            results['verdict_emoji'] = '⚪'
+            results['verdict_metric'] = None
         else:
-            results['verdict'] = 'POOR'
-            results['verdict_emoji'] = '🔴'
-        
+            score = max(0.0, min(1.0, float(score)))
+            results['verdict_metric'] = score_source
+            results['verdict_score'] = score
+            if score >= 0.95:
+                results['verdict'] = 'EXCELLENT'
+                results['verdict_emoji'] = '🟢'
+            elif score >= 0.85:
+                results['verdict'] = 'GOOD'
+                results['verdict_emoji'] = '🟡'
+            elif score >= 0.70:
+                results['verdict'] = 'ACCEPTABLE'
+                results['verdict_emoji'] = '🟠'
+            else:
+                results['verdict'] = 'POOR'
+                results['verdict_emoji'] = '🔴'
+
         return results
     
     def _run_simulator(self, circuits: List, shots: int) -> List[Dict]:
@@ -38677,17 +43211,51 @@ class SimulatorComparator:
             
             for i, pub_result in enumerate(pub_results):
                 counts = {}
-                # Extraire les counts
+                # [v2.7.1 FIX] Extraction des counts élargie: l'ancien code se limitait
+                # aux registres ['meas','c','c_data'] et renvoyait {} pour tout autre nom
+                # de registre classique. On reprend la logique de _process_results: liste
+                # de noms communs élargie, puis fallback sur N'IMPORTE QUEL attribut de
+                # .data exposant get_counts() (on retient le registre le plus large).
                 if hasattr(pub_result, 'data'):
-                    for name in ['meas', 'c', 'c_data']:
+                    possible_names = ['c', 'meas', 'c_data', 'c_anc', 'cr',
+                                      'classical', 'measure']
+                    for name in possible_names:
                         try:
                             cr_data = getattr(pub_result.data, name, None)
-                            if cr_data is not None:
-                                counts = cr_data.get_counts()
-                                break
-                        except:
+                            if cr_data is not None and hasattr(cr_data, 'get_counts'):
+                                c = cr_data.get_counts()
+                                if c:
+                                    counts = c
+                                    break
+                        except (AttributeError, TypeError, ValueError):
                             pass
-                
+
+                    if not counts:
+                        per_register = {}
+                        try:
+                            for attr_name in dir(pub_result.data):
+                                if attr_name.startswith('_'):
+                                    continue
+                                try:
+                                    attr = getattr(pub_result.data, attr_name)
+                                    if hasattr(attr, 'get_counts'):
+                                        c = attr.get_counts()
+                                        if c:
+                                            per_register[attr_name] = c
+                                except (AttributeError, TypeError, ValueError):
+                                    pass
+                        except (AttributeError, TypeError):
+                            pass
+                        if per_register:
+                            def _bitwidth(cc):
+                                try:
+                                    return len(next(iter(cc.keys())))
+                                except Exception:
+                                    return 0
+                            primary = max(per_register.keys(),
+                                          key=lambda n: (_bitwidth(per_register[n]), n))
+                            counts = dict(per_register[primary])
+
                 results.append({
                     'circuit_index': i,
                     'counts': counts,
@@ -38730,25 +43298,34 @@ class SimulatorComparator:
         
         p = np.array([sim_probs[s] for s in sorted(all_states)])
         q = np.array([qpu_probs[s] for s in sorted(all_states)])
-        
-        # Éviter division par zéro
-        p = np.clip(p, 1e-10, 1.0)
-        q = np.clip(q, 1e-10, 1.0)
-        
+
+        # [v2.7.1 FIX] L'ancien code clippait p,q à [1e-10, 1] SANS renormaliser.
+        # Pour des distributions creuses (beaucoup d'états à 0), la somme des
+        # 1e-10 fausse la fidélité de Bhattacharyya et la KL. On calcule donc:
+        #  - fidelity/tvd/hellinger sur les probabilités BRUTES (sqrt/abs gèrent
+        #    les zéros, aucun clip nécessaire);
+        #  - KL avec un epsilon appliqué puis RENORMALISATION pour conserver de
+        #    vraies distributions de probabilité.
+
         if metric == 'fidelity':
-            # Fidelité classique (Bhattacharyya)
+            # Fidelité classique (Bhattacharyya) -- probabilités brutes
             return float(np.sum(np.sqrt(p * q)) ** 2)
-        
+
         elif metric == 'tvd':
-            # Total Variation Distance
+            # Total Variation Distance -- probabilités brutes
             return float(0.5 * np.sum(np.abs(p - q)))
-        
+
         elif metric == 'kl_divergence':
-            # Kullback-Leibler Divergence
-            return float(np.sum(p * np.log(p / q)))
-        
+            # Kullback-Leibler Divergence avec epsilon + renormalisation
+            eps = 1e-12
+            p_kl = p + eps
+            q_kl = q + eps
+            p_kl = p_kl / np.sum(p_kl)
+            q_kl = q_kl / np.sum(q_kl)
+            return float(np.sum(p_kl * np.log(p_kl / q_kl)))
+
         elif metric == 'hellinger':
-            # Distance de Hellinger
+            # Distance de Hellinger -- probabilités brutes
             return float(np.sqrt(0.5 * np.sum((np.sqrt(p) - np.sqrt(q)) ** 2)))
         
         elif metric == 'xeb':
@@ -39111,7 +43688,9 @@ class BudgetAlertManager:
         Returns:
             Dict avec statut et alertes déclenchées
         """
-        usage_ratio = current_usage_minutes / self.monthly_limit
+        # [v2.7.1 FIX R124] garde contre une limite mensuelle nulle (ZeroDivisionError)
+        usage_ratio = (current_usage_minutes / self.monthly_limit
+                       if self.monthly_limit > 0 else float('inf'))
         remaining = self.monthly_limit - current_usage_minutes
         
         result = {
@@ -39170,7 +43749,9 @@ class BudgetAlertManager:
     
     def get_status_display(self, current_usage_minutes: float) -> str:
         """Retourne un affichage ASCII du statut budget."""
-        usage_ratio = current_usage_minutes / self.monthly_limit
+        # [v2.7.1 FIX R124] garde contre une limite mensuelle nulle (ZeroDivisionError)
+        usage_ratio = (current_usage_minutes / self.monthly_limit
+                       if self.monthly_limit > 0 else float('inf'))
         remaining = max(0, self.monthly_limit - current_usage_minutes)
         
         # Barre de progression
@@ -39421,11 +44002,13 @@ class DryRunManager:
     
     def _generate_summary(self, result: Dict) -> Dict:
         """Génère un résumé du dry run."""
+        # [v2.7.1 FIX] guard against empty circuits_info (max() on empty sequence -> ValueError)
+        circuits_info = result.get('circuits_info') or []
         summary = {
             'ready_for_qpu': result['validation']['passed'],
             'total_circuits': result['n_circuits'],
-            'total_qubits_max': max(c['num_qubits'] for c in result['circuits_info']),
-            'total_depth_max': max(c['depth'] for c in result['circuits_info']),
+            'total_qubits_max': max((c['num_qubits'] for c in circuits_info), default=0),
+            'total_depth_max': max((c['depth'] for c in circuits_info), default=0),
             'errors': len(result['validation']['errors']),
             'warnings': len(result['validation']['warnings'])
         }
@@ -40120,7 +44703,8 @@ class AnomalyDetector:
             if counts:
                 all_counts.append(counts)
                 if n_qubits is None:
-                    n_qubits = len(next(iter(counts.keys())))
+                    # [v2.7.1 FIX R122] dériver n_qubits d'une clé SANS espaces séparateurs
+                    n_qubits = len(next(iter(counts.keys())).replace(' ', ''))
         
         if not all_counts:
             analysis['status'] = 'ERROR'
@@ -40189,9 +44773,12 @@ class AnomalyDetector:
         
         for counts in all_counts:
             for bitstring, count in counts.items():
+                # [v2.7.1 FIX R122] retirer les espaces séparateurs de registres,
+                # sinon enumerate décale les indices de qubit (et KeyError possible).
+                clean = bitstring.replace(' ', '')
                 total_shots += count
-                for q, bit in enumerate(reversed(bitstring)):
-                    if bit == '1':
+                for q, bit in enumerate(reversed(clean)):
+                    if bit == '1' and q in qubit_ones:
                         qubit_ones[q] += count
         
         # Calculer le biais (distance à 0.5)
@@ -40273,8 +44860,12 @@ class AnomalyDetector:
         zero_state_ratio = []
         for counts in all_counts:
             total = sum(counts.values())
-            zero_state = '0' * len(next(iter(counts.keys())))
-            ratio = counts.get(zero_state, 0) / total if total > 0 else 0
+            # [v2.7.1 FIX R122] l'état |0...0> peut contenir des espaces séparateurs de
+            # registres; on somme tous les états dont la forme nettoyée est entièrement '0'
+            # (l'ancien '0'*len(key) ne matchait jamais une clé multi-registre espacée).
+            zero_count = sum(c for k, c in counts.items()
+                             if k.replace(' ', '') and set(k.replace(' ', '')) <= {'0'})
+            ratio = zero_count / total if total > 0 else 0
             zero_state_ratio.append(ratio)
         
         if len(zero_state_ratio) > 1:
@@ -40492,10 +45083,10 @@ class GitTracker:
             Dict avec statut de reproductibilité
         """
         import json
-        
-        with open(archive_path, 'r') as f:
+
+        with open(archive_path, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (archive JSON is UTF-8; avoid platform cp1252 mojibake)
             archive = json.load(f)
-        
+
         archived_git = archive.get('git', {})
         current_git = self.get_current_state()
         
@@ -41008,7 +45599,9 @@ class StandardBenchmarks:
             if results:
                 counts = results[0].get('counts', {})
                 ground_state = '0' * n_qubits
-                fidelity = counts.get(ground_state, 0) / sum(counts.values())
+                # [v2.7.1 FIX] guard division-by-zero on empty counts (cf. mirror_circuits)
+                total = sum(counts.values())
+                fidelity = counts.get(ground_state, 0) / total if total > 0 else 0.0
                 fidelities.append(float(fidelity))
             else:
                 fidelities.append(0.0)
@@ -41034,12 +45627,17 @@ class StandardBenchmarks:
             'interpretation': 'Lower error rate = better hardware'
         }
     
-    def quantum_volume(self, n_qubits: int = 5, shots: int = 4096, n_trials: int = 10) -> Dict:
+    def quantum_volume(self, n_qubits: int = 5, shots: int = 4096, n_trials: int = 100) -> Dict:
         """
-        Benchmark Quantum Volume (simplifié).
-        
+        Benchmark Quantum Volume (critère IBM/Cross et al.).
+
         Le QV mesure la profondeur maximale de circuit "carré" (depth = width)
         qu'un QPU peut exécuter de manière fiable.
+
+        [v2.7.1] Critère de succès RIGOUREUX : QV n'est validé que si la BORNE
+        INFÉRIEURE de confiance à 2σ de la probabilité moyenne de heavy-output dépasse
+        2/3, ET avec >= 100 essais (sinon le résultat est marqué non rigoureux). L'ancien
+        critère `moyenne > 2/3` sur 10 essais surestimait le QV (pas d'intervalle de confiance).
         """
         from qiskit import QuantumCircuit
         from qiskit.circuit.library import QuantumVolume as QVCircuit
@@ -41074,19 +45672,37 @@ class StandardBenchmarks:
                 heavy_prob = heavy_count / total if total > 0 else 0
                 heavy_output_counts.append(heavy_prob)
         
-        # QV est atteint si >2/3 des heavy outputs sont mesurés
-        avg_heavy = np.mean(heavy_output_counts) if heavy_output_counts else 0
-        qv_passed = avg_heavy > 2/3
-        
+        # [v2.7.1] Critère QV rigoureux : borne inférieure 2σ > 2/3 ET >= 100 essais.
+        n_eff = len(heavy_output_counts)
+        avg_heavy = float(np.mean(heavy_output_counts)) if heavy_output_counts else 0.0
+        # Erreur-type de la moyenne ; borne inférieure de confiance à 2 sigma.
+        if n_eff > 1:
+            sem = float(np.std(heavy_output_counts, ddof=1)) / (n_eff ** 0.5)
+        else:
+            sem = 0.0
+        lower_2sigma = avg_heavy - 2.0 * sem
+        rigorous = n_eff >= 100
+        qv_passed = bool(lower_2sigma > 2/3 and rigorous)
+        warning = None
+        if not rigorous:
+            warning = (f"Résultat NON rigoureux : {n_eff} essais < 100 requis par le "
+                       f"critère QV standard (IBM/Cross). Augmentez n_trials à >= 100.")
+
         return {
             'type': 'quantum_volume',
             'n_qubits': n_qubits,
             'n_trials': n_trials,
-            'avg_heavy_output_probability': float(avg_heavy),
+            'effective_trials': n_eff,
+            'avg_heavy_output_probability': avg_heavy,
+            'heavy_output_2sigma_lower_bound': float(lower_2sigma),
+            'standard_error': float(sem),
             'threshold': 2/3,
+            'criterion': '2sigma_lower_bound > 2/3 AND trials >= 100',
+            'rigorous': rigorous,
+            'warning': warning,
             'qv_passed': qv_passed,
             'estimated_qv': 2 ** n_qubits if qv_passed else None,
-            'interpretation': f"QV ≥ {2**n_qubits}" if qv_passed else f"QV < {2**n_qubits}"
+            'interpretation': f"QV ≥ {2**n_qubits}" if qv_passed else f"QV < {2**n_qubits} (ou non concluant)"
         }
     
     def _interpret_fidelity(self, fidelity: float) -> str:
@@ -41539,14 +46155,42 @@ class TranspilationCache:
     def _circuit_hash(self, circuit, optimization_level: int = 3) -> str:
         """Génère un hash unique pour un circuit."""
         import hashlib
-        
-        # Utiliser le QASM comme représentation canonique
+
+        # [v2.7.1 FIX] Use a canonical representation that INCLUDES gate parameters.
+        # The previous fallback only used qubits/depth/size/op-counts, so circuits
+        # differing only in gate parameters (e.g. rotation angles) collided and the
+        # cache returned the wrong transpiled circuit. Prefer QASM3 (params included);
+        # otherwise build a representation that incorporates each instruction's params.
+        qasm = None
         try:
-            qasm = circuit.qasm()
-        except:
-            # Fallback: utiliser le nombre de portes et la profondeur
-            qasm = f"{circuit.num_qubits}_{circuit.depth()}_{circuit.size()}_{dict(circuit.count_ops())}"
-        
+            from qiskit import qasm3
+            qasm = qasm3.dumps(circuit)
+        except Exception:
+            # [v2.7.1 FIX R128] handler ÉLARGI : qasm3.dumps lève QASM3ExporterError
+            # (ni ImportError ni AttributeError) sur des portes custom/opaques. L'ancien
+            # except étroit laissait l'exception casser get()/put()/get_or_transpile().
+            # On retombe proprement sur le fallback structurel+paramètres ci-dessous.
+            qasm = None
+
+        if qasm is None:
+            try:
+                # Fallback: structural signature INCLUDING gate parameters.
+                instr_sig = []
+                for instruction in circuit.data:
+                    op = getattr(instruction, 'operation', instruction[0])
+                    qargs = getattr(instruction, 'qubits', instruction[1])
+                    try:
+                        qubit_idx = tuple(circuit.find_bit(q).index for q in qargs)
+                    except (AttributeError, TypeError):
+                        qubit_idx = tuple(str(q) for q in qargs)
+                    params = tuple(str(p) for p in getattr(op, 'params', ()))
+                    instr_sig.append((getattr(op, 'name', str(op)), qubit_idx, params))
+                qasm = (f"{circuit.num_qubits}_{circuit.depth()}_{circuit.size()}_"
+                        f"{dict(circuit.count_ops())}_{instr_sig}")
+            except (AttributeError, TypeError):
+                qasm = (f"{circuit.num_qubits}_{circuit.depth()}_"
+                        f"{circuit.size()}_{dict(circuit.count_ops())}")
+
         key_str = f"{qasm}_{optimization_level}"
         return hashlib.sha256(key_str.encode()).hexdigest()[:16]
     
@@ -41725,13 +46369,32 @@ class WebDashboard:
         import os
         
         dashboard_html = self._generate_dashboard_html()
-        
+
+        # [v2.7.1 FIX] Répertoire de service borné au data_dir du dashboard.
+        # Empêche le handler de servir le répertoire courant entier.
+        serve_dir = os.path.abspath(self.data_dir or '.')
+        try:
+            os.makedirs(serve_dir, exist_ok=True)
+        except Exception:
+            pass
+
         class DashboardHandler(SimpleHTTPRequestHandler):
             def __init__(self, *args, framework=None, data_dir=None, **kwargs):
                 self.framework = framework
                 self.data_dir = data_dir
-                super().__init__(*args, **kwargs)
-            
+                # [v2.7.1 FIX] Lier le serveur de fichiers au répertoire du dashboard
+                super().__init__(*args, directory=serve_dir, **kwargs)
+
+            def translate_path(self, path):
+                # [v2.7.1 FIX] Refuser tout chemin qui s'échappe du répertoire borné
+                result = super().translate_path(path)
+                real_base = os.path.realpath(serve_dir)
+                real_result = os.path.realpath(result)
+                if real_result != real_base and not real_result.startswith(real_base + os.sep):
+                    # Hors du répertoire autorisé -> rediriger vers un chemin inexistant (404)
+                    return os.path.join(real_base, '__forbidden__')
+                return result
+
             def do_GET(self):
                 if self.path == '/':
                     self.send_response(200)
@@ -42072,13 +46735,12 @@ class NotificationHub:
     
     def _notify_webhook(self, event: str, message: str, data: Dict, config: Dict):
         """Notification webhook (Slack, Discord, etc.)."""
-        import urllib.request
         import json
-        
+
         url = config.get('url')
         if not url:
             return
-        
+
         # Format Slack-compatible
         payload = {
             'text': message,
@@ -42091,14 +46753,12 @@ class NotificationHub:
             }]
         }
         
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode(),
-            headers={'Content-Type': 'application/json'}
-        )
-        
         try:
-            urllib.request.urlopen(req, timeout=5)
+            # [v2.7.1 FIX R99/R100] envoi anti-SSRF (IP épinglée + pas de redirection)
+            _safe_webhook_post(url, json.dumps(payload).encode(),
+                               headers={'Content-Type': 'application/json'}, timeout=5)
+        except QMCSecurityError as e:
+            print(f"⚠️ Webhook skipped (anti-SSRF): {e}")
         except Exception as e:
             print(f"❌ Webhook error: {e}")
     
@@ -42152,6 +46812,9 @@ class JobScheduler:
         self.scheduled_jobs = []
         self._scheduler_thread = None
         self._running = False
+        # [v2.7.1 FIX] Guard concurrent access to scheduled_jobs from the
+        # daemon scheduler thread vs. caller threads (schedule/cancel/list).
+        self._jobs_lock = threading.Lock()
     
     def schedule(self,
                  circuits: List,
@@ -42198,8 +46861,9 @@ class JobScheduler:
             'created_at': datetime.now()
         }
         
-        self.scheduled_jobs.append(job)
-        
+        with self._jobs_lock:  # [v2.7.1 FIX] guard shared list mutation
+            self.scheduled_jobs.append(job)
+
         print(f"📅 Job {job_id} planifié pour {run_datetime.strftime('%Y-%m-%d %H:%M')}")
         
         # Démarrer le scheduler si pas déjà actif
@@ -42244,8 +46908,9 @@ class JobScheduler:
             'created_at': datetime.now()
         }
         
-        self.scheduled_jobs.append(job)
-        
+        with self._jobs_lock:  # [v2.7.1 FIX] guard shared list mutation
+            self.scheduled_jobs.append(job)
+
         print(f"📅 Job {job_id} en attente (file < {max_queue} jobs)")
         
         if not self._running:
@@ -42255,15 +46920,18 @@ class JobScheduler:
     
     def cancel(self, job_id: str) -> bool:
         """Annule un job planifié."""
-        for job in self.scheduled_jobs:
-            if job['id'] == job_id and job['status'] == 'scheduled':
-                job['status'] = 'cancelled'
-                print(f"❌ Job {job_id} annulé")
-                return True
+        with self._jobs_lock:  # [v2.7.1 FIX] guard shared list access
+            for job in self.scheduled_jobs:
+                if job['id'] == job_id and job['status'] == 'scheduled':
+                    job['status'] = 'cancelled'
+                    print(f"❌ Job {job_id} annulé")
+                    return True
         return False
-    
+
     def list_scheduled(self) -> List[Dict]:
         """Liste les jobs planifiés."""
+        with self._jobs_lock:  # [v2.7.1 FIX] snapshot under lock
+            jobs_snapshot = list(self.scheduled_jobs)
         return [
             {
                 'id': j['id'],
@@ -42271,7 +46939,7 @@ class JobScheduler:
                 'run_at': j.get('run_at', 'queue-triggered'),
                 'created_at': j['created_at']
             }
-            for j in self.scheduled_jobs
+            for j in jobs_snapshot
         ]
     
     def _start_scheduler(self):
@@ -42284,34 +46952,77 @@ class JobScheduler:
     
     def _scheduler_loop(self):
         """Boucle principale du scheduler."""
-        from datetime import datetime
+        from datetime import datetime, timedelta
         import time
-        
+
         while self._running:
             now = datetime.now()
-            
-            for job in self.scheduled_jobs:
+
+            # [v2.7.1 FIX] Snapshot the shared list under the lock so we never
+            # iterate while another thread mutates it.
+            with self._jobs_lock:
+                jobs_snapshot = list(self.scheduled_jobs)
+
+            for job in jobs_snapshot:
                 if job['status'] not in ('scheduled', 'waiting_for_queue'):
                     continue
-                
+
                 should_run = False
-                
+
                 # Jobs avec datetime fixe
                 if job.get('run_at') and job['status'] == 'scheduled':
                     if now >= job['run_at']:
                         should_run = True
-                
+
                 # Jobs déclenchés par file basse
                 elif job.get('type') == 'queue_triggered':
-                    # Vérifier la file (simplifié - idéalement appeler l'API IBM)
-                    # Pour l'instant, on simule
-                    should_run = True  # TODO: Implémenter vraie vérification
-                
+                    # [v2.7.1 FIX] Honor check_interval: only probe the backend
+                    # every `check_interval` seconds per job.
+                    interval = job.get('check_interval', 60)
+                    last_check = job.get('_last_check')
+                    if last_check is not None and (now - last_check).total_seconds() < interval:
+                        continue
+                    job['_last_check'] = now
+
+                    # [v2.7.1 FIX] Honor timeout_hours: stop waiting if exceeded.
+                    timeout_hours = job.get('timeout_hours')
+                    if timeout_hours is not None:
+                        created = job.get('created_at')
+                        if created is not None and (now - created) > timedelta(hours=timeout_hours):
+                            job['status'] = 'timeout'
+                            print(f"⏱️ Job {job['id']} abandonné (timeout {timeout_hours}h)")
+                            continue
+
+                    # [v2.7.1 FIX] Implement a real queue check instead of always
+                    # running: only trigger if pending_jobs < max_queue.
+                    should_run = self._queue_is_low(job.get('max_queue', 5))
+
                 if should_run:
                     self._execute_job(job)
-            
+
             # Pause
             time.sleep(10)
+
+    def _queue_is_low(self, max_queue: int) -> bool:
+        """[v2.7.1 FIX] Return True only if the backend's pending queue is below
+        max_queue. Any failure to query the backend is treated as 'not low' so
+        we never blindly run a queue-triggered job."""
+        try:
+            backend = getattr(self.framework, 'backend', None)
+            if backend is None and hasattr(self.framework, 'get_backend'):
+                backend = self.framework.get_backend()
+            if backend is None:
+                print("⚠️ Scheduler: backend indisponible, file non vérifiée")
+                return False
+            status = backend.status()
+            pending = getattr(status, 'pending_jobs', None)
+            if pending is None:
+                print("⚠️ Scheduler: pending_jobs indisponible, attente")
+                return False
+            return pending < max_queue
+        except Exception as e:
+            print(f"⚠️ Scheduler: échec vérification file ({e}), attente")
+            return False
     
     def _execute_job(self, job: Dict):
         """Exécute un job planifié."""
@@ -42551,8 +47262,14 @@ class DatabaseExporter:
     
     def get_experiments(self, limit: int = 100) -> List[Dict]:
         """Récupère les dernières expériences."""
+        # [v2.7.1 FIX] psycopg2 (postgres) uses the '%s' paramstyle, SQLite uses '?'.
+        # Using '?' against postgres raised a syntax error. Pick the right placeholder.
+        placeholder = '%s' if self.db_type == 'postgres' else '?'
+        # nosec B608 — pas d'injection : seul le PLACEHOLDER ('%s'/'?', constante interne)
+        # est interpolé dans la f-string ; la valeur `limit` est passée en PARAMÈTRE lié
+        # (tuple), donc le driver l'échappe. Faux positif bandit documenté.
         return self.query(
-            "SELECT * FROM experiments ORDER BY timestamp DESC LIMIT ?",
+            f"SELECT * FROM experiments ORDER BY timestamp DESC LIMIT {placeholder}",  # nosec B608
             (limit,)
         )
     
@@ -42951,12 +47668,31 @@ class M3MitigationWrapper:
         try:
             # Appliquer la correction
             quasi_probs = self._mit.apply_correction(counts, qubits=qubits)
-            
+
             # Convertir quasi-probas en counts entiers
             total = sum(counts.values())
+            # [v2.7.1 FIX] Quasi-probabilities can be negative. abs() turns negative
+            # quasi-mass into positive population (corruption). Project to the nearest
+            # valid probability distribution instead (M3 provides this method); if
+            # unavailable, clamp negatives to 0 then renormalize (never abs()).
+            prob_dist = quasi_probs
+            try:
+                if hasattr(quasi_probs, 'nearest_probability_distribution'):
+                    prob_dist = quasi_probs.nearest_probability_distribution()
+                else:
+                    raise AttributeError
+            except (AttributeError, TypeError):
+                # Fallback: clamp negatives to 0 then renormalize
+                clamped = {bs: p for bs, p in dict(quasi_probs).items() if p > 0}
+                clamp_sum = sum(clamped.values())
+                if clamp_sum > 0:
+                    prob_dist = {bs: p / clamp_sum for bs, p in clamped.items()}
+                else:
+                    prob_dist = {}
+
             mitigated = {}
-            for bitstring, prob in quasi_probs.items():
-                count = int(round(abs(prob) * total))
+            for bitstring, prob in dict(prob_dist).items():
+                count = int(round(prob * total))
                 if count > 0:
                     mitigated[bitstring] = count
             
@@ -43078,16 +47814,31 @@ class EPLGCalculator:
             Dict avec estimations EPLG pour différentes tailles de chaîne
         """
         if calibration_data is None and self.framework:
-            calibration_data = getattr(self.framework, '_calibration_data', None)
+            # [v2.7.1 FIX] Calibration data lives on framework.noise (NoiseAnalyzer),
+            # not directly on the framework. Read from the correct location.
+            calibration_data = getattr(
+                getattr(self.framework, 'noise', None), '_calibration_data', None)
         
         if not calibration_data:
             return {'error': 'No calibration data available'}
         
         # Extraire l'erreur 2Q moyenne
+        # [v2.7.1 FIX R45/R130] Si gate_2q est absent (pas de données 2Q réelles), on
+        # NE prétend PAS être 'estimation_from_calibration' : on utilise une valeur par
+        # défaut explicitement étiquetée pour ne pas faire passer une constante pour une
+        # donnée backend.
         summary = calibration_data.get('summary', {})
-        gate_2q = summary.get('gate_2q', {})
-        avg_2q_error = gate_2q.get('mean', 0.02)
-        
+        gate_2q = summary.get('gate_2q') or {}
+        real_mean = gate_2q.get('mean')
+        if real_mean and real_mean > 0:
+            avg_2q_error = real_mean
+            method = 'estimation_from_calibration'
+            warning = None
+        else:
+            avg_2q_error = 0.02  # défaut typique
+            method = 'estimation_from_default'
+            warning = 'No 2Q gate error in calibration; using default 0.02 (NOT backend-derived)'
+
         # Estimer LF à partir de l'erreur 2Q moyenne
         # LF ≈ (1 - avg_2q_error)^N pour une chaîne de N qubits
         estimates = {}
@@ -43096,10 +47847,12 @@ class EPLGCalculator:
             eplg = self.calculate_eplg(estimated_lf, n)
             estimates[f'eplg_{n}'] = round(eplg, 6)
             estimates[f'lf_{n}'] = round(estimated_lf, 6)
-        
+
         estimates['avg_2q_error'] = round(avg_2q_error, 6)
-        estimates['method'] = 'estimation_from_calibration'
-        
+        estimates['method'] = method
+        if warning:
+            estimates['warning'] = warning
+
         return estimates
 
 
@@ -43149,13 +47902,17 @@ class CLOPSCalculator:
         
         # Si pas de temps fourni, estimer à partir du backend
         if avg_job_time_seconds is None:
-            # Estimation basée sur les specs typiques
-            # ~100ms par circuit de 100 qubits x 100 layers
-            avg_job_time_seconds = 0.1 * M * K
-        
+            # [v2.7.1 FIX] Previous default (0.1 * M * K) cancelled the M*K factor in the
+            # numerator, so the circuit count M never scaled the result. Estimate the
+            # elapsed time per LAYER instead (independent of M and K) so that the M (and K)
+            # circuit-count factors in the numerator actually scale CLOPS.
+            # ~1ms per layer of a 100-qubit circuit.
+            per_layer_seconds = 0.001
+            avg_job_time_seconds = per_layer_seconds * D
+
         # CLOPS = (M * K * S * D) / time
         clops = (M * K * S * D) / avg_job_time_seconds
-        
+
         return float(clops)
     
     def measure_clops_lite(self, shots: int = 100, n_circuits: int = 10) -> Dict:
@@ -43382,182 +48139,63 @@ class TrotterOptimizer:
 
 
 # =============================================================================
-# INTÉGRATION DANS QMCFrameworkV2_4
+# [v2.7.1] ADDONS IBM — désormais définis DANS le corps de QMCFramework
+# (propriétés m3/eplg_calculator/clops_calculator/trotter_optimizer + méthodes
+# calibrate_m3/mitigate_with_m3/estimate_eplg/estimate_clops/get_ibm_addons_status,
+# et init des attributs dans __init__). Le monkey-patch en fin de fichier
+# (wrap de __init__ + attachements de classe) est SUPPRIMÉ : hiérarchie linéaire,
+# inspectable, et reload-safe (plus de RecursionError possible).
 # =============================================================================
-
-# Ajouter les propriétés et méthodes à QMCFrameworkV2_4
-def _init_ibm_addons(self):
-    """Initialise les addons IBM."""
-    self._m3_wrapper = None
-    self._eplg_calculator = None
-    self._clops_calculator = None
-    self._trotter_optimizer = None
-
-def _get_m3(self) -> M3MitigationWrapper:
-    """[v2.6.0] Accès au wrapper M3."""
-    if self._m3_wrapper is None:
-        backend = getattr(self, 'backend', None)
-        self._m3_wrapper = M3MitigationWrapper(backend=backend, logger=self.logger)
-    return self._m3_wrapper
-
-def _get_eplg_calculator(self) -> EPLGCalculator:
-    """[v2.6.0] Accès au calculateur EPLG."""
-    if self._eplg_calculator is None:
-        self._eplg_calculator = EPLGCalculator(framework=self, logger=self.logger)
-    return self._eplg_calculator
-
-def _get_clops_calculator(self) -> CLOPSCalculator:
-    """[v2.6.0] Accès au calculateur CLOPS."""
-    if self._clops_calculator is None:
-        self._clops_calculator = CLOPSCalculator(framework=self, logger=self.logger)
-    return self._clops_calculator
-
-def _get_trotter_optimizer(self) -> TrotterOptimizer:
-    """[v2.6.0] Accès à l'optimiseur Trotter."""
-    if self._trotter_optimizer is None:
-        self._trotter_optimizer = TrotterOptimizer(framework=self, logger=self.logger)
-    return self._trotter_optimizer
-
-# Monkey-patch pour ajouter à QMCFrameworkV2_4
-_original_init_v2_4 = QMCFrameworkV2_4.__init__
-
-def _new_init_v2_4(self, *args, **kwargs):
-    _original_init_v2_4(self, *args, **kwargs)
-    # Initialiser les addons IBM
-    self._m3_wrapper = None
-    self._eplg_calculator = None
-    self._clops_calculator = None
-    self._trotter_optimizer = None
-
-QMCFrameworkV2_4.__init__ = _new_init_v2_4
-
-# Ajouter les propriétés
-QMCFrameworkV2_4.m3 = property(_get_m3)
-QMCFrameworkV2_4.eplg_calculator = property(_get_eplg_calculator)
-QMCFrameworkV2_4.clops_calculator = property(_get_clops_calculator)
-QMCFrameworkV2_4.trotter_optimizer = property(_get_trotter_optimizer)
-
-
-def calibrate_m3(self, qubits: List[int] = None, shots: int = 8192) -> bool:
-    """
-    [v2.6.0] Calibre M3 pour les qubits spécifiés.
-    
-    Args:
-        qubits: Liste des qubits à calibrer (None = tous)
-        shots: Nombre de shots pour calibration
-        
-    Returns:
-        True si calibration réussie
-    """
-    return self.m3.calibrate(qubits=qubits, shots=shots)
-
-def mitigate_with_m3(self, counts: Dict[str, int], 
-                    qubits: List[int] = None) -> Dict[str, int]:
-    """
-    [v2.6.0] Applique la mitigation M3 aux counts.
-    
-    Args:
-        counts: Counts bruts
-        qubits: Qubits utilisés
-        
-    Returns:
-        Counts mitigés
-    """
-    return self.m3.apply_mitigation(counts, qubits=qubits)
-
-def estimate_eplg(self) -> Dict[str, float]:
-    """
-    [v2.6.0] Estime EPLG à partir des données de calibration.
-    
-    Returns:
-        Dict avec estimations EPLG pour différentes tailles
-    """
-    return self.eplg_calculator.estimate_from_calibration()
-
-def estimate_clops(self, avg_job_time: float = None) -> float:
-    """
-    [v2.6.0] Estime CLOPS.
-    
-    Args:
-        avg_job_time: Temps moyen d'un job en secondes
-        
-    Returns:
-        CLOPS estimé
-    """
-    return self.clops_calculator.estimate_clops(avg_job_time)
-
-def get_ibm_addons_status(self) -> Dict[str, Any]:
-    """
-    [v2.6.0] Retourne le statut de tous les addons IBM.
-    
-    Returns:
-        Dict avec statut de chaque addon
-    """
-    return {
-        'm3': {
-            'available': self.m3.is_available,
-            'calibrated': self.m3._calibrated if hasattr(self.m3, '_calibrated') else False,
-        },
-        'aqc_tensor': self.trotter_optimizer.aqc_available,
-        'mpf': self.trotter_optimizer.mpf_available,
-        'install_commands': {
-            'm3': 'pip install qiskit-addon-mthree',
-            'aqc_tensor': 'pip install qiskit-addon-aqc-tensor',
-            'mpf': 'pip install qiskit-addon-mpf',
-        }
-    }
-
-# Ajouter les méthodes à QMCFrameworkV2_4
-QMCFrameworkV2_4.calibrate_m3 = calibrate_m3
-QMCFrameworkV2_4.mitigate_with_m3 = mitigate_with_m3
-QMCFrameworkV2_4.estimate_eplg = estimate_eplg
-QMCFrameworkV2_4.estimate_clops = estimate_clops
-QMCFrameworkV2_4.get_ibm_addons_status = get_ibm_addons_status
 
 
 # =============================================================================
-# PRINT VERSION INFO
+# [v2.7.1] API PUBLIQUE
 # =============================================================================
+# `QMCFramework` est la classe CONCRÈTE complète (définie plus haut, chaîne
+# QMCFrameworkBase -> QMCFrameworkExtended -> QMCFramework). Le nom versionné
+# QMCFramework (relique) a été SUPPRIMÉ en v2.7.1 : utilisez `QMCFramework`
+# partout. Les scripts qui importaient QMCFramework doivent être adaptés
+# (ou rester sur v2.7.0).
 
-def print_version_info():
-    """Affiche les informations de version."""
-    print(FRAMEWORK_BANNER_V2_4)
-    print("  === v2.4 Features ===")
-    print("  Circuit Builders: quantum_signature, zkp, timelock, oblivious_transfer")
-    print("  Analyzers: xeb_advanced, honeypot, quantum_advantage")
-    print("  Modules: threshold_crypto, quantum_signature, zkp")
-    print()
-    print("  === v2.5 Features ===")
-    print("  BackendRecommender:   recommend_backend(), compare_backends()")
-    print("  ResultCache:          run_on_qpu_cached(), cache_stats(), cache_clear()")
-    print("  JobQueueManager:      queue_add(), queue_submit_all(), queue_results()")
-    print("  NotificationManager:  setup_notifications(), test_notification()")
-    print("  CircuitCostEstimator: estimate_cost(), run_on_qpu_with_confirm()")
-    print()
-    print("  === v2.5.1 Features - QDNA-ID (Patent FR2514504) ===")
-    print("  qdna_enroll():        Generate 8D fingerprint (MEGA-BATCH)")
-    print("  qdna_verify():        Verify QPU authenticity")
-    print("  qdna_compare():       Drift analysis between fingerprints")
-    print()
-    print("  === v2.6.0 Features (NEW) - IBM ADDONS INTEGRATION ===")
-    print("  Fractional Gates:     use_fractional_gates=True (RX/RZZ natives)")
-    print("  Gen3 Turbo:           gen3_turbo=True (75x speedup)")
-    print("  PEA Mitigation:       resilience_level=2 (runtime 0.45)")
-    print("  M3 Wrapper:           calibrate_m3(), mitigate_with_m3()")
-    print("  EPLG Calculator:      estimate_eplg() - IBM benchmark metric")
-    print("  CLOPS Calculator:     estimate_clops() - Throughput metric")
-    print("  Trotter Optimizer:    AQC-Tensor + MPF support (if installed)")
-    print()
+__all__ = [
+    'QMCFramework',
+    # Cryptographie réelle (v2.7.1)
+    'QMCQuantumCrypto', 'QMCSigmaZK', 'QMCTimeLock',
+    # Configuration / exceptions
+    'ExperimentConfig', 'QualityThresholds', 'MitigationConfig',
+    'QMCException', 'QMCSecurityError',
+    # Registre / abstractions
+    'PluginRegistry', 'QMCModule', 'CircuitBuilder', 'Analyzer',
+    'Logger', 'LogLevel', 'RunMode',
+    '__version__',
+]
 
+
+# =============================================================================
+# MODULE ENTRY POINT
+# =============================================================================
 
 if __name__ == "__main__":
-    print_version_info()
-    print("QMC Framework v2.5.1 with QDNA-ID loaded successfully!")
-    print("Use QMCFrameworkV2_4 class for all features.")
-    print()
-    print("Quick start QDNA-ID:")
-    print("  fw = QMCFrameworkV2_4(project='test', backend_name='ibm_torino')")
-    print("  fw.initialize(mode=RunMode.QPU)")
-    print("  fw.connect()")
-    print("  fingerprint = fw.qdna_enroll(n_regions=6)")
-    print("  result = fw.qdna_verify(fingerprint)")
+    # [v2.7.1] POINT D'ENTRÉE UNIQUE (après l'alias public QMCFramework = QMCFramework),
+    # de sorte que la CLI et `QMCFramework` utilisent toujours la classe COMPLÈTE.
+    # L'import du module reste PUR (aucune installation au chargement) ; le « drop-and-go »
+    # est explicite via --install / --check-deps.
+    if "--install" in sys.argv:
+        print(f"QMC Quantum Framework v{__version__} — installation des dépendances")
+        ensure_dependencies()
+    elif "--check-deps" in sys.argv:
+        print(f"QMC Quantum Framework v{__version__} — vérification des dépendances (sans installation)")
+        try:
+            check_dependencies(auto_install=False, verbose=True)
+        except Exception as _e:
+            print(f"  check_dependencies indisponible: {_e}")
+    elif len(sys.argv) > 1:
+        # Arguments CLI fournis -> exécuter l'interface en ligne de commande complète.
+        main()
+    else:
+        print(f"QMC Quantum Framework v{__version__}")
+        print("Import : from qmc_quantum_framework_v2_7_1 import QMCFramework  "
+              "(classe concrete — classe complète)")
+        print("CLI    : python qmc_quantum_framework_v2_7_1.py --help | --module … | --benchmark | --validate")
+        print("Deps   : python qmc_quantum_framework_v2_7_1.py --check-deps | --install")
+
