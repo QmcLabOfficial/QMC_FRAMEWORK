@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  selftest:
+    name: self-test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    env:
+      QMC_SKIP_DEP_CHECK: "true"
+      QMC_SILENT_DEP_CHECK: "true"
+      QMC_AUTO_INSTALL_DEPS: "false"
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install qiskit qiskit-ibm-runtime qiskit-aer numpy scipy \
+                      cryptography python-dotenv matplotlib pytest pyflakes bandit
+
+      - name: Syntax (py_compile)
+        run: python -m py_compile qmc_quantum_framework_v2_7_2.py
+
+      - name: Embedded self-test (QPE, teleport, crypto, loader, security)
+        run: python qmc_quantum_framework_v2_7_2.py --selftest
+
+      - name: Pytest (embedded test_* collected from the single file)
+        run: pytest qmc_quantum_framework_v2_7_2.py -q
+
+      - name: Integration validation (no QPU / no credentials)
+        run: python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu
+
+      - name: Lint — pyflakes (zero undefined names is mandatory)
+        run: |
+          if pyflakes qmc_quantum_framework_v2_7_2.py | grep -q "undefined name"; then
+            echo "::error::pyflakes reported undefined name(s)"; exit 1
+          else
+            echo "0 undefined names"
+          fi
+
+      - name: Security — bandit (no MEDIUM/HIGH)
+        run: bandit -ll -q qmc_quantum_framework_v2_7_2.py

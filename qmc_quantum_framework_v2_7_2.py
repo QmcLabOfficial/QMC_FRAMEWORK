@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║                      QMC QUANTUM TESTING FRAMEWORK v2.7.1                            ║
+║                      QMC QUANTUM TESTING FRAMEWORK v2.7.2                            ║
 ║                           QMC Research Lab - 2026                                    ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
 ║  Framework réutilisable et EXTENSIBLE pour tous les tests quantiques QMC             ║
 ║                                                                                      ║
 ║  ████████████████████████████████████████████████████████████████████████████████    ║
-║  █  CHANGELOG v2.7.1 (2026-05) - AUDIT COMPLET : 68 CORRECTIFS + CRYPTO RÉEL  █    ║
+║  █  v2.7.2 (2026-06) - BREVETS EXTERNALISES + SELF-TEST INTEGRE  █                 ║
 ║  ████████████████████████████████████████████████████████████████████████████████    ║
 ║                                                                                      ║
 ║  Version issue d'un AUDIT COMPLET multi-agents de v2.7.0 (111 agents, 251 findings, ║
@@ -45,7 +45,7 @@
 ║    session + anti-double-facturation), écritures JSON atomiques (temp+rename).       ║
 ║                                                                                      ║
 ║  ▓ API PUBLIQUE : classe canonique QMCFramework + __all__ (fin de fichier) — ║
-║    `from qmc_quantum_framework_v2_7_1 import QMCFramework` renvoie enfin la classe    ║
+║    `from qmc_quantum_framework_v2_7_2 import QMCFramework` renvoie enfin la classe    ║
 ║    complète (m3, cache, recommender, addons…).                                       ║
 ║                                                                                      ║
 ║  ▓ FIABILITÉ : addons IBM réparés (EPLG, M3 nearest_probability, VF2 ErrorMap,        ║
@@ -3460,7 +3460,7 @@ def ensure_dependencies():
 # VERSION & METADATA
 # =============================================================================
 
-__version__ = "2.7.1"
+__version__ = "2.7.2"
 __author__ = "QMC Research Lab"
 __license__ = "Proprietary"
 __date__ = "2026-01-26"
@@ -3561,7 +3561,7 @@ _load_qmc_env_config()
 # à CHAQUE import et pouvait lancer `pip install` (effet réseau/système, non
 # déterministe, incompatible CI/offline, prompt interactif). Désormais l'import ne
 # fait RIEN. L'auto-install (« drop-and-go ») reste disponible EXPLICITEMENT :
-#   • en CLI :  python qmc_quantum_framework_v2_7_1.py --install   (ou --check-deps)
+#   • en CLI :  python qmc_quantum_framework_v2_7_2.py --install   (ou --check-deps)
 #   • via env :  QMC_AUTO_INSTALL_DEPS=1   (opt-in conscient, p.ex. dans un notebook)
 # La vérification non-installante reste accessible par check_dependencies(verbose=True).
 if os.environ.get("QMC_AUTO_INSTALL_DEPS", "").lower() in ("true", "1", "yes"):
@@ -3611,24 +3611,53 @@ _raw_projects = os.environ.get('QMC_ARCHIVE_DEFAULT_PROJECTS', '').strip()
 QMC_ARCHIVE_DEFAULT_PROJECTS = [p.strip() for p in _raw_projects.split(',') if p.strip()]
 
 # [v2.7.1 FIX] Allowlist des hôtes autorisés pour l'upload (anti-exfiltration de token).
-# Par défaut: tout hôte se terminant par '.supabase.co' + hôtes ajoutés via
-# la variable d'environnement QMC_ARCHIVE_ALLOWED_HOSTS (séparés par virgules).
+# [v2.7.2 FIX S2] Le wildcard '*.supabase.co' a été SUPPRIMÉ : il autorisait n'importe
+# quel projet Supabase (créable par quiconque), de sorte qu'une altération de
+# QMC_ARCHIVE_URL pouvait rediriger le token vers un projet attaquant. On épingle
+# désormais l'hôte EXACT du projet QMC officiel ; tout autre hôte doit être listé
+# explicitement via QMC_ARCHIVE_ALLOWED_HOSTS.
+QMC_ARCHIVE_DEFAULT_TRUSTED_HOST = 'domupbdhvyusjshlwmld.supabase.co'
 _raw_allowed_hosts = os.environ.get('QMC_ARCHIVE_ALLOWED_HOSTS', '').strip()
 QMC_ARCHIVE_ALLOWED_HOSTS = [h.strip().lower() for h in _raw_allowed_hosts.split(',') if h.strip()]
 
 
 def _qmc_is_allowed_archive_host(host: str) -> bool:
-    """[v2.7.1 FIX] Vérifie qu'un hôte est autorisé pour l'upload d'archive.
+    """[v2.7.2 FIX] Vérifie qu'un hôte est autorisé pour l'upload d'archive.
 
-    Autorise tout hôte se terminant par '.supabase.co' (ou égal) ainsi que
-    tout hôte présent dans QMC_ARCHIVE_ALLOWED_HOSTS.
+    Autorise UNIQUEMENT l'hôte officiel QMC épinglé (QMC_ARCHIVE_DEFAULT_TRUSTED_HOST)
+    et les hôtes explicitement listés dans QMC_ARCHIVE_ALLOWED_HOSTS. Plus de wildcard.
     """
     if not host:
         return False
     host = host.lower()
-    if host == 'supabase.co' or host.endswith('.supabase.co'):
+    if host == QMC_ARCHIVE_DEFAULT_TRUSTED_HOST:
         return True
     return host in QMC_ARCHIVE_ALLOWED_HOSTS
+
+
+def _qmc_host_public_ips_ok(host: str, port: int = 443) -> Tuple[bool, str]:
+    """[v2.7.2 FIX S1] Résout `host` et vérifie que TOUTES les IP sont publiques
+    (anti-SSRF / DNS-rebinding avant d'envoyer le token Bearer). Renvoie (ok, raison)."""
+    if not host:
+        return False, "hôte vide"
+    import socket
+    import ipaddress
+    try:
+        infos = socket.getaddrinfo(host, port or 443, proto=socket.IPPROTO_TCP)
+    except Exception as e:
+        return False, f"résolution DNS échouée ({e})"
+    if not infos:
+        return False, "aucune adresse résolue"
+    for info in infos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False, f"adresse invalide '{ip_str}'"
+        if (ip.is_loopback or ip.is_private or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return False, f"adresse non publique '{ip_str}'"
+    return True, "ok"
 
 
 def _paginate_service_jobs(service, page: int = 200, max_total: int = 5000, **filters):
@@ -3649,6 +3678,15 @@ def _paginate_service_jobs(service, page: int = 200, max_total: int = 5000, **fi
             if len(batch) < page:
                 break
             skip += page
+        if len(out) >= max_total:
+            # [v2.7.2] Plafond atteint : il peut rester des jobs non listés. On le
+            # SIGNALE (au lieu de tronquer en silence -> budget QPU potentiellement
+            # sous-compté). Augmentez max_total pour un comptage exhaustif.
+            import warnings as _warnings
+            _warnings.warn(
+                f"_paginate_service_jobs: plafond max_total={max_total} atteint — "
+                f"liste de jobs possiblement TRONQUÉE (budget potentiellement sous-compté).",
+                stacklevel=2)
         return out[:max_total]
     except TypeError:
         # `skip=` non supporté par cette version -> appel unique (comportement hérité)
@@ -3864,6 +3902,14 @@ class QMCArchiveUploader:
                 f"Ajoutez-le via QMC_ARCHIVE_ALLOWED_HOSTS.",
                 operation="archive_upload"
             )
+        # [v2.7.2 FIX S1] Anti-SSRF / DNS-rebinding : refuser si l'hôte résout vers
+        # une IP non publique AVANT d'envoyer le token Bearer.
+        _ip_ok, _ip_reason = _qmc_host_public_ips_ok(_parsed.hostname or '', _parsed.port or 443)
+        if not _ip_ok:
+            raise QMCSecurityError(
+                f"Upload refusé: '{_parsed.hostname}' résout vers une adresse non publique ({_ip_reason})",
+                operation="archive_upload"
+            )
 
         # Préparer les headers pour Supabase Edge Function
         headers = {
@@ -3917,21 +3963,29 @@ class QMCArchiveUploader:
                         self._log(f"⚠️ Upload SANS projet assigné [{project_source}]", 'warn')
                         self._log(f"   💡 Définir QMC_ARCHIVE_DEFAULT_PROJECTS dans .env ou passer archive_projects=[]", 'info')
                     
-                    # L'URL est directement l'Edge Function (pas de /api/v1/upload)
-                    # Le framework détecte si c'est une Edge Function Supabase
-                    upload_url = self.api_url
-                    if '/functions/v1/' not in upload_url and '/api/v1/' not in upload_url:
-                        # Ancien format local - ajouter le chemin
-                        upload_url = f"{self.api_url}/api/v1/upload"
-                    
+                    # [v2.7.2 FIX S1] Réutiliser l'URL EXACTE déjà validée au pré-vol
+                    # (scheme https + hôte en allowlist + IP publique). Évite toute
+                    # divergence entre l'URL vérifiée et l'URL réellement appelée.
+                    upload_url = _effective_url
+
                     response = requests.post(
                         upload_url,
                         headers=headers,
                         files=files,
                         data=form_data if form_data else None,
-                        timeout=timeout
+                        timeout=timeout,
+                        allow_redirects=False  # [v2.7.2 FIX S1] ne JAMAIS suivre une 30x (le token Bearer fuiterait)
                     )
-                
+
+                # [v2.7.2 FIX S1] Une redirection est refusée et NON suivie : `requests`
+                # ré-émettrait l'en-tête Authorization vers la cible (exfiltration token).
+                if 300 <= response.status_code < 400:
+                    last_error = (f"Redirection {response.status_code} refusée vers "
+                                  f"'{response.headers.get('Location', '?')}' "
+                                  f"(anti-exfiltration du token, non suivie)")
+                    self._log(f"🛑 {last_error}", 'error')
+                    break  # config/attaque : ne pas réessayer
+
                 # Analyser la réponse
                 if response.status_code in [200, 201]:
                     try:
@@ -4692,11 +4746,13 @@ class QMCJobDataCollector:
         Returns:
             Dict complet avec toutes les données et statistiques
         """
-        try:
-            from qiskit_ibm_runtime import QiskitRuntimeService
-        except ImportError:
+        # [v2.7.2] Probe d'availability SANS binding inutilisé (le service est
+        # construit plus bas avec son propre import local). find_spec évite l'import
+        # réel ici et l'avertissement « imported but unused ».
+        import importlib.util as _ilu
+        if _ilu.find_spec("qiskit_ibm_runtime") is None:
             raise RuntimeError("qiskit_ibm_runtime non disponible")
-        
+
         now = datetime.now()
         created_after = now - timedelta(days=window_days)
         
@@ -7824,9 +7880,19 @@ class Logger:
         self._buffer = []
         self._start_time = time.time()
         self._lock = threading.Lock()
-        self._context_stack = []
+        # [v2.7.2] Pile de contexte PAR THREAD (réellement thread-local cette fois).
+        self._local = threading.local()
         self._counts = {level: 0 for level in LogLevel}
         self._timings = {}
+
+    def _ctx_stack(self) -> list:
+        """[v2.7.2] Pile de contexte propre au thread courant (initialisée à la
+        demande). Auparavant une liste partagée -> labels entremêlés entre threads."""
+        s = getattr(self._local, 'stack', None)
+        if s is None:
+            s = []
+            self._local.stack = s
+        return s
     
     def _format_time(self) -> str:
         return datetime.now().strftime('%H:%M:%S.%f')[:-3]
@@ -7836,17 +7902,23 @@ class Logger:
         return f"{elapsed:8.2f}s"
     
     def _get_context(self) -> str:
-        if self._context_stack:
-            return " > ".join(self._context_stack)
+        stack = self._ctx_stack()
+        if stack:
+            return " > ".join(stack)
         return ""
-    
+
     @contextmanager
     def context(self, name: str):
-        """Context manager pour logging contextuel"""
-        # [v2.7.1 FIX] Guard mutations of the shared context stack / timings
-        # under the lock so concurrent threads don't corrupt context labels.
-        with self._lock:
-            self._context_stack.append(name)
+        """Context manager pour logging contextuel.
+
+        [v2.7.2] La pile de contexte est désormais THREAD-LOCAL : chaque thread a
+        sa propre pile, donc les labels de threads concurrents ne s'entremêlent plus
+        (corrige la mention 'thread-local' du changelog v2.7.1 qui ne l'était pas
+        réellement). La pile étant locale au thread, aucun verrou n'est requis pour
+        l'empiler/dépiler ; seul `_timings` (partagé) reste protégé par le verrou.
+        """
+        stack = self._ctx_stack()
+        stack.append(name)
         start = time.time()
         try:
             yield
@@ -7854,8 +7926,8 @@ class Logger:
             elapsed = time.time() - start
             with self._lock:
                 self._timings[name] = elapsed
-                if self._context_stack:
-                    self._context_stack.pop()
+            if stack:
+                stack.pop()
     
     def log(self, msg: str, level: LogLevel = LogLevel.INFO, 
             section: str = None, data: Dict = None):
@@ -9487,7 +9559,11 @@ class RandomnessAnalyzer(Analyzer):
         # entrent dans le dénominateur.
         executed = [r for r in results.values() if r.get('passed') is not None]
         skipped = len(results) - len(executed)
-        passed = sum(1 for r in executed if r.get('passed') is True)
+        # [v2.7.2 FIX] Les sous-tests stockent `passed` comme numpy.bool_ (p_value
+        # est un numpy float), or `np.True_ is True` == False : l'ancien `is True`
+        # comptait TOUJOURS 0 réussite -> quality_score figé à 0.0 et crypto_suitable
+        # toujours False, même pour un QRNG idéal. On teste la véracité, pas l'identité.
+        passed = sum(1 for r in executed if bool(r.get('passed')))
         total_tests = len(executed)
 
         quality_score = (passed / total_tests) if total_tests > 0 else 0.0
@@ -10213,6 +10289,10 @@ class QMCSigmaZK:
     G = 4  # = 2^2 : résidu quadratique, générateur du sous-groupe d'ordre q
     # h : second générateur QR, dlog_g(h) inconnu (dérivé d'un seed NUMS puis carré)
     H = pow(int.from_bytes(hashlib.sha256(b"QMC-ZK-pedersen-h-v2.7.1").digest(), 'big') % P + 2, 2, P)
+    # [v2.7.2] Garde-fou (coût nul, au chargement) : écarte le cas dégénéré de
+    # probabilité négligeable (~2/P) où le carré tomberait sur 0 ou 1, ce qui
+    # rendrait le second générateur de Pedersen trivial.
+    assert 1 < H < P - 1, "QMCSigmaZK: générateur H dégénéré (NUMS) — seed à régénérer"
 
     @classmethod
     def _challenge(cls, *vals) -> int:
@@ -19206,9 +19286,24 @@ class QMCFrameworkBase:
                         except Exception as e:
                             self.logger.error(f"   ❌ Erreur récupération job {ibm_job_id}: {e}")
                             session.mark_job_failed(idx, str(e))
-                        
+
                         continue
-                
+                    else:
+                        # [v2.7.2 FIX D1] Fenêtre dangereuse : job marqué SUBMITTED/RUNNING
+                        # mais SANS ibm_job_id (crash entre la soumission et la persistance de
+                        # l'id, lignes ~update_job(SUBMITTED) -> update_job(ibm_job_id)). Le
+                        # circuit a PEUT-ÊTRE déjà été soumis et FACTURÉ : on ne le RE-SOUMET
+                        # PAS (sinon double-facturation QPU). On le marque pour récupération
+                        # manuelle plutôt que de retomber dans la branche d'exécution.
+                        self.logger.error(
+                            f"   ⚠️ Job {idx} [{label}]: statut '{status}' sans ibm_job_id "
+                            f"(soumission possiblement déjà facturée). NON ré-exécuté pour "
+                            f"éviter une double-facturation — récupérez-le via --list-jobs / --recover-job.")
+                        session.mark_job_failed(
+                            idx, "ambigu: soumis sans ibm_job_id persisté — non ré-exécuté "
+                                 "(anti double-facturation), récupération manuelle requise")
+                        continue
+
                 # === EXÉCUTER LE JOB ===
                 self.logger.info(f"\n{'═' * 60}")
                 self.logger.info(f"   🚀 Job {idx + 1}/{session.total_jobs}: {label}")
@@ -22223,8 +22318,9 @@ class QMCFrameworkBase:
             try:
                 if hasattr(circuits[0], 'num_qubits'):
                     n_qubits_from_circuits = circuits[0].num_qubits
-            except:
-                pass
+            except Exception as e:
+                # [v2.7.2] chemin de données : on trace au lieu d'avaler en silence
+                self.logger.debug(f"_process_results: détection num_qubits échouée ({type(e).__name__}: {e})")
         
         for i, pub_result in enumerate(result):
             counts = {}
@@ -22248,8 +22344,10 @@ class QMCFrameworkBase:
                                 found_register = name
                                 result_format = 'BitArray'
                                 break
-                    except:
-                        pass
+                    except Exception as e:
+                        # [v2.7.2] registre '{name}' illisible : on trace et on essaie le suivant
+                        self.logger.debug(f"_process_results: registre '{name}' (circuit {i}) illisible "
+                                          f"({type(e).__name__}: {e})")
                 
                 # Si toujours vide, itérer sur tous les attributs de data
                 # [v2.7.1 FIX] On NE FUSIONNE PLUS par sommation (cela doublait les
@@ -22268,10 +22366,13 @@ class QMCFrameworkBase:
                                         if c:
                                             per_register[attr_name] = c
                                             result_format = 'BitArray'
-                                except:
-                                    pass
-                    except:
-                        pass
+                                except Exception as e:
+                                    self.logger.debug(f"_process_results: attribut '{attr_name}' "
+                                                      f"(circuit {i}) sans counts exploitables "
+                                                      f"({type(e).__name__}: {e})")
+                    except Exception as e:
+                        self.logger.debug(f"_process_results: itération des registres (circuit {i}) "
+                                          f"échouée ({type(e).__name__}: {e})")
 
                     if per_register:
                         # Largeur de bitstring par registre (pour choisir le primaire)
@@ -22357,6 +22458,21 @@ class QMCFrameworkBase:
                 'counts': counts,
                 'result_format': result_format,  # [v2.5.21] Traçabilité du format
             }
+            # [v2.7.2 FIX D2] Flag d'intégrité : un résultat à 0 shot ou de format
+            # 'unknown' ne doit PAS être archivé/uploadé comme « valide » en silence
+            # (un changement de format SDK/backend produirait des archives vides
+            # marquées OK). On l'annote explicitement pour les consommateurs aval.
+            if (not counts) or total == 0 or result_format == 'unknown':
+                res['integrity'] = 'degraded'
+                res['integrity_reason'] = (
+                    f"counts vides / 0 shot (format='{result_format}')"
+                    if (not counts or total == 0)
+                    else f"format de résultat non reconnu ('{result_format}')")
+                self.logger.warn(
+                    f"⚠️ Circuit {i}: résultat DÉGRADÉ ({res['integrity_reason']}) — "
+                    f"annoté integrity='degraded', NE PAS considérer comme valide.")
+            else:
+                res['integrity'] = 'ok'
             # [v2.7.1] Exposer les registres secondaires (non fusionnés) si présents
             if multi_register_counts is not None and len(multi_register_counts) > 1:
                 res['register_counts'] = {k: dict(v) for k, v in multi_register_counts.items()}
@@ -22716,11 +22832,13 @@ def main():
     mode_group.add_argument('--quick-test', type=str, metavar='TYPE', 
                            help='Quick test (ghz, iqp, bell, random)')
     mode_group.add_argument('--module', type=str, metavar='NAME',
-                           help='Run a QMC module (qmc_core, qmc_shield, qmc_biometric, qgp, qaee)')
+                           help='Run an external QMC module loaded on demand from qmc_modules/<NAME>.py')
     mode_group.add_argument('--benchmark', action='store_true', help='Run benchmark suite')
     mode_group.add_argument('--experiment', type=str, metavar='CONFIG',
                            help='Run experiment from YAML config')
     mode_group.add_argument('--list-plugins', action='store_true', help='List available plugins')
+    mode_group.add_argument('--selftest', action='store_true',
+                           help='[v2.7.2] Run the EMBEDDED non-regression test suite (no QPU/credentials needed)')
     
     # Options
     parser.add_argument('--backend', type=str, default='ibm_fez', help='IBM backend')
@@ -22747,7 +22865,13 @@ def main():
                        help='⚠️ Skip QPU submission confirmation (DANGEROUS - use for automated scripts only)')
     
     args = parser.parse_args()
-    
+
+    # [v2.7.2] Self-test intégré : exécute la suite de non-régression EMBARQUÉE
+    # (QPE, téléportation base-X, crypto adverse, _process_results, anti-SSRF,
+    # loader externe). Aucun QPU ni credential requis. Sortie 0 si tout passe.
+    if getattr(args, 'selftest', False):
+        sys.exit(_run_selftest(verbose=True))
+
     # Mitigation config
     mitigation = MitigationConfig(
         enable_twirling=not args.no_twirling,
@@ -22945,10 +23069,11 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import os
 
-try:
-    from qiskit_ibm_runtime import QiskitRuntimeService
-except Exception:  # pragma: no cover
-    QiskitRuntimeService = None  # type: ignore
+# [v2.7.2 FIX] Import PARESSEUX de qiskit_ibm_runtime : il n'est PLUS importé au
+# chargement du module (c'était le seul import lourd module-level → ~1 s à l'import,
+# pénalisant --selftest / --help / --check-deps / la collecte pytest / la CI). Chaque
+# site qui en a besoin fait déjà son propre `from qiskit_ibm_runtime import …` à
+# l'intérieur de la fonction ; le coût est ainsi déplacé au premier usage QPU réel.
 
 
 # ---------------------------------------------------------------------------
@@ -24965,8 +25090,12 @@ class QMCFrameworkExtended(QMCFrameworkBase):
                 if service_factory:
                     service = service_factory(label, cfg)
                 else:
-                    if QiskitRuntimeService is None:
-                        raise RuntimeError("QiskitRuntimeService indisponible.")
+                    # [v2.7.2] Import paresseux local (le module n'importe plus
+                    # qiskit_ibm_runtime au chargement — gain ~1 s).
+                    try:
+                        from qiskit_ibm_runtime import QiskitRuntimeService
+                    except Exception:
+                        raise RuntimeError("QiskitRuntimeService indisponible (qiskit-ibm-runtime non installé).")
                     service = QiskitRuntimeService(**cfg)
 
                 # [v2.7.1 FIX R82] paginer (évite la sur-estimation du budget par troncature)
@@ -25187,8 +25316,12 @@ class QMCFrameworkExtended(QMCFrameworkBase):
                 if service_factory:
                     service = service_factory(label, cfg)
                 else:
-                    if QiskitRuntimeService is None:
-                        raise RuntimeError("QiskitRuntimeService indisponible.")
+                    # [v2.7.2] Import paresseux local (le module n'importe plus
+                    # qiskit_ibm_runtime au chargement — gain ~1 s).
+                    try:
+                        from qiskit_ibm_runtime import QiskitRuntimeService
+                    except Exception:
+                        raise RuntimeError("QiskitRuntimeService indisponible (qiskit-ibm-runtime non installé).")
                     service = QiskitRuntimeService(**cfg)
                 
                 # Récupérer la liste des jobs
@@ -27117,9 +27250,24 @@ class QRNGBuilder(CircuitBuilder):
             buf.extend(str(c).encode())
             buf.extend(b"|")
             raw_bits.extend((1 if ch == '1' else 0) for ch in clean for _ in range(c))
-        # Budget d'octets « sûrs » = min-entropie totale de la source / 8
-        min_ent_per_bit = QMCQuantumCrypto.min_entropy_mcv(raw_bits)
-        safe_bytes = int((min_ent_per_bit * len(raw_bits)) / 8)
+        # [v2.7.2 FIX #4] Budget d'octets « sûrs » = min-entropie CONSERVATRICE.
+        # L'estimateur MCV PAR-BIT (NIST 90B §6.3.1) est structure-AVEUGLE : une source
+        # déterministe comme {'01': N} y paraissait ~0,92 bit/bit (alternance 0/1
+        # équilibrée) alors que sa min-entropie réelle est ~0. On prend désormais le MIN
+        # entre (a) MCV par-bit × nb_bits et (b) min-entropie H∞ PAR-SYMBOLE (sur l'issue
+        # COMPLÈTE de chaque shot) × nb_shots. La voie (b) capte la concentration / le
+        # déterminisme et est intrinsèquement bornée par log2(nb_shots) — on ne peut pas
+        # estimer plus de min-entropie que l'échantillon n'en supporte (anti-sur-estimation).
+        # NOTE : budget conservateur basé sur des estimateurs MCV ; pour une assurance
+        # élevée, compléter par la batterie non-IID NIST 90B (Markov/collision/compression).
+        n_shots = sum(int(c) for c in counts.values())
+        symbols = []
+        for bs, c in counts.items():
+            symbols.extend([bs.replace(' ', '')] * int(c))
+        mcv_bit = QMCQuantumCrypto.min_entropy_mcv(raw_bits)    # bits / bit
+        mcv_sym = QMCQuantumCrypto.min_entropy_mcv(symbols)     # bits / shot (H∞ par issue)
+        total_min_entropy = min(mcv_bit * len(raw_bits), mcv_sym * n_shots)
+        safe_bytes = int(total_min_entropy / 8)
         # [v2.7.1 FIX R89] Source à min-entropie nulle : NE PAS fabriquer d'aléa.
         # L'ancien repli « else 32 » émettait 32 octets SHAKE DÉTERMINISTES (prédictibles)
         # pour une source dégénérée -> on échoue fermé (fail-closed) à la place.
@@ -27248,12 +27396,15 @@ class AmplitudeEncodingBuilder(CircuitBuilder):
         
         for qubit in range(n_qubits):
             # Calculer la probabilité marginale pour ce qubit
-            step = 2 ** (n_qubits - qubit - 1)
             prob_1 = 0
             prob_0 = 0
-            
+
             for i in range(len(data)):
-                bit = (i >> (n_qubits - qubit - 1)) & 1
+                # [v2.7.2 FIX] Convention LSB cohérente avec decode_amplitudes
+                # (qui fait int(bitstring,2), bit j = qubit j). L'ancien
+                # `(i >> (n_qubits-qubit-1))` traitait qubit 0 comme MSB -> l'état
+                # encodé par la voie 'approx' était bit-inversé (index 1 -> 2 mesuré).
+                bit = (i >> qubit) & 1
                 if bit == 1:
                     prob_1 += data[i] ** 2
                 else:
@@ -27452,7 +27603,9 @@ class QPEBuilder(CircuitBuilder):
         
         # Convertir en phase
         # Le bitstring représente la fraction binaire de la phase
-        phase_int = int(best_bitstring, 2)
+        # [v2.7.2 FIX] Retirer les espaces séparateurs de registres (cohérence avec
+        # BV/DJ/Simon/decode) : évite ValueError si counts vient d'un flux multi-registre.
+        phase_int = int(best_bitstring.replace(' ', ''), 2)
         phase = phase_int / (2 ** n_precision)
         
         return phase
@@ -27798,7 +27951,9 @@ class BernsteinVaziraniBuilder(CircuitBuilder):
         
         self._metadata['n_qubits'] = n_qubits
         self._metadata['secret'] = secret
-        self._metadata['expected_result'] = secret[::-1]  # Reversed pour Qiskit
+        # [v2.7.2 FIX] Le bitstring mesuré égale le secret (cf. extract_secret) :
+        # l'attendu est `secret`, pas son inverse.
+        self._metadata['expected_result'] = secret
         
         self._log(f"Built Bernstein-Vazirani: {n_qubits}q, secret={secret}")
         
@@ -27816,10 +27971,12 @@ class BernsteinVaziraniBuilder(CircuitBuilder):
         # ValueError. On renvoie une chaîne vide plutôt que de crasher.
         if not counts:
             return ''
-        # Le résultat le plus fréquent EST le secret (reversed)
-        # [v2.7.1 FIX] Retirer les espaces séparateurs de registres avant inversion.
+        # [v2.7.2 FIX] Le bitstring mesuré le plus fréquent EST DÉJÀ le secret :
+        # l'oracle applique cx(i, anc) pour reversed(secret), et l'ordre big-endian
+        # de Qiskit (bit i = qubit i) fait que bitstring[j] == secret[j]. L'ancien
+        # `[::-1]` renvoyait donc le secret INVERSÉ (vérifié : '10110' -> '01101').
         max_result = max(counts, key=counts.get).replace(' ', '')
-        return max_result[::-1]
+        return max_result
 
 
 class SimonBuilder(CircuitBuilder):
@@ -27996,15 +28153,19 @@ class TeleportationBuilder(CircuitBuilder):
             state_to_teleport: 'zero', 'one', 'plus', 'minus', ou angles (theta, phi)
             with_correction: Appliquer les corrections classiques (défaut: True)
             measure_all: Mesurer tous les qubits à la fin (défaut: True)
-        
+            measure_basis: 'z' (défaut) ou 'x'. En base X (Hadamard sur Bob avant
+                la mesure), |+⟩/|−⟩ deviennent DÉTERMINISTES ('0'/'1') au lieu de
+                50/50, ce qui rend la vérification de |+⟩/|−⟩ réellement concluante.
+
         Returns:
             Circuit de téléportation
         """
         from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-        
+
         state = params.get('state_to_teleport', 'plus')
         with_correction = params.get('with_correction', True)
         measure_all = params.get('measure_all', True)
+        measure_basis = str(params.get('measure_basis', 'z')).lower()
         
         # 3 qubits: q0 = état à téléporter, q1 = Alice EPR, q2 = Bob EPR
         qr = QuantumRegister(3, 'q')
@@ -28068,10 +28229,15 @@ class TeleportationBuilder(CircuitBuilder):
         # 6. Mesure finale de Bob (optionnelle)
         if measure_all:
             qc.barrier()
+            if measure_basis == 'x':
+                # [v2.7.2] Base X : H sur Bob avant la mesure. H|+⟩=|0⟩, H|−⟩=|1⟩,
+                # donc |+⟩/|−⟩ deviennent déterministes (au lieu de 50/50 en base Z).
+                qc.h(2)
             qc.measure(2, cr_bob[0])
-        
+
         self._metadata['state_teleported'] = str(state)
         self._metadata['with_correction'] = with_correction
+        self._metadata['measure_basis'] = measure_basis
         self._metadata['n_classical_bits'] = 2
         
         self._log(f"Built Teleportation: state={state}, correction={with_correction}")
@@ -28100,47 +28266,54 @@ class TeleportationBuilder(CircuitBuilder):
             qc.t(qubit)
     
     @staticmethod
-    def verify_teleportation(counts: Dict[str, int], expected_state: str) -> Dict[str, Any]:
+    def verify_teleportation(counts: Dict[str, int], expected_state: str,
+                             measure_basis: str = 'z') -> Dict[str, Any]:
         """
         Vérifie si la téléportation a réussi.
-        
+
         Args:
             counts: Résultats de mesure (format: 'bob alice1 alice0')
             expected_state: 'zero', 'one', 'plus', 'minus'
-        
+            measure_basis: base de mesure de Bob, 'z' (défaut) ou 'x'. En base Z,
+                |0⟩/|1⟩ sont déterministes et |+⟩/|−⟩ donnent 50/50. En base X (le
+                circuit a appliqué H sur Bob), c'est l'inverse : |+⟩→'0', |−⟩→'1'
+                déterministes, ce qui rend la vérification de |+⟩/|−⟩ concluante.
+
         Returns:
             Dict avec statistiques de succès
         """
         total = sum(counts.values())
-        
-        # Selon l'état attendu, déterminer le résultat Bob correct
-        expected_bob = {
-            'zero': '0',
-            'one': '1',
-            'plus': None,  # 50/50
-            'minus': None,  # 50/50
-        }
-        
-        if expected_state in ['zero', 'one']:
-            expected = expected_bob[expected_state]
-            correct = sum(c for bs, c in counts.items() if bs[0] == expected)
-            success_rate = correct / total
-            
+
+        # [v2.7.2] Résultat Bob attendu selon l'état ET la base de mesure.
+        if measure_basis == 'x':
+            expected_bob = {'plus': '0', 'minus': '1', 'zero': None, 'one': None}
+        else:
+            expected_bob = {'zero': '0', 'one': '1', 'plus': None, 'minus': None}
+
+        expected = expected_bob.get(expected_state)
+
+        if expected is not None:
+            # Cas déterministe (état/base alignés) : on mesure le taux de succès.
+            correct = sum(c for bs, c in counts.items() if bs and bs[0] == expected)
+            success_rate = correct / total if total else 0.0
+
             return {
                 'success_rate': success_rate,
                 'expected_bob': expected,
+                'measure_basis': measure_basis,
                 'total_shots': total,
                 'correct_shots': correct
             }
         else:
-            # Pour |+⟩ ou |−⟩, on attend ~50/50
-            zeros = sum(c for bs, c in counts.items() if bs[0] == '0')
-            ones = sum(c for bs, c in counts.items() if bs[0] == '1')
-            
+            # Cas non aligné (ex. |+⟩ mesuré en base Z) : on attend ~50/50.
+            zeros = sum(c for bs, c in counts.items() if bs and bs[0] == '0')
+            ones = sum(c for bs, c in counts.items() if bs and bs[0] == '1')
+
             return {
-                'p_zero': zeros / total,
-                'p_one': ones / total,
-                'balance': abs(zeros - ones) / total,
+                'p_zero': zeros / total if total else 0.0,
+                'p_one': ones / total if total else 0.0,
+                'balance': abs(zeros - ones) / total if total else 0.0,
+                'measure_basis': measure_basis,
                 'total_shots': total
             }
 
@@ -28631,11 +28804,13 @@ class HoneypotAnalyzer(Analyzer):
 
 class QuantumAdvantageAnalyzer(Analyzer):
     """
-    Analyseur pour prouver l'avantage quantique.
-    
-    Combine plusieurs métriques pour démontrer que les résultats
-    ne peuvent pas provenir d'une simulation classique.
-    
+    Analyseur d'INDICATEURS de comportement quantique.
+
+    [v2.7.2] NE PROUVE PAS un avantage quantique : un avantage se démontre par
+    un argument de dureté de simulation classique à l'échelle, pas par un score
+    sur un run (un XEB élevé peut être simulé/spoofé classiquement). Cet analyseur
+    réunit un FAISCEAU D'INDICES de cohérence avec un comportement quantique.
+
     Métriques utilisées:
     - XEB (Cross-Entropy Benchmark)
     - Heavy Output Generation
@@ -28653,19 +28828,19 @@ class QuantumAdvantageAnalyzer(Analyzer):
                 circuit_depth: int = None, ideal_distribution: Dict = None,
                 **params) -> Dict:
         """
-        Analyse complète pour preuve d'avantage quantique.
-        
+        Analyse d'indicateurs de comportement quantique (ne prouve pas un avantage).
+
         Args:
             counts: Résultats de mesure
             n_qubits: Nombre de qubits
             circuit_depth: Profondeur du circuit
             ideal_distribution: Distribution idéale (simulation)
-        
+
         Returns:
-            Dict avec score d'avantage quantique et preuves
+            Dict avec les indicateurs et le verdict ('INDICATORS_CONSISTENT' / 'INCONCLUSIVE')
         """
         if not counts:
-            return {'quantum_advantage_proven': False, 'error': 'No counts'}
+            return {'advantage_indicators_passed': False, 'error': 'No counts'}
         
         total = sum(counts.values())
         
@@ -28720,9 +28895,12 @@ class QuantumAdvantageAnalyzer(Analyzer):
         has_reference = ideal_distribution is not None and len(ideal_distribution) > 0
         xeb_above_floor = float(xeb_score) > XEB_NOISE_FLOOR
 
-        quantum_advantage_proven = bool(has_reference and xeb_above_floor)
+        # [v2.7.2] Champ renommé : 'advantage_indicators_passed' (ne prétend plus
+        # 'prouver' un avantage). Vrai uniquement si une distribution de référence
+        # idéale est fournie ET le linear-XEB dépasse le plancher de bruit.
+        advantage_indicators_passed = bool(has_reference and xeb_above_floor)
 
-        results['quantum_advantage_proven'] = quantum_advantage_proven
+        results['advantage_indicators_passed'] = advantage_indicators_passed
         results['tests_passed'] = tests_passed
         results['tests_total'] = total_tests
         results['confidence'] = round(heuristic_fraction, 2)
@@ -28731,11 +28909,11 @@ class QuantumAdvantageAnalyzer(Analyzer):
         results['linear_xeb'] = round(float(xeb_score), 6)
         results['xeb_noise_floor'] = XEB_NOISE_FLOOR
 
-        # Niveau de preuve: l'avantage 'prouvé' exige la référence + XEB.
-        # Les heuristiques seules ne donnent qu'un signal 'inconclusive'.
-        if quantum_advantage_proven:
-            results['verdict'] = 'PROVEN'
-            results['proof_level'] = 'STRONG' if xeb_score > 0.1 else 'MODERATE'
+        # [v2.7.2] Verdict d'INDICATEURS (jamais 'PROVEN'). Les heuristiques seules
+        # ne donnent qu'un signal 'INCONCLUSIVE'.
+        if advantage_indicators_passed:
+            results['verdict'] = 'INDICATORS_CONSISTENT'
+            results['indicator_strength'] = 'STRONG' if xeb_score > 0.1 else 'MODERATE'
         else:
             results['verdict'] = 'INCONCLUSIVE'
             if not has_reference:
@@ -28746,7 +28924,7 @@ class QuantumAdvantageAnalyzer(Analyzer):
                 results['verdict_reason'] = (
                     f'linear-XEB ({xeb_score:.4f}) not above noise floor '
                     f'({XEB_NOISE_FLOOR})')
-            results['proof_level'] = 'INCONCLUSIVE'
+            results['indicator_strength'] = 'INCONCLUSIVE'
 
         self._log(f"Quantum Advantage Analysis: verdict={results['verdict']}, "
                   f"linear_xeb={xeb_score:.4f}, has_reference={has_reference}, "
@@ -40631,7 +40809,7 @@ class QMCFramework(QMCFrameworkExtended):
     - BackendRecommender, ResultCache, JobQueueManager
     """
     
-    VERSION = "2.7.1"
+    VERSION = "2.7.2"
     
     def __init__(self, *args, enable_cache: bool = True, 
                  cache_dir: str = '.qmc_cache', **kwargs):
@@ -42110,8 +42288,9 @@ class XEBCalculator:
     """
     Calculateur de Cross-Entropy Benchmarking (XEB).
     
-    Le XEB est la métrique standard pour prouver l'avantage quantique,
-    utilisée par Google pour la suprématie quantique.
+    Le XEB est une métrique de fidélité standard (utilisée par Google pour ses
+    expériences de suprématie) ; c'est un INDICATEUR, pas une preuve d'avantage
+    (un XEB élevé peut être reproduit classiquement à des tailles non triviales).
     
     XEB = 2^n * E[p_ideal(x)] - 1
     
@@ -46813,12 +46992,294 @@ __all__ = [
     'QMCQuantumCrypto', 'QMCSigmaZK', 'QMCTimeLock',
     # Configuration / exceptions
     'ExperimentConfig', 'QualityThresholds', 'MitigationConfig',
-    'QMCException', 'QMCSecurityError',
+    'QMCException', 'QMCSecurityError', 'QMCModuleNotAvailableError',
     # Registre / abstractions
     'PluginRegistry', 'QMCModule', 'CircuitBuilder', 'Analyzer',
     'Logger', 'LogLevel', 'RunMode',
     '__version__',
 ]
+
+
+# =============================================================================
+# [v2.7.2] SUITE DE TESTS DE NON-RÉGRESSION INTÉGRÉE (mono-fichier)
+# =============================================================================
+# Tests EMBARQUÉS, exécutables SANS dépendance via `--selftest`, et AUSSI
+# collectables par pytest (`pytest qmc_quantum_framework_v2_7_2.py`). Ils gèlent
+# les acquis vérifiés des audits (QPE, téléportation base-X, crypto adverse,
+# parsing des résultats, anti-SSRF, chargeur de modules) pour empêcher toute
+# régression. Aucun QPU/credential requis : les circuits tournent sur AerSimulator
+# (skip propre si qiskit-aer absent) ; le reste est pur.
+
+class _SelfTestSkip(Exception):
+    """Levée par un test pour signaler un SKIP (dépendance absente), pas un échec."""
+
+
+def _aer_run(circuit, shots: int = 4096):
+    """Exécute un circuit sur AerSimulator. Lève _SelfTestSkip si Aer est absent."""
+    try:
+        from qiskit_aer import AerSimulator
+    except Exception as e:  # pragma: no cover - dépend de l'environnement
+        raise _SelfTestSkip(f"qiskit-aer absent ({e})")
+    return AerSimulator().run(circuit, shots=shots).result().get_counts()
+
+
+def test_qpe_phases():
+    """QPE : phases T/S/Z exactes sur Aer (régression du swap parasite de la QFT⁻¹)."""
+    for unitary, expected in [('T', 0.125), ('S', 0.25), ('Z', 0.5)]:
+        counts = _aer_run(QPEBuilder().build(4, unitary=unitary), shots=4096)
+        phase = QPEBuilder.extract_phase(counts, 4)
+        assert abs(phase - expected) < 1e-9, f"QPE {unitary}: phase={phase}, attendu {expected}"
+
+
+def test_teleportation_z_basis():
+    """Téléportation : |0>/|1> récupérés par Bob >=98% en base Z (corrections if_test)."""
+    for state in ('zero', 'one'):
+        counts = _aer_run(TeleportationBuilder().build(state_to_teleport=state, measure_all=True), shots=4096)
+        res = TeleportationBuilder.verify_teleportation(counts, state)
+        assert res['success_rate'] >= 0.98, f"téléport {state}: {res['success_rate']:.3f}"
+
+
+def test_teleportation_x_basis_plus():
+    """[v2.7.2] Téléportation de |+> vérifiée en base X (déterministe '0' >=95%)."""
+    circ = TeleportationBuilder().build(state_to_teleport='plus', measure_all=True, measure_basis='x')
+    counts = _aer_run(circ, shots=4096)
+    res = TeleportationBuilder.verify_teleportation(counts, 'plus', measure_basis='x')
+    assert res['success_rate'] >= 0.95, f"téléport |+> base X: {res['success_rate']:.3f}"
+
+
+def test_randomness_analyzer_quality():
+    """[v2.7.2] RandomnessAnalyzer ne reste plus bloqué à 0 (régression np.bool_ 'is True')."""
+    counts = _aer_run(QRNGBuilder().build(12), shots=8192)
+    res = RandomnessAnalyzer().analyze(counts, 12)
+    assert res['tests_total'] >= 3, "sous-tests non exécutés"
+    assert res['tests_passed'] >= 1, f"agrégation cassée: 0 réussite sur {res['tests_total']}"
+    assert res['quality_score'] > 0.0, "quality_score figé à 0.0"
+
+
+def test_bernstein_vazirani_secret():
+    """[v2.7.2] BernsteinVazirani.extract_secret renvoie le secret EXACT (non inversé)."""
+    for secret in ('10110', '1010', '0001'):
+        counts = _aer_run(BernsteinVaziraniBuilder().build(n_qubits=len(secret), secret=secret), shots=2048)
+        got = BernsteinVaziraniBuilder.extract_secret(counts)
+        assert got == secret, f"BV secret={secret} -> extract={got}"
+
+
+def test_amplitude_encoding_approx_endianness():
+    """[v2.7.2] AmplitudeEncoding 'approx' encode le bon index (endianness cohérente avec decode)."""
+    import numpy as _np
+    circ = AmplitudeEncodingBuilder().build(n_qubits=2, data=[0.0, 1.0, 0.0, 0.0],
+                                            method='approx', add_measurements=True)
+    dec = AmplitudeEncodingBuilder.decode_amplitudes(_aer_run(circ, shots=2048), 2)
+    assert int(_np.argmax(dec)) == 1, f"index encodé {int(_np.argmax(dec))} != 1"
+
+
+def test_crypto_aes_gcm_tamper():
+    """AES-256-GCM : round-trip + détection d'altération (InvalidTag)."""
+    C = QMCQuantumCrypto
+    key = C.hkdf_sha256(b"selftest-ikm-seed-material!!", 32, salt=b"s", info=b"i")
+    pt = b"QMC self-test payload \x00\xff" * 3
+    enc = C.aead_encrypt(key, pt, aad=b"meta")
+    assert C.aead_decrypt(key, enc['nonce'], enc['ciphertext'], aad=b"meta") == pt, "round-trip KO"
+    bad = bytearray(enc['ciphertext']); bad[0] ^= 1
+    try:
+        C.aead_decrypt(key, enc['nonce'], bytes(bad), aad=b"meta")
+        assert False, "altération NON détectée"
+    except AssertionError:
+        raise
+    except Exception:
+        pass  # InvalidTag attendu
+
+
+def test_crypto_schnorr_adversarial():
+    """Schnorr NIZK : complétude + soundness (s+1, s+Q, y=P-1, y=1 rejetés)."""
+    Z = QMCSigmaZK
+    x, y = Z.keygen()
+    pk = Z.prove_knowledge(x, y)
+    assert Z.verify_knowledge(pk), "preuve valide rejetée"
+    bad = dict(pk); bad['s'] = (bad['s'] + 1) % Z.Q
+    assert not Z.verify_knowledge(bad), "s+1 accepté (soundness)"
+    mal = dict(pk); mal['s'] = pk['s'] + Z.Q
+    assert not Z.verify_knowledge(mal), "s+Q (non-canonique) accepté"
+    assert not Z.verify_knowledge({'y': Z.P - 1, 'a': pow(Z.G, 123, Z.P), 's': 123}), "y=P-1 accepté"
+    assert not Z.verify_knowledge({'y': 1, 'a': 1, 's': 0}), "y=1 accepté"
+
+
+def test_crypto_range_proof():
+    """Range proof : complétude + bornes + rejet hors-bornes."""
+    Z = QMCSigmaZK
+    assert Z.range_verify(Z.range_prove(42, 0, 100)), "42∈[0,100] rejeté"
+    assert Z.range_verify(Z.range_prove(0, 0, 100)), "borne basse rejetée"
+    assert Z.range_verify(Z.range_prove(100, 0, 100)), "borne haute rejetée"
+    for bad_v in (150, -5):
+        try:
+            Z.range_prove(bad_v, 0, 100)
+            assert False, f"valeur hors-borne {bad_v} acceptée"
+        except AssertionError:
+            raise
+        except Exception:
+            pass
+
+
+def test_qrng_entropy_conservative():
+    """[v2.7.2] Budget min-entropie QRNG conservateur : source déterministe rejetée."""
+    # Source dégénérée (déterministe) -> min-entropie ~0 -> fail-closed attendu.
+    try:
+        QRNGBuilder.extract_random_bytes({'01': 1000})
+        assert False, "source déterministe acceptée (budget d'entropie sur-estimé)"
+    except QMCSecurityError:
+        pass
+    # Source riche (Aer) -> budget > 0, extraction OK.
+    counts = _aer_run(QRNGBuilder().build(10), shots=4096)
+    rb = QRNGBuilder.extract_random_bytes(counts, n_bytes=16)
+    assert len(rb) == 16, "extraction QRNG échouée sur source valide"
+
+
+def test_crypto_timelock_roundtrip():
+    """Time-lock RSW : create/solve round-trip + champs N,g,t."""
+    msg = b"unlock QMC self-test 2026"
+    puzzle = QMCTimeLock.create(msg, squarings=5000)
+    assert all(k in puzzle for k in ('N', 'g', 't')), "champs puzzle manquants"
+    assert QMCTimeLock.solve(puzzle) == msg, "round-trip RSW KO"
+
+
+def test_pedersen_generator_nondegenerate():
+    """[v2.7.2] Le second générateur de Pedersen H n'est pas dégénéré (1 < H < P-1)."""
+    Z = QMCSigmaZK
+    assert 1 < Z.H < Z.P - 1, "générateur H dégénéré"
+
+
+def test_process_results_quasidist():
+    """_process_results : QuasiDistribution (clés entières) -> counts, shots réels."""
+    fw = QMCFramework(project="SELFTEST", backend_name="ibm_fez", shots=1000)
+    fw.initialize(mode=RunMode.QPU, config={'shots': 1000})
+    out = fw._process_results([{0: 0.5, 3: 0.5}], circuits=[], save_counts=False, shots=1000)
+    assert isinstance(out, list) and out, "résultat vide"
+    counts = out[0].get('counts', {})
+    assert counts, "counts vides"
+    assert abs(sum(counts.values()) - 1000) <= 5, f"shots reconstruits={sum(counts.values())}"
+
+
+def test_webhook_ssrf_guard():
+    """Anti-SSRF : URLs hostiles rejetées (http, file, ftp, IP privées/loopback/metadata)."""
+    hostile = ("http://example.com", "file:///etc/passwd", "ftp://x/y",
+               "https://127.0.0.1/x", "https://169.254.169.254/latest/meta-data/",
+               "https://10.0.0.5/", "https://[::1]/")
+    for url in hostile:
+        assert not _is_safe_webhook_url(url), f"URL hostile acceptée: {url}"
+
+
+def test_archive_host_allowlist():
+    """[v2.7.2] Allowlist upload : hôte QMC épinglé OK, ex-wildcard *.supabase.co rejeté."""
+    assert _qmc_is_allowed_archive_host(QMC_ARCHIVE_DEFAULT_TRUSTED_HOST), "hôte officiel rejeté"
+    assert not _qmc_is_allowed_archive_host('attacker-project.supabase.co'), "wildcard supabase encore accepté"
+    assert not _qmc_is_allowed_archive_host('evil.example'), "hôte arbitraire accepté"
+    assert not _qmc_is_allowed_archive_host(''), "hôte vide accepté"
+
+
+def test_archive_ssrf_ip_guard():
+    """[v2.7.2] Pré-vol anti-SSRF : un hôte résolvant vers une IP non publique est refusé."""
+    for bad in ('127.0.0.1', '10.0.0.5', '169.254.169.254', '::1'):
+        ok, _reason = _qmc_host_public_ips_ok(bad, 443)
+        assert not ok, f"IP non publique acceptée: {bad}"
+
+
+def test_process_results_integrity_flag():
+    """[v2.7.2] Un résultat vide/format inconnu est annoté integrity='degraded'."""
+    fw = QMCFramework(project="SELFTEST", backend_name="ibm_fez", shots=100)
+    fw.initialize(mode=RunMode.QPU, config={'shots': 100})
+    out = fw._process_results([object()], circuits=[], save_counts=False, shots=100)
+    assert out and out[0].get('integrity') == 'degraded', f"flag d'intégrité absent: {out}"
+
+
+def test_external_module_loader():
+    """Chargeur de modules externes : charge un module temporaire + erreur si absent."""
+    import tempfile
+    import pathlib
+    import sys as _sys
+    # Le module externe importe QMCModule via le nom canonique : on l'enregistre
+    # (utile quand ce fichier tourne en tant que __main__ via --selftest).
+    _sys.modules.setdefault('qmc_quantum_framework_v2_7_2', _sys.modules[__name__])
+    tmp = tempfile.mkdtemp(prefix="qmc_selftest_")
+    pathlib.Path(tmp, "demo_echo.py").write_text(
+        "from qmc_quantum_framework_v2_7_2 import QMCModule\n"
+        "class DemoEcho(QMCModule):\n"
+        "    @classmethod\n"
+        "    def get_name(cls): return 'demo_echo'\n"
+        "    def run(self, **kw): return {'success': True, 'echo': kw}\n",
+        encoding="utf-8")
+    old = os.environ.get('QMC_MODULES_PATH')
+    os.environ['QMC_MODULES_PATH'] = tmp
+    try:
+        fw = QMCFramework(project="SELFTEST", backend_name="ibm_fez", shots=100)
+        mod = fw.load_module('demo_echo')
+        assert mod.run(x=1)['success'], "module externe non exécuté"
+        try:
+            fw.load_module('module_absent_xyz')
+            assert False, "module absent non signalé"
+        except AssertionError:
+            raise
+        except QMCModuleNotAvailableError:
+            pass
+    finally:
+        if old is None:
+            os.environ.pop('QMC_MODULES_PATH', None)
+        else:
+            os.environ['QMC_MODULES_PATH'] = old
+        # [v2.7.2 FIX] Ne pas laisser 'demo_echo' dans le registre singleton ni le
+        # dossier temporaire sur disque (évite toute fuite d'état entre tests / en usage).
+        try:
+            PluginRegistry.instance()._modules.pop('demo_echo', None)
+        except Exception:
+            pass
+        try:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+        except Exception:
+            pass
+
+
+def _run_selftest(verbose: bool = True) -> int:
+    """[v2.7.2] Exécute tous les tests `test_*` de ce module (sans pytest). Retourne
+    0 si tout passe (les SKIP ne sont pas des échecs), 1 sinon. Cible de `--selftest`."""
+    import time as _time
+    # [v2.7.2 FIX] Windows : forcer stdout/stderr en UTF-8 pour que les emojis du
+    # résumé ET des logs du framework (ex. 📊 dans _process_results) ne lèvent pas
+    # UnicodeEncodeError sur une console cp1252 — le self-test doit tourner proprement
+    # SANS PYTHONUTF8 (sinon un run 100% vert se terminait par un faux échec/traceback).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+    g = globals()
+    names = sorted(n for n in g if n.startswith('test_') and callable(g[n]))
+    passed = failed = skipped = 0
+    fails = []
+    if verbose:
+        print(f"\n{'=' * 70}\n  QMC v{__version__} — SELF-TEST INTÉGRÉ ({len(names)} tests)\n{'=' * 70}")
+    t0 = _time.time()
+    for n in names:
+        try:
+            g[n]()
+            passed += 1
+            if verbose:
+                print(f"  [PASS] {n}")
+        except _SelfTestSkip as e:
+            skipped += 1
+            if verbose:
+                print(f"  [SKIP] {n} — {e}")
+        except Exception as e:
+            failed += 1
+            fails.append((n, e))
+            if verbose:
+                print(f"  [FAIL] {n} — {type(e).__name__}: {e}")
+    dt = _time.time() - t0
+    if verbose:
+        print(f"{'-' * 70}")
+        print(f"  {passed} passés, {failed} échoués, {skipped} ignorés  ({dt:.1f}s)")
+        print(f"{'=' * 70}")
+        print("  ✅ SELF-TEST RÉUSSI" if failed == 0 else "  ❌ SELF-TEST ÉCHOUÉ")
+    return 0 if failed == 0 else 1
 
 
 # =============================================================================
@@ -46844,8 +47305,8 @@ if __name__ == "__main__":
         main()
     else:
         print(f"QMC Quantum Framework v{__version__}")
-        print("Import : from qmc_quantum_framework_v2_7_1 import QMCFramework  "
+        print("Import : from qmc_quantum_framework_v2_7_2 import QMCFramework  "
               "(classe concrete — classe complète)")
-        print("CLI    : python qmc_quantum_framework_v2_7_1.py --help | --module … | --benchmark | --validate")
-        print("Deps   : python qmc_quantum_framework_v2_7_1.py --check-deps | --install")
+        print("CLI    : python qmc_quantum_framework_v2_7_2.py --help | --module … | --benchmark | --validate")
+        print("Deps   : python qmc_quantum_framework_v2_7_2.py --check-deps | --install")
 

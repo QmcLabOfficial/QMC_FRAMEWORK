@@ -1615,44 +1615,15 @@ Si erreur:
 
 ---
 
-## SECTION 39: `qdna_fingerprint` 🆕
+## SECTION 39: `qdna_fingerprint` (déprécié — module externe)
 
-**Description:** Empreinte QDNA si générée.
+**Statut :** depuis la séparation des modules propriétaires, **le framework public ne produit
+plus ce champ**. La fonctionnalité correspondante est désormais fournie comme **module externe**
+(chargé à la demande via `fw.load_module(...)`, voir `qmc_modules/`). Les archives générées par
+le framework seul **ne contiennent donc pas** cette section ; si un module externe choisit de
+l'ajouter, sa structure est définie par ce module et non par le présent format d'archive.
 
-```json
-{
-  "qdna_fingerprint": {
-    "available": false,
-    "fingerprint_id": null,
-    "regions": [],
-    "global_metrics": {}
-  }
-}
-```
-
-Si disponible:
-```json
-{
-  "qdna_fingerprint": {
-    "available": true,
-    "fingerprint_id": "qdna_ibm_torino_20260123_174035",
-    "regions": [
-      {
-        "region_id": 0,
-        "qubits": [64, 65, 66, 67, 68, 69, 70],
-        "size": 7,
-        "avg_2q_error": 0.0045,
-        "connectivity_score": 0.92
-      }
-    ],
-    "global_metrics": {
-      "total_regions": 5,
-      "coverage": 0.85,
-      "quality_score": 0.78
-    }
-  }
-}
-```
+Les parsers doivent traiter `qdna_fingerprint` comme **optionnel et absent par défaut**.
 
 ---
 
@@ -1850,7 +1821,7 @@ if __name__ == '__main__':
 - `connections_detailed`: Toutes les connexions 2Q
 - `network_info`: IP, proxy
 - `process_info`: PID, mémoire
-- `qdna_fingerprint`: Empreinte QDNA
+- `qdna_fingerprint`: (déprécié — non produit par le framework public ; voir module externe)
 
 ### v3.0.0 (2026-01-22)
 - Version initiale avec 30 sections

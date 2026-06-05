@@ -1,0 +1,21 @@
+# [v2.7.2] Normalisation des fins de ligne : LF dans le dépôt (évite les frictions
+# git/diff entre Windows (CRLF) et Linux/macOS (LF) signalées par l'audit).
+* text=auto eol=lf
+
+# Fichiers texte explicites
+*.py    text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+*.template text eol=lf
+.gitignore   text eol=lf
+.gitattributes text eol=lf
+LICENSE      text eol=lf
+
+# Binaire (jamais de conversion)
+*.png   binary
+*.jpg   binary
+*.gz    binary
+*.pdf   binary

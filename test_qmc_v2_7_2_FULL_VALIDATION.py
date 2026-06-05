@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ╔══════════════════════════════════════════════════════════════════════════════════╗
-║        QMC FRAMEWORK v2.7.1 - VALIDATION EXHAUSTIVE COMPLÈTE                     ║
+║        QMC FRAMEWORK v2.7.2 - VALIDATION EXHAUSTIVE COMPLÈTE                     ║
 ║        Test de TOUS les composants avec exécution QPU réelle                     ║
 ╠══════════════════════════════════════════════════════════════════════════════════╣
 ║  TESTS INCLUS:                                                                   ║
@@ -13,13 +13,13 @@
 ║  ├── [SECTION 5] v2.6.0/v2.6.1 Features                                         ║
 ║  ├── [SECTION 5b] v2.6.2: QMC Archive Manager                                   ║
 ║  ├── [SECTION 5c] v2.6.3: QMC Accounts Audit                                    ║
-║  ├── [SECTION 5d] ★★ v2.7.1: MULTI-JOB SESSION MANAGER ★★                      ║
+║  ├── [SECTION 5d] ★★ v2.7.2: MULTI-JOB SESSION MANAGER ★★                      ║
 ║  │   ├── MultiJobSession, MultiJobSessionStatus classes                          ║
 ║  │   ├── find_session_file(), fw.run_multi_job_session()                        ║
 ║  │   ├── fw.list_sessions(), fw.print_sessions_list()                           ║
 ║  │   ├── archive_project parameter for global upload                             ║
 ║  │   └── TEST QPU: 4 jobs × 200 shots avec reprise                               ║
-║  ├── [SECTION 5e] ★★ v2.7.1: PARALLEL TRANSPILATION + PROGRESS BAR ★★          ║
+║  ├── [SECTION 5e] ★★ v2.7.2: PARALLEL TRANSPILATION + PROGRESS BAR ★★          ║
 ║  │   ├── _parallel_transpile_worker (module-level)                               ║
 ║  │   ├── transpile_circuits(parallel=, n_workers=, show_progress=)              ║
 ║  │   ├── transpile_parallel() → délègue à transpile_circuits                    ║
@@ -33,12 +33,12 @@
 ║  └── [SECTION 11] Archive JSON v3.1                                              ║
 ╠══════════════════════════════════════════════════════════════════════════════════╣
 ║  Usage:                                                                          ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py                                     ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py --backend ibm_fez --shots 100       ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py --skip-qpu      # Tests locaux      ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py --only-multijob # Multi-job seul    ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-qpu  # Multi-job QPU     ║
-║    python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-sim  # Multi-job SIM     ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py                                     ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py --backend ibm_fez --shots 100       ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu      # Tests locaux      ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py --only-multijob # Multi-job seul    ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-qpu  # Multi-job QPU     ║
+║    python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim  # Multi-job SIM     ║
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -55,10 +55,10 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
 # ══════════════════════════════════════════════════════════════════════════════
-# [v2.7.1] ADAPTATION — rediriger les imports du test vers le module v2.7.1.
-# On charge qmc_quantum_framework_v2_7_1.py et on l'enregistre dans sys.modules
-# SOUS LES DEUX NOMS, de sorte que tous les `importlib.import_module('..._v2_7_1')`
-# et `from ..._v2_7_1 import ...` du test résolvent la v2.7.1 sans éditer chaque ligne.
+# [v2.7.2] ADAPTATION — rediriger les imports du test vers le module v2.7.2.
+# On charge qmc_quantum_framework_v2_7_2.py et on l'enregistre dans sys.modules
+# SOUS LES DEUX NOMS, de sorte que tous les `importlib.import_module('..._v2_7_2')`
+# et `from ..._v2_7_2 import ...` du test résolvent la v2.7.2 sans éditer chaque ligne.
 # Les variables d'env désactivent le check de dépendances interactif à l'import.
 # ══════════════════════════════════════════════════════════════════════════════
 import importlib.util as _ilu
@@ -66,12 +66,12 @@ os.environ.setdefault("QMC_SKIP_DEP_CHECK", "true")
 os.environ.setdefault("QMC_SILENT_DEP_CHECK", "true")
 os.environ.setdefault("QMC_AUTO_INSTALL_DEPS", "false")
 _v271_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "qmc_quantum_framework_v2_7_1.py")
-_spec_271 = _ilu.spec_from_file_location("qmc_quantum_framework_v2_7_1", _v271_path)
+                          "qmc_quantum_framework_v2_7_2.py")
+_spec_271 = _ilu.spec_from_file_location("qmc_quantum_framework_v2_7_2", _v271_path)
 _mod_271 = _ilu.module_from_spec(_spec_271)
-sys.modules["qmc_quantum_framework_v2_7_1"] = _mod_271
+sys.modules["qmc_quantum_framework_v2_7_2"] = _mod_271
 _spec_271.loader.exec_module(_mod_271)
-print(f"[v2.7.1 TEST] Module chargé: v{getattr(_mod_271, '__version__', '?')} "
+print(f"[v2.7.2 TEST] Module chargé: v{getattr(_mod_271, '__version__', '?')} "
       f"(QMCFramework concrète, relique QMCFrameworkV2_4 supprimée: "
       f"{not hasattr(_mod_271, 'QMCFrameworkV2_4')})")
 
@@ -95,10 +95,10 @@ class Colors:
 def print_banner():
     print(f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════════╗
-║{Colors.BOLD}      ⚛️  QMC FRAMEWORK v2.7.1 - VALIDATION EXHAUSTIVE COMPLÈTE  ⚛️            {Colors.END}{Colors.CYAN}║
+║{Colors.BOLD}      ⚛️  QMC FRAMEWORK v2.7.2 - VALIDATION EXHAUSTIVE COMPLÈTE  ⚛️            {Colors.END}{Colors.CYAN}║
 ╠══════════════════════════════════════════════════════════════════════════════════╣
 ║  Test de TOUS les composants: 21 Builders, 12 Analyzers, Optimizers, etc.        ║
-║  ★ v2.7.1 MAJOR: Multi-Job Session + Parallel Transpilation + Progress Bar      ║
+║  ★ v2.7.2 MAJOR: Multi-Job Session + Parallel Transpilation + Progress Bar      ║
 ║  Avec exécution QPU réelle pour validation complète du framework                 ║
 ╚══════════════════════════════════════════════════════════════════════════════════╝{Colors.END}
 """)
@@ -205,12 +205,12 @@ class TestResults:
 results = TestResults()
 
 # ==============================================================================
-# SECTION 5d: v2.7.1 MULTI-JOB SESSION MANAGER
+# SECTION 5d: v2.7.2 MULTI-JOB SESSION MANAGER
 # ==============================================================================
 
 def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
     """
-    Teste le Multi-Job Session Manager v2.7.1.
+    Teste le Multi-Job Session Manager v2.7.2.
     
     Args:
         fw: QMCFramework instance
@@ -220,7 +220,7 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
     Returns:
         True si tous les tests passent
     """
-    print_section("v2.7.1: MULTI-JOB SESSION MANAGER ★★", "🔄")
+    print_section("v2.7.2: MULTI-JOB SESSION MANAGER ★★", "🔄")
     
     features_tested = 0
     all_passed = True
@@ -235,22 +235,22 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
     try:
         # Import direct
         import importlib
-        qmc_module = importlib.import_module('qmc_quantum_framework_v2_7_1')
+        qmc_module = importlib.import_module('qmc_quantum_framework_v2_7_2')
         
         if hasattr(qmc_module, 'MultiJobSession'):
             MultiJobSession = qmc_module.MultiJobSession
             print_test("MultiJobSession", "PASS", "Classe importée")
-            results.add("MultiJobSession class", "PASS", category="v2.7.1")
+            results.add("MultiJobSession class", "PASS", category="v2.7.2")
             features_tested += 1
         else:
             print_test("MultiJobSession", "FAIL", "Non trouvée")
-            results.add("MultiJobSession class", "FAIL", category="v2.7.1")
+            results.add("MultiJobSession class", "FAIL", category="v2.7.2")
             all_passed = False
         
         if hasattr(qmc_module, 'MultiJobSessionStatus'):
             MultiJobSessionStatus = qmc_module.MultiJobSessionStatus
             print_test("MultiJobSessionStatus", "PASS", "Classe importée")
-            results.add("MultiJobSessionStatus class", "PASS", category="v2.7.1")
+            results.add("MultiJobSessionStatus class", "PASS", category="v2.7.2")
             features_tested += 1
             
             # Vérifier les constantes
@@ -274,7 +274,7 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
         if hasattr(qmc_module, 'find_session_file'):
             find_session_file = qmc_module.find_session_file
             print_test("find_session_file()", "PASS", "Fonction importée")
-            results.add("find_session_file", "PASS", category="v2.7.1")
+            results.add("find_session_file", "PASS", category="v2.7.2")
             features_tested += 1
         else:
             print_test("find_session_file()", "FAIL", "Non trouvée")
@@ -282,7 +282,7 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
             
     except Exception as e:
         print_test("Import classes Multi-Job", "FAIL", str(e)[:50])
-        results.add("Import Multi-Job classes", "FAIL", str(e)[:50], category="v2.7.1")
+        results.add("Import Multi-Job classes", "FAIL", str(e)[:50], category="v2.7.2")
         all_passed = False
     
     # --- Test 2: Méthodes QMCFramework ---
@@ -292,7 +292,7 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
         # run_multi_job_session
         if hasattr(fw, 'run_multi_job_session'):
             print_test("fw.run_multi_job_session()", "PASS", "Méthode disponible")
-            results.add("fw.run_multi_job_session()", "PASS", category="v2.7.1")
+            results.add("fw.run_multi_job_session()", "PASS", category="v2.7.2")
             features_tested += 1
             
             # Vérifier signature
@@ -304,19 +304,19 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
             
             if not missing:
                 print_test("run_multi_job_session() signature", "PASS", f"{len(params)} paramètres")
-                print_metric("archive_project", "✓ Supporté (nouveau v2.7.1)")
+                print_metric("archive_project", "✓ Supporté (nouveau v2.7.2)")
                 features_tested += 1
             else:
                 print_test("run_multi_job_session() signature", "WARN", f"Manque: {missing}")
         else:
             print_test("fw.run_multi_job_session()", "FAIL", "Non trouvée")
-            results.add("fw.run_multi_job_session()", "FAIL", category="v2.7.1")
+            results.add("fw.run_multi_job_session()", "FAIL", category="v2.7.2")
             all_passed = False
         
         # list_sessions
         if hasattr(fw, 'list_sessions'):
             print_test("fw.list_sessions()", "PASS", "Méthode disponible")
-            results.add("fw.list_sessions()", "PASS", category="v2.7.1")
+            results.add("fw.list_sessions()", "PASS", category="v2.7.2")
             features_tested += 1
         else:
             print_test("fw.list_sessions()", "FAIL", "Non trouvée")
@@ -325,7 +325,7 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
         # print_sessions_list
         if hasattr(fw, 'print_sessions_list'):
             print_test("fw.print_sessions_list()", "PASS", "Méthode disponible")
-            results.add("fw.print_sessions_list()", "PASS", category="v2.7.1")
+            results.add("fw.print_sessions_list()", "PASS", category="v2.7.2")
             features_tested += 1
         else:
             print_test("fw.print_sessions_list()", "FAIL", "Non trouvée")
@@ -427,11 +427,11 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
                     print_test("is_account_compatible()", "FAIL")
                     all_passed = False
                     
-                results.add("MultiJobSession manipulation", "PASS", category="v2.7.1")
+                results.add("MultiJobSession manipulation", "PASS", category="v2.7.2")
                 
             except Exception as e:
                 print_test("Manipulation session", "FAIL", str(e)[:50])
-                results.add("MultiJobSession manipulation", "FAIL", str(e)[:50], category="v2.7.1")
+                results.add("MultiJobSession manipulation", "FAIL", str(e)[:50], category="v2.7.2")
                 all_passed = False
                 traceback.print_exc()
     else:
@@ -448,14 +448,14 @@ def test_v271_multijob_session(fw, modules: Dict, mode: str = "local") -> bool:
         all_passed = _test_multijob_qpu(fw, modules) and all_passed
     
     # --- Résumé ---
-    print(f"\n    {Colors.GREEN}✅ {features_tested} fonctionnalités Multi-Job v2.7.1 testées{Colors.END}")
+    print(f"\n    {Colors.GREEN}✅ {features_tested} fonctionnalités Multi-Job v2.7.2 testées{Colors.END}")
     
     if all_passed:
         print(f"    {Colors.GREEN}✅ TOUS LES TESTS MULTI-JOB PASSÉS{Colors.END}")
-        results.add("v2.7.1 Multi-Job Session", "PASS", f"{features_tested} features", category="v2.7.1")
+        results.add("v2.7.2 Multi-Job Session", "PASS", f"{features_tested} features", category="v2.7.2")
     else:
         print(f"    {Colors.RED}❌ CERTAINS TESTS MULTI-JOB ONT ÉCHOUÉ{Colors.END}")
-        results.add("v2.7.1 Multi-Job Session", "FAIL", category="v2.7.1")
+        results.add("v2.7.2 Multi-Job Session", "FAIL", category="v2.7.2")
     
     return all_passed
 
@@ -619,11 +619,11 @@ def _test_multijob_simulation(fw, modules: Dict) -> bool:
         
         if summary["completed"] == len(jobs):
             print_test("Multi-Job Simulation COMPLET", "PASS", f"{len(jobs)} jobs")
-            results.add("Multi-Job Simulation", "PASS", f"{len(jobs)} jobs avec archives", category="v2.7.1")
+            results.add("Multi-Job Simulation", "PASS", f"{len(jobs)} jobs avec archives", category="v2.7.2")
             return True
         else:
             print_test("Multi-Job Simulation", "WARN", f"{summary['completed']}/{len(jobs)} jobs")
-            results.add("Multi-Job Simulation", "WARN", f"{summary['completed']}/{len(jobs)}", category="v2.7.1")
+            results.add("Multi-Job Simulation", "WARN", f"{summary['completed']}/{len(jobs)}", category="v2.7.2")
             return summary["completed"] > 0
         
     except ImportError as ie:
@@ -633,7 +633,7 @@ def _test_multijob_simulation(fw, modules: Dict) -> bool:
         
     except Exception as e:
         print_test("Simulation Multi-Job", "FAIL", str(e)[:50])
-        results.add("Multi-Job Simulation", "FAIL", str(e)[:50], category="v2.7.1")
+        results.add("Multi-Job Simulation", "FAIL", str(e)[:50], category="v2.7.2")
         traceback.print_exc()
         return False
 
@@ -689,18 +689,18 @@ def _test_multijob_simulation_basic(fw, modules: Dict) -> bool:
             print_test(f"Job '{label}'", "PASS", f"{len(circuits)} circuits × {shots} shots")
         
         print_test("Simulation Basique", "PASS", f"4 jobs simulés (sans archives)")
-        results.add("Multi-Job Simulation (basic)", "PASS", "4 jobs", category="v2.7.1")
+        results.add("Multi-Job Simulation (basic)", "PASS", "4 jobs", category="v2.7.2")
         
         return True
         
     except ImportError:
         print_test("Simulation Basique", "SKIP", "qiskit-aer non installé")
-        results.add("Multi-Job Simulation", "SKIP", "qiskit-aer manquant", category="v2.7.1")
+        results.add("Multi-Job Simulation", "SKIP", "qiskit-aer manquant", category="v2.7.2")
         return True
         
     except Exception as e:
         print_test("Simulation Basique", "FAIL", str(e)[:50])
-        results.add("Multi-Job Simulation", "FAIL", str(e)[:50], category="v2.7.1")
+        results.add("Multi-Job Simulation", "FAIL", str(e)[:50], category="v2.7.2")
         traceback.print_exc()
         return False
 
@@ -714,7 +714,7 @@ def _test_multijob_qpu(fw, modules: Dict, shots: int = 200, archive_project: str
         
         if not fw._connected:
             print_test("Connexion QPU", "FAIL", "Non connecté")
-            results.add("Multi-Job QPU", "FAIL", "Non connecté", category="v2.7.1")
+            results.add("Multi-Job QPU", "FAIL", "Non connecté", category="v2.7.2")
             return False
         
         # Créer 4 jobs avec circuits GHZ simples
@@ -731,25 +731,25 @@ def _test_multijob_qpu(fw, modules: Dict, shots: int = 200, archive_project: str
                 "circuits": [create_ghz(5, f"GHZ5_qpu_j1_c{i}") for i in range(3)],
                 "shots": shots,
                 "label": "QPU_test_job_1",
-                "metadata": {"test": "v2.7.1", "job_number": 1}
+                "metadata": {"test": "v2.7.2", "job_number": 1}
             },
             {
                 "circuits": [create_ghz(5, f"GHZ5_qpu_j2_c{i}") for i in range(3)],
                 "shots": shots,
                 "label": "QPU_test_job_2",
-                "metadata": {"test": "v2.7.1", "job_number": 2}
+                "metadata": {"test": "v2.7.2", "job_number": 2}
             },
             {
                 "circuits": [create_ghz(8, f"GHZ8_qpu_j3_c{i}") for i in range(3)],
                 "shots": shots,
                 "label": "QPU_test_job_3",
-                "metadata": {"test": "v2.7.1", "job_number": 3}
+                "metadata": {"test": "v2.7.2", "job_number": 3}
             },
             {
                 "circuits": [create_ghz(8, f"GHZ8_qpu_j4_c{i}") for i in range(3)],
                 "shots": shots,
                 "label": "QPU_test_job_4",
-                "metadata": {"test": "v2.7.1", "job_number": 4}
+                "metadata": {"test": "v2.7.2", "job_number": 4}
             },
         ]
         
@@ -781,7 +781,7 @@ def _test_multijob_qpu(fw, modules: Dict, shots: int = 200, archive_project: str
             
             if multijob_results is None:
                 print_test("Exécution Multi-Job QPU", "FAIL", "Résultats nuls")
-                results.add("Multi-Job QPU", "FAIL", "Résultats nuls", category="v2.7.1")
+                results.add("Multi-Job QPU", "FAIL", "Résultats nuls", category="v2.7.2")
                 return False
             
             # Vérifier les résultats
@@ -812,32 +812,32 @@ def _test_multijob_qpu(fw, modules: Dict, shots: int = 200, archive_project: str
             
             if status in ['COMPLETED', 'PARTIAL'] and completed > 0:
                 print_test("Test Multi-Job QPU", "PASS", f"{completed} jobs réussis")
-                results.add("Multi-Job QPU Execution", "PASS", f"{completed}/{total} jobs", category="v2.7.1")
+                results.add("Multi-Job QPU Execution", "PASS", f"{completed}/{total} jobs", category="v2.7.2")
                 return True
             else:
                 print_test("Test Multi-Job QPU", "FAIL", f"Status: {status}")
-                results.add("Multi-Job QPU Execution", "FAIL", f"Status: {status}", category="v2.7.1")
+                results.add("Multi-Job QPU Execution", "FAIL", f"Status: {status}", category="v2.7.2")
                 return False
                 
         except KeyboardInterrupt:
             print_test("Multi-Job QPU", "WARN", "Interrompu par l'utilisateur")
-            results.add("Multi-Job QPU", "SKIP", "Interrompu", category="v2.7.1")
+            results.add("Multi-Job QPU", "SKIP", "Interrompu", category="v2.7.2")
             return True
             
     except Exception as e:
         print_test("Multi-Job QPU", "FAIL", str(e)[:50])
-        results.add("Multi-Job QPU", "FAIL", str(e)[:50], category="v2.7.1")
+        results.add("Multi-Job QPU", "FAIL", str(e)[:50], category="v2.7.2")
         traceback.print_exc()
         return False
 
 
 # ==============================================================================
-# SECTION 5e: v2.7.1 PARALLEL TRANSPILATION + PROGRESS BAR
+# SECTION 5e: v2.7.2 PARALLEL TRANSPILATION + PROGRESS BAR
 # ==============================================================================
 
 def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
     """
-    Teste la transpilation parallèle v2.7.1.
+    Teste la transpilation parallèle v2.7.2.
     
     Vérifie:
     - _parallel_transpile_worker existe au niveau module
@@ -845,7 +845,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
     - transpile_parallel() redirige vers transpile_circuits
     - MultiJobSession.create_new() préserve auto_transpile
     """
-    print_section("v2.7.1: PARALLEL TRANSPILATION + PROGRESS BAR ★★", "⚡")
+    print_section("v2.7.2: PARALLEL TRANSPILATION + PROGRESS BAR ★★", "⚡")
     
     features_tested = 0
     all_passed = True
@@ -855,12 +855,12 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
     
     try:
         import importlib
-        qmc_module = importlib.import_module('qmc_quantum_framework_v2_7_1')
+        qmc_module = importlib.import_module('qmc_quantum_framework_v2_7_2')
         
         if hasattr(qmc_module, '_parallel_transpile_worker'):
             worker = qmc_module._parallel_transpile_worker
             print_test("_parallel_transpile_worker()", "PASS", "Fonction module-level trouvée")
-            results.add("_parallel_transpile_worker", "PASS", category="v2.7.1-transpile")
+            results.add("_parallel_transpile_worker", "PASS", category="v2.7.2-transpile")
             features_tested += 1
             
             # Vérifier que c'est bien une fonction (pas une méthode)
@@ -872,7 +872,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
                 print_test("Type", "WARN", f"Type={type(worker).__name__}")
         else:
             print_test("_parallel_transpile_worker()", "FAIL", "Non trouvée au niveau module")
-            results.add("_parallel_transpile_worker", "FAIL", category="v2.7.1-transpile")
+            results.add("_parallel_transpile_worker", "FAIL", category="v2.7.2-transpile")
             all_passed = False
             
     except Exception as e:
@@ -900,7 +900,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
             
             if not missing_params:
                 print_test("Nouveaux paramètres", "PASS", f"parallel, n_workers, show_progress")
-                results.add("transpile_circuits() new params", "PASS", category="v2.7.1-transpile")
+                results.add("transpile_circuits() new params", "PASS", category="v2.7.2-transpile")
                 features_tested += 1
                 
                 # Vérifier les valeurs par défaut
@@ -928,7 +928,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
                     print_test("n_workers default", "WARN", f"Got: {defaults.get('n_workers')}")
             else:
                 print_test("Nouveaux paramètres", "FAIL", f"Manque: {missing_params}")
-                results.add("transpile_circuits() new params", "FAIL", category="v2.7.1-transpile")
+                results.add("transpile_circuits() new params", "FAIL", category="v2.7.2-transpile")
                 all_passed = False
         else:
             print_test("transpile_circuits()", "FAIL", "Méthode non trouvée")
@@ -948,7 +948,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
             
             if 'transpile_circuits' in source and "parallel='always'" in source:
                 print_test("transpile_parallel() délègue", "PASS", "→ transpile_circuits(parallel='always')")
-                results.add("transpile_parallel delegation", "PASS", category="v2.7.1-transpile")
+                results.add("transpile_parallel delegation", "PASS", category="v2.7.2-transpile")
                 features_tested += 1
             else:
                 print_test("transpile_parallel() code", "WARN", "Implémentation directe (pas de délégation)")
@@ -1016,7 +1016,7 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
                 
                 if loaded.jobs[0].get("auto_transpile") == False:
                     print_test("auto_transpile persiste après save/load", "PASS")
-                    results.add("auto_transpile persistence", "PASS", category="v2.7.1-transpile")
+                    results.add("auto_transpile persistence", "PASS", category="v2.7.2-transpile")
                     features_tested += 1
                 else:
                     print_test("auto_transpile persistence", "FAIL")
@@ -1024,27 +1024,27 @@ def test_v271_parallel_transpilation(fw, modules: Dict) -> bool:
                     
             except Exception as e:
                 print_test("MultiJobSession auto_transpile", "FAIL", str(e)[:50])
-                results.add("MultiJobSession auto_transpile", "FAIL", str(e)[:50], category="v2.7.1-transpile")
+                results.add("MultiJobSession auto_transpile", "FAIL", str(e)[:50], category="v2.7.2-transpile")
                 all_passed = False
                 traceback.print_exc()
     else:
         print_test("MultiJobSession auto_transpile", "SKIP", "Classe non importée")
     
     # --- Résumé ---
-    print(f"\n    {Colors.GREEN}✅ {features_tested} fonctionnalités Parallel Transpilation v2.7.1 testées{Colors.END}")
+    print(f"\n    {Colors.GREEN}✅ {features_tested} fonctionnalités Parallel Transpilation v2.7.2 testées{Colors.END}")
     
     if all_passed:
         print(f"    {Colors.GREEN}✅ TOUS LES TESTS PARALLEL TRANSPILATION PASSÉS{Colors.END}")
-        results.add("v2.7.1 Parallel Transpilation", "PASS", f"{features_tested} features", category="v2.7.1-transpile")
+        results.add("v2.7.2 Parallel Transpilation", "PASS", f"{features_tested} features", category="v2.7.2-transpile")
     else:
         print(f"    {Colors.RED}❌ CERTAINS TESTS ONT ÉCHOUÉ{Colors.END}")
-        results.add("v2.7.1 Parallel Transpilation", "FAIL", category="v2.7.1-transpile")
+        results.add("v2.7.2 Parallel Transpilation", "FAIL", category="v2.7.2-transpile")
     
     return all_passed
 
 
 def test_v272_external_module_loader(fw, modules: Dict) -> bool:
-    """[v2.7.1] Valide le chargement des modules EXTERNES (brevets) à la demande.
+    """[v2.7.2] Valide le chargement des modules EXTERNES (brevets) à la demande.
 
     Les implémentations brevetées ne sont plus dans le framework : elles sont
     fournies comme scripts séparés et chargées via fw.load_module(). Ce test vérifie
@@ -1057,32 +1057,32 @@ def test_v272_external_module_loader(fw, modules: Dict) -> bool:
     import pathlib
     all_passed = True
     try:
-        import qmc_quantum_framework_v2_7_1 as qm
+        import qmc_quantum_framework_v2_7_2 as qm
 
         # 1) Plus aucune classe brevet exposée dans le framework
         gone = [c for c in ("QMCCoreModule", "QMCShieldModule", "QMCBiometricModule",
                              "QGPModule", "QAEEModule", "QDNAIDEngine") if hasattr(qm, c)]
         if not gone:
-            results.add("Aucune classe brevet exposée", "PASS", category="v2.7.1-modules")
+            results.add("Aucune classe brevet exposée", "PASS", category="v2.7.2-modules")
             print_test("Classes brevet retirées du framework", "PASS")
         else:
-            results.add("Aucune classe brevet exposée", "FAIL", ",".join(gone), category="v2.7.1-modules")
+            results.add("Aucune classe brevet exposée", "FAIL", ",".join(gone), category="v2.7.2-modules")
             print_test("Classes brevet retirées du framework", "FAIL", ",".join(gone))
             all_passed = False
 
         # 2) Interface + exception conservées
         if hasattr(qm, "QMCModule") and hasattr(qm, "QMCModuleNotAvailableError"):
-            results.add("Interface QMCModule + erreur dédiée", "PASS", category="v2.7.1-modules")
+            results.add("Interface QMCModule + erreur dédiée", "PASS", category="v2.7.2-modules")
             print_test("QMCModule + QMCModuleNotAvailableError présents", "PASS")
         else:
-            results.add("Interface QMCModule + erreur dédiée", "FAIL", category="v2.7.1-modules")
+            results.add("Interface QMCModule + erreur dédiée", "FAIL", category="v2.7.2-modules")
             print_test("QMCModule + QMCModuleNotAvailableError présents", "FAIL")
             all_passed = False
 
         # 3) Chargement dynamique d'un module externe temporaire
         tmp = tempfile.mkdtemp(prefix="qmc_mods_")
         pathlib.Path(tmp, "demo_echo.py").write_text(
-            "from qmc_quantum_framework_v2_7_1 import QMCModule\n"
+            "from qmc_quantum_framework_v2_7_2 import QMCModule\n"
             "class DemoEcho(QMCModule):\n"
             "    @classmethod\n"
             "    def get_name(cls): return 'demo_echo'\n"
@@ -1092,27 +1092,27 @@ def test_v272_external_module_loader(fw, modules: Dict) -> bool:
         mod = fw.load_module("demo_echo")
         res = mod.run(x=7)
         if res.get("success") and res.get("echo") == {"x": 7}:
-            results.add("load_module(externe).run()", "PASS", "demo_echo", category="v2.7.1-modules")
+            results.add("load_module(externe).run()", "PASS", "demo_echo", category="v2.7.2-modules")
             print_test("Chargement + exécution module externe", "PASS", "demo_echo")
         else:
-            results.add("load_module(externe).run()", "FAIL", category="v2.7.1-modules")
+            results.add("load_module(externe).run()", "FAIL", category="v2.7.2-modules")
             print_test("Chargement + exécution module externe", "FAIL")
             all_passed = False
 
         # 4) Module absent -> QMCModuleNotAvailableError explicite
         try:
             fw.load_module("module_absent_xyz")
-            results.add("Erreur si module absent", "FAIL", "pas d'exception", category="v2.7.1-modules")
+            results.add("Erreur si module absent", "FAIL", "pas d'exception", category="v2.7.2-modules")
             print_test("QMCModuleNotAvailableError si module absent", "FAIL")
             all_passed = False
         except qm.QMCModuleNotAvailableError:
-            results.add("Erreur si module absent", "PASS", category="v2.7.1-modules")
+            results.add("Erreur si module absent", "PASS", category="v2.7.2-modules")
             print_test("QMCModuleNotAvailableError si module absent", "PASS")
 
         if all_passed:
             print(f"\n    {Colors.GREEN}✅ Modules externes : chargement à la demande validé{Colors.END}")
     except Exception as e:
-        results.add("v2.7.1 External Module Loader", "FAIL", str(e)[:50], category="v2.7.1-modules")
+        results.add("v2.7.2 External Module Loader", "FAIL", str(e)[:50], category="v2.7.2-modules")
         print_test("External Module Loader", "FAIL", str(e)[:60])
         traceback.print_exc()
         all_passed = False
@@ -1126,7 +1126,7 @@ def test_v272_external_module_loader(fw, modules: Dict) -> bool:
 # ==============================================================================
 
 def import_framework() -> Tuple[bool, Dict]:
-    """Importe le framework v2.7.1 et ses composants."""
+    """Importe le framework v2.7.2 et ses composants."""
     print_section("IMPORT DU FRAMEWORK", "📦")
     
     modules = {}
@@ -1136,7 +1136,7 @@ def import_framework() -> Tuple[bool, Dict]:
     sys.path.insert(0, '.')
     
     try:
-        from qmc_quantum_framework_v2_7_1 import (
+        from qmc_quantum_framework_v2_7_2 import (
             QMCFramework,
             MultiJobSession,
             MultiJobSessionStatus,
@@ -1147,16 +1147,16 @@ def import_framework() -> Tuple[bool, Dict]:
         modules['MultiJobSessionStatus'] = MultiJobSessionStatus
         modules['find_session_file'] = find_session_file
         
-        print_test("Import QMCFramework", "PASS", "v2.7.1")
+        print_test("Import QMCFramework", "PASS", "v2.7.2")
         print_test("Import MultiJobSession", "PASS")
         print_test("Import MultiJobSessionStatus", "PASS")
         print_test("Import find_session_file", "PASS")
         
-        results.add("Import Framework", "PASS", "v2.7.1", category="Import")
+        results.add("Import Framework", "PASS", "v2.7.2", category="Import")
         
         # Optionnels
         try:
-            from qmc_quantum_framework_v2_7_1 import RunMode
+            from qmc_quantum_framework_v2_7_2 import RunMode
             modules['RunMode'] = RunMode
             print_test("Import RunMode", "PASS")
         except:
@@ -1245,30 +1245,30 @@ def test_connection_and_calibration(fw, backend_name: str) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='QMC Framework v2.7.1 - Validation EXHAUSTIVE',
+        description='QMC Framework v2.7.2 - Validation EXHAUSTIVE',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples:
   # Tous les tests
-  python test_qmc_v2_7_1_FULL_VALIDATION.py
+  python test_qmc_v2_7_2_FULL_VALIDATION.py
   
   # Sans QPU
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --skip-qpu
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu
   
   # Multi-Job seulement (tests locaux)
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --only-multijob
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --only-multijob
   
   # Multi-Job avec simulation
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-sim
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim
   
   # Multi-Job sur QPU réel
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-qpu --backend ibm_fez
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-qpu --backend ibm_fez
   
   # Multi-Job QPU avec upload vers projet
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-qpu --archive-project UUID
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-qpu --archive-project UUID
   
   # ★ REPRENDRE une session interrompue:
-  python test_qmc_v2_7_1_FULL_VALIDATION.py --resume-session SESSION_20260129_110752_abc123
+  python test_qmc_v2_7_2_FULL_VALIDATION.py --resume-session SESSION_20260129_110752_abc123
 """
     )
     parser.add_argument('--backend', type=str, default='ibm_fez',
@@ -1342,7 +1342,7 @@ Exemples:
             project=args.project,
             shots=args.shots
         )
-        print_test("Instance QMCFramework", "PASS", "v2.7.1")
+        print_test("Instance QMCFramework", "PASS", "v2.7.2")
         
         # IMPORTANT: Appeler initialize() pour créer le logger et les composants
         if RunMode:
@@ -1388,14 +1388,14 @@ Exemples:
                 print_test("Reprise session", "PASS", f"Status: {status}")
                 print_metric("Jobs complétés", f"{completed}/{total}")
                 print_metric("Temps QPU total", f"{qpu_time:.2f}s")
-                results.add("Resume Session", "PASS", f"{completed}/{total} jobs", category="v2.7.1")
+                results.add("Resume Session", "PASS", f"{completed}/{total} jobs", category="v2.7.2")
             else:
                 print_test("Reprise session", "FAIL", "Résultats nuls")
-                results.add("Resume Session", "FAIL", category="v2.7.1")
+                results.add("Resume Session", "FAIL", category="v2.7.2")
                 
         except Exception as e:
             print_test("Reprise session", "FAIL", str(e)[:50])
-            results.add("Resume Session", "FAIL", str(e)[:50], category="v2.7.1")
+            results.add("Resume Session", "FAIL", str(e)[:50], category="v2.7.2")
             traceback.print_exc()
         
         success = results.summary()
@@ -1435,14 +1435,14 @@ Exemples:
             print(f"\n{Colors.YELLOW}⚠️ Connexion échouée. Passage en mode local.{Colors.END}")
             args.skip_qpu = True
     
-    # Tests v2.7.1 Multi-Job (toujours exécutés en mode complet)
+    # Tests v2.7.2 Multi-Job (toujours exécutés en mode complet)
     multijob_mode = "local" if args.skip_qpu else "all"
     test_v271_multijob_session(fw, modules, mode=multijob_mode)
     
-    # Tests v2.7.1 Parallel Transpilation (toujours exécutés)
+    # Tests v2.7.2 Parallel Transpilation (toujours exécutés)
     test_v271_parallel_transpilation(fw, modules)
 
-    # [v2.7.1] Chargeur de modules externes (brevets fournis séparément)
+    # [v2.7.2] Chargeur de modules externes (brevets fournis séparément)
     test_v272_external_module_loader(fw, modules)
 
     # Note: les autres sections (Builders, Analyzers, etc.) seraient ici
@@ -1451,7 +1451,7 @@ Exemples:
     print_section("AUTRES TESTS", "📋")
     print(f"    {Colors.YELLOW}ℹ️ Pour les tests complets (Builders, Analyzers, etc.),")
     print(f"       utilisez le script test_qmc_v2_6_3_FULL_VALIDATION.py{Colors.END}")
-    print(f"    {Colors.YELLOW}   Les fonctionnalités v2.6.x sont rétro-compatibles avec v2.7.1{Colors.END}")
+    print(f"    {Colors.YELLOW}   Les fonctionnalités v2.6.x sont rétro-compatibles avec v2.7.2{Colors.END}")
     
     # Résumé
     success = results.summary()
@@ -1459,11 +1459,11 @@ Exemples:
     print()
     if success:
         print(f"{Colors.GREEN}{'═' * 80}")
-        print(f"  ✅ VALIDATION v2.7.1 RÉUSSIE (Multi-Job + Parallel Transpilation)")
+        print(f"  ✅ VALIDATION v2.7.2 RÉUSSIE (Multi-Job + Parallel Transpilation)")
         print(f"{'═' * 80}{Colors.END}")
     else:
         print(f"{Colors.RED}{'═' * 80}")
-        print(f"  ❌ VALIDATION v2.7.1 ÉCHOUÉE")
+        print(f"  ❌ VALIDATION v2.7.2 ÉCHOUÉE")
         print(f"{'═' * 80}{Colors.END}")
     print()
     
