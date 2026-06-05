@@ -115,7 +115,7 @@ quantum experiments on IBM Quantum processors. Designed to be **simple, fast and
 - 🧹 **Cleanliness**: **pure** `import` (opt-in auto-install via `--install`), **linearized class hierarchy**
   (`QMCFramework` = complete class, no more monkey-patching), stable public API + `__all__`.
 
-📖 **Full details → [Wiki / Changelog](https://qmc-lab.com/framework/wiki/changelog)** • `qmc_audit/CHANGELOG_v2_7_1.md`
+📖 **Full details → [Wiki / Changelog](https://qmc-lab.com/framework/changelog)** • `qmc_audit/CHANGELOG_v2_7_1.md`
 
 ---
 
