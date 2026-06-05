@@ -1,15 +1,15 @@
-# QMC Quantum Framework v2.7.1
+# QMC Quantum Framework v2.7.2
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.7.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.7.2-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen.svg)
 ![Qiskit](https://img.shields.io/badge/qiskit-2.3%2B-6929C4.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 ![IBM Quantum](https://img.shields.io/badge/IBM%20Quantum-Heron%20r1--r3-054ADA.svg)
 ![Audited](https://img.shields.io/badge/audited-237%20fixes-success.svg)
 
-**Framework de test quantique complet — un seul fichier, fait tout, simple et rapide**
+**Complete quantum testing framework — one single file, does everything, simple and fast**
 
 *QMC Research Lab — France*
 
@@ -21,131 +21,153 @@
 
 ## ⚡ Quick Use
 
-> **Philosophie** : copiez **un seul fichier** `qmc_quantum_framework_v2_7_1.py`, importez, et tout fonctionne.
-> L'`import` est **pur** (aucun effet de bord, aucune installation au chargement).
+> **Philosophy**: copy **one single file** `qmc_quantum_framework_v2_7_2.py`, import it, and everything works.
+> The `import` is **pure** (no side effects, no installation at load time).
 
 ```bash
-# 1) Dépendances — au choix :
-python qmc_quantum_framework_v2_7_1.py --check-deps          # vérifie (sans rien installer)
-python qmc_quantum_framework_v2_7_1.py --install             # installe les manquantes
-#   ou manuellement :
+# 1) Dependencies — your choice:
+python qmc_quantum_framework_v2_7_2.py --check-deps          # check (installs nothing)
+python qmc_quantum_framework_v2_7_2.py --install             # install the missing ones
+#   or manually:
 pip install qiskit qiskit-ibm-runtime numpy scipy cryptography python-dotenv matplotlib
 ```
 
 ```python
-# 2) Trois lignes pour exécuter un circuit sur IBM Quantum
-from qmc_quantum_framework_v2_7_1 import QMCFramework
+# 2) Three lines to run a circuit on IBM Quantum
+from qmc_quantum_framework_v2_7_2 import QMCFramework
 
-fw = QMCFramework(backend_name="ibm_torino", project="MonExperience", shots=4096)
-fw.connect()                                   # lit les credentials depuis .env
+fw = QMCFramework(backend_name="ibm_torino", project="MyExperiment", shots=4096)
+fw.connect()                                   # reads credentials from .env
 
-circuit  = fw.build_circuit("ghz", n_qubits=5) # 21 builders : ghz, bell, iqp, grover, qft, qpe, teleportation…
-results  = fw.run_on_qpu([circuit])            # transpile + exécute + rapport HTML + archive JSON
+circuit  = fw.build_circuit("ghz", n_qubits=5) # 21 builders: ghz, bell, iqp, grover, qft, qpe, teleportation…
+results  = fw.run_on_qpu([circuit])            # transpile + execute + HTML report + JSON archive
 
 print("Job ID :", fw.last_job_id)
 print("Counts :", results[0]["counts"])
-print("Sorties dans qmc_runs/ (rapport .html + archive .json.gz)")
+print("Outputs in qmc_runs/ (.html report + .json.gz archive)")
 ```
 
 ```bash
-# 3) Essayer SANS credentials IBM (simulateur local Aer)
-python test_qmc_v2_7_1_FULL_VALIDATION.py --skip-qpu       # 15 tests (API, multi-job, transpilation)
-python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-sim   # exécution réelle sur AerSimulator
+# 3) Try it WITHOUT IBM credentials (local Aer simulator)
+python qmc_quantum_framework_v2_7_2.py --selftest          # embedded test suite (no dependency, no QPU)
+python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu       # 15 tests (API, multi-job, transpilation)
+python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim   # real execution on AerSimulator
 ```
 
-📖 **Plus d'exemples → [Wiki / Quick Start](https://qmc-lab.com/framework/wiki/quick-start)**
+📖 **More examples → [Wiki / Quick Start](https://qmc-lab.com/framework/wiki/quick-start)**
 
 ---
 
 ## 📖 Wiki & Documentation
 
-La documentation complète est sur le **wiki** : **<https://qmc-lab.com/framework/wiki>**
+Full documentation lives on the **wiki**: **<https://qmc-lab.com/framework/wiki>**
 
-| Section | Lien |
+| Section | Link |
 |---------|------|
-| 🏁 Démarrage rapide | <https://qmc-lab.com/framework/wiki/quick-start> |
+| 🏁 Quick start | <https://qmc-lab.com/framework/wiki/quick-start> |
 | 📦 Installation & configuration | <https://qmc-lab.com/framework/wiki/installation> |
 | 🔬 Circuit Builders (21) | <https://qmc-lab.com/framework/wiki/circuit-builders> |
 | 📊 Analyzers (12) | <https://qmc-lab.com/framework/wiki/analyzers> |
-| 🔐 Cryptographie quantique | <https://qmc-lab.com/framework/wiki/crypto> |
-| ☁️ Audit multi-comptes | <https://qmc-lab.com/framework/wiki/multi-account-audit> |
-| 📈 Rapports & archives | <https://qmc-lab.com/framework/wiki/reports> |
-| 🧩 Référence API | <https://qmc-lab.com/framework/wiki/api-reference> |
+| 🔐 Quantum cryptography | <https://qmc-lab.com/framework/wiki/crypto> |
+| ☁️ Multi-account audit | <https://qmc-lab.com/framework/wiki/multi-account-audit> |
+| 📈 Reports & archives | <https://qmc-lab.com/framework/wiki/reports> |
+| 🧩 API Reference | <https://qmc-lab.com/framework/wiki/api-reference> |
 | 🗒️ Changelog | <https://qmc-lab.com/framework/wiki/changelog> |
 
 ---
 
 ## 🎯 Overview
 
-Le **QMC Quantum Framework** est un framework Python **mono-fichier** pour l'exécution et l'analyse
-d'expériences quantiques sur les processeurs IBM Quantum. Conçu pour être **simple, rapide et complet** :
+The **QMC Quantum Framework** is a **single-file** Python framework for running and analyzing
+quantum experiments on IBM Quantum processors. Designed to be **simple, fast and complete**:
 
-- 🔬 **21 Circuit Builders** : GHZ, Bell, IQP, Grover, QFT, QPE, Téléportation, et plus
-- 📊 **12 Analyzers** : Fidelity, Entropy, Correlation, XEB, Bell/CHSH — **avec barres d'erreur**
-- 🔐 **Cryptographie RÉELLE** : AES-256-GCM + HKDF, HMAC, ZKP Schnorr, time-lock RSW, QRNG (NIST)
-- 🚀 **Exécution QPU** : IBM Quantum (Heron r1/r2/r3), multi-job avec reprise, transpilation parallèle + cache
-- 📈 **Rapports automatiques** : HTML interactifs + archives JSON (gzip par défaut)
-- ☁️ **Cloud & Audit** : QMC Archive Manager + audit complet multi-comptes IBM
+- 🔬 **21 Circuit Builders**: GHZ, Bell, IQP, Grover, QFT, QPE, Teleportation, and more
+- 📊 **12 Analyzers**: Fidelity, Entropy, Correlation, XEB, Bell/CHSH — **with error bars**
+- 🔐 **REAL cryptography**: AES-256-GCM + HKDF, HMAC, Schnorr ZKP, RSW time-lock, QRNG (NIST)
+- 🚀 **QPU execution**: IBM Quantum (Heron r1/r2/r3), multi-job with resume, parallel transpilation + cache
+- 📈 **Automatic reports**: interactive HTML + JSON archives (gzip by default)
+- ☁️ **Cloud & Audit**: QMC Archive Manager + full multi-account IBM audit
 
 ---
 
-## ✨ What's New in v2.7.1
+## ✨ What's New in v2.7.2
 
-Version **auditée et durcie** (audit multi-agents → **237 correctifs** `[v2.7.1 FIX]`, tous vérifiés) :
+- 🧩 **Patented modules externalized**: the inner workings of the inventions are no longer exposed in the
+  public file. They are loaded **on demand** via `fw.load_module("<name>")` from `qmc_modules/` (see
+  `QMC_MODULES_PATH`), otherwise `QMCModuleNotAvailableError`.
+- 🧪 **EMBEDDED non-regression test suite** (single-file): `python qmc_quantum_framework_v2_7_2.py --selftest`
+  (no dependency) **and** `pytest qmc_quantum_framework_v2_7_2.py`. Covers QPE, teleportation (Z **and X**
+  basis), adversarial crypto (Schnorr/range/AES-GCM/time-lock), result parsing, anti-SSRF and the module loader.
+- 🔬 **Scientific rigor**: field `quantum_advantage_proven` → **`advantage_indicators_passed`** (no longer
+  overclaims a proof of advantage); teleportation of |+⟩/|−⟩ now verifiable in the **X basis** (deterministic);
+  guard on the Pedersen generator; **real thread-local log stack**; `debug` tracing of data paths.
 
-- 🔴 **Correction quantique** : QPE (phases exactes), téléportation (corrections conditionnelles), SwapTest,
-  Deutsch-Jozsa, encodage d'amplitude, Bell σ, tests NIST, QuantumVolume (critère 2σ / ≥100 essais).
-- 🔐 **Cryptographie réelle** (remplace les démos) : `QMCQuantumCrypto` (AES-256-GCM + HKDF-SHA256, HMAC,
-  min-entropie NIST SP 800-90B), `QMCSigmaZK` (ZKP Schnorr + range-proof vérifiables), `QMCTimeLock` (puzzle RSW).
-- 🛡️ **Sécurité** : anti-exfiltration de jeton (allowlist https), anti-SSRF (webhooks épinglés), anti-XSS des
-  rapports, redaction des secrets dans les logs, nettoyage des credentials temporaires.
-- 🧱 **Robustesse & perf** : écritures JSON atomiques, intégrité des résultats (registres/shots), reprise QPU
-  fiabilisée, **cache de transpilation** câblé, addons IBM réparés (M3/EPLG/CLOPS/Trotter).
-- 🧹 **Propreté** : `import` PUR (auto-install opt-in via `--install`), **hiérarchie de classe linéarisée**
-  (`QMCFramework` = classe complète, plus de monkey-patch), API publique stable + `__all__`.
+> **Based on v2.7.1** (multi-agent audit → **237 fixes** `[v2.7.1 FIX]`, all verified):
 
-📖 **Détail complet → [Wiki / Changelog](https://qmc-lab.com/framework/wiki/changelog)** • `qmc_audit/CHANGELOG_v2_7_1.md`
+- 🔴 **Quantum correctness**: QPE (exact phases), teleportation (conditional corrections), SwapTest,
+  Deutsch-Jozsa, amplitude encoding, Bell σ, NIST-style tests, QuantumVolume (2σ / ≥100 trials criterion).
+- 🔐 **Real cryptography** (replaces the demos): `QMCQuantumCrypto` (AES-256-GCM + HKDF-SHA256, HMAC,
+  NIST SP 800-90B min-entropy), `QMCSigmaZK` (verifiable Schnorr ZKP + range proof), `QMCTimeLock` (RSW puzzle).
+- 🛡️ **Security**: token anti-exfiltration (https allowlist), anti-SSRF (pinned webhooks), report anti-XSS,
+  secret redaction in logs, cleanup of temporary credentials.
+- 🧱 **Robustness & perf**: atomic JSON writes, result integrity (registers/shots), hardened QPU resume,
+  wired-in **transpilation cache**, repaired IBM add-ons (M3/EPLG/CLOPS/Trotter).
+- 🧹 **Cleanliness**: **pure** `import` (opt-in auto-install via `--install`), **linearized class hierarchy**
+  (`QMCFramework` = complete class, no more monkey-patching), stable public API + `__all__`.
+
+📖 **Full details → [Wiki / Changelog](https://qmc-lab.com/framework/wiki/changelog)** • `qmc_audit/CHANGELOG_v2_7_1.md`
 
 ---
 
 ## 📦 Installation
 
-### Prérequis
+### Requirements
 - Python **3.10+**
-- Un compte **IBM Quantum** avec token API
-- ~500 MB d'espace disque
+- An **IBM Quantum** account with an API token
+- ~500 MB of disk space
 
-### Installation
+### Install
 ```bash
 git clone https://github.com/QmcLabOfficial/QMC_FRAMEWORK.git
 cd QMC_FRAMEWORK
 
-# Dépendances (recommandé : un environnement virtuel)
+# Dependencies (recommended: a virtual environment)
 python -m venv .venv && . .venv/bin/activate          # Windows: .venv\Scripts\activate
-python qmc_quantum_framework_v2_7_1.py --install        # ou pip install … (voir Quick Use)
+python qmc_quantum_framework_v2_7_2.py --install        # or pip install … (see Quick Use)
 
 # Configuration
-cp .env.example .env       # puis éditer .env avec vos credentials
+cp .env.example .env       # then edit .env with your credentials
+```
+
+### Optional: install as a package (still one file)
+The framework stays a **single module**; `pyproject.toml` only adds metadata and a console entry point.
+```bash
+pip install .                 # declares deps + installs the `qmc` console command
+qmc --selftest                # run the embedded test suite via the console script
+```
+```python
+# Stable import shim (survives version bumps v2_7_2 -> v2_7_3 without touching your scripts):
+from qmc import QMCFramework   # instead of `from qmc_quantum_framework_v2_7_2 import QMCFramework`
 ```
 
 ### Configuration (`.env`)
 
-Voir **`.env.example`** (template complet). Le framework détecte automatiquement tous les comptes définis
-via le motif `IBM_API_KEY_<LABEL>` (+ `IBM_INSTANCE_<LABEL>` optionnel), et le compte **actif** via
+See **`.env.example`** (complete template). The framework automatically detects all accounts defined
+via the `IBM_API_KEY_<LABEL>` pattern (+ optional `IBM_INSTANCE_<LABEL>`), and the **active** account via
 `IBM_API_KEY_ACTIVE_<LABEL>`.
 
 ```env
-# === Comptes IBM Quantum (multi-comptes : un LABEL libre par compte) ===
+# === IBM Quantum accounts (multi-account: one free-form LABEL per account) ===
 IBM_API_KEY_ALICE=your_ibm_api_key_here
 IBM_API_KEY_LAB=your_ibm_api_key_here
-IBM_INSTANCE_LAB=crn:v1:bluemix:public:quantum-computing:us-east:a/xxxx::   # optionnel (plan payant)
+IBM_INSTANCE_LAB=crn:v1:bluemix:public:quantum-computing:us-east:a/xxxx::   # optional (paid plan)
 
-# === Compte ACTIF par défaut ===
+# === Default ACTIVE account ===
 IBM_API_KEY_ACTIVE_QMCLAB=your_active_ibm_api_key_here
 IBM_INSTANCE_QMCLAB=crn:v1:bluemix:public:quantum-computing:us-east:a/xxxx::
 
-# === QMC Archive Manager (optionnel) ===
-QMC_ARCHIVE_URL=https://votre-projet.supabase.co/functions/v1/upload   # https requis (allowlist d'hôtes)
+# === QMC Archive Manager (optional) ===
+QMC_ARCHIVE_URL=https://your-project.supabase.co/functions/v1/upload   # https required (host allowlist)
 QMC_ARCHIVE_TOKEN=qmc_your_archive_token_here
 QMC_ARCHIVE_UPLOAD=true
 
@@ -155,59 +177,59 @@ QMC_GENERATE_ARCHIVE=true
 QMC_AUTO_CONFIRM=false
 ```
 
-> ⚠️ **Sécurité** : ne **commitez jamais** votre `.env` (il contient des secrets). Vérifiez qu'il figure dans
-> `.gitignore` et conservez-le hors d'un dossier synchronisé/public. Les tokens sont automatiquement masqués
-> dans les logs et rapports (redaction v2.7.1). 📖 [Wiki / Sécurité](https://qmc-lab.com/framework/wiki/installation).
+> ⚠️ **Security**: **never commit** your `.env` (it contains secrets). Make sure it is listed in
+> `.gitignore` and keep it out of any synced/public folder. Tokens are automatically redacted in logs and
+> reports (redaction since v2.7.1). 📖 [Wiki / Security](https://qmc-lab.com/framework/wiki/installation).
 
-📖 **Guide détaillé → [Wiki / Installation](https://qmc-lab.com/framework/wiki/installation)**
+📖 **Detailed guide → [Wiki / Installation](https://qmc-lab.com/framework/wiki/installation)**
 
 ---
 
-## 🚀 Exemples
+## 🚀 Examples
 
-### Analyse de calibration
+### Calibration analysis
 ```python
 calibration = fw.noise.analyze_calibration()
-print("Erreur readout moyenne :", calibration["summary"]["readout_error"]["mean"])
-print("Erreur 2-qubit moyenne :", calibration["summary"]["gate_2q"]["mean"])
+print("Mean readout error :", calibration["summary"]["readout_error"]["mean"])
+print("Mean 2-qubit error :", calibration["summary"]["gate_2q"]["mean"])
 ```
 
-### Analyzers avec barres d'erreur
+### Analyzers with error bars
 ```python
-from qmc_quantum_framework_v2_7_1 import FidelityAnalyzer, XEBAnalyzer
+from qmc_quantum_framework_v2_7_2 import FidelityAnalyzer, XEBAnalyzer
 
 counts = results[0]["counts"]
 fid = FidelityAnalyzer().analyze(counts)
-print(f"Fidélité = {fid['fidelity']:.3f} ± {fid['std_error']:.3f}  (IC95 {fid['ci_95']})")
+print(f"Fidelity = {fid['fidelity']:.3f} ± {fid['std_error']:.3f}  (95% CI {fid['ci_95']})")
 ```
 
-### Cryptographie réelle
+### Real cryptography
 ```python
-from qmc_quantum_framework_v2_7_1 import QMCQuantumCrypto, QMCSigmaZK
+from qmc_quantum_framework_v2_7_2 import QMCQuantumCrypto, QMCSigmaZK
 
 key = QMCQuantumCrypto.hkdf_sha256(b"quantum-entropy-seed", length=32)
-enc = QMCQuantumCrypto.aead_encrypt(key, b"message secret")      # AES-256-GCM
+enc = QMCQuantumCrypto.aead_encrypt(key, b"secret message")        # AES-256-GCM
 clr = QMCQuantumCrypto.aead_decrypt(key, enc["nonce"], enc["ciphertext"])
 
-proof = QMCSigmaZK.range_prove(value=42, lower=0, upper=100)      # preuve ZK (sans révéler 42)
+proof = QMCSigmaZK.range_prove(value=42, lower=0, upper=100)        # ZK proof (without revealing 42)
 assert QMCSigmaZK.range_verify(proof)
 ```
 
-### Multi-job avec reprise automatique
+### Multi-job with automatic resume
 ```python
 jobs = [{"circuits": [c1], "shots": 4096, "label": "job_1"},
         {"circuits": [c2], "shots": 4096, "label": "job_2"}]
-session = fw.run_multi_job_session(jobs=jobs)     # reprend automatiquement en cas de crash
+session = fw.run_multi_job_session(jobs=jobs)     # automatically resumes on a crash
 ```
 
-### Audit multi-comptes
+### Multi-account audit
 ```python
 result = fw.audit_accounts(window_days=30, budget_minutes=10.0)
-print("Comptes :", result["global_stats"]["total_accounts"])
-print("Rapport :", result["generated_files"]["html"])
+print("Accounts :", result["global_stats"]["total_accounts"])
+print("Report   :", result["generated_files"]["html"])
 ```
 
-📖 **Tous les exemples → [Wiki / Quick Start](https://qmc-lab.com/framework/wiki/quick-start)**
+📖 **All examples → [Wiki / Quick Start](https://qmc-lab.com/framework/wiki/quick-start)**
 
 ---
 
@@ -217,100 +239,107 @@ print("Rapport :", result["generated_files"]["html"])
 
 | Builder | Description | Builder | Description |
 |---------|-------------|---------|-------------|
-| `GHZBuilder` | États GHZ | `QPEBuilder` | Estimation de phase |
-| `BellBuilder` | Paires de Bell | `DeutschJozsaBuilder` | Deutsch-Jozsa |
+| `GHZBuilder` | GHZ states | `QPEBuilder` | Phase estimation |
+| `BellBuilder` | Bell pairs | `DeutschJozsaBuilder` | Deutsch-Jozsa |
 | `IQPBuilder` | Instantaneous QP | `BernsteinVaziraniBuilder` | Bernstein-Vazirani |
-| `ClusterBuilder` | États cluster | `SimonBuilder` | Algorithme de Simon |
-| `RandomCircuitBuilder` | Circuits aléatoires | `SwapTestBuilder` | Test SWAP (fidélité) |
-| `QFTBuilder` | Transformée de Fourier | `QRNGBuilder` | Générateur aléatoire |
-| `GroverBuilder` | Algorithme de Grover | `TeleportationBuilder` | Téléportation |
-| `ParameterizedCircuitBuilder` | Circuits VQE | `AmplitudeEncodingBuilder` | Encodage d'amplitude |
-| `QuantumSignatureBuilder` | Signatures quantiques | `ZKPBuilder` | Zero-Knowledge Proofs |
-| `TimeLockBuilder` | Time-lock (RSW) | `ObliviousTransferBuilder` | Transfert inconscient |
-| `HardwareEfficientBuilder` | Ansatz hardware-efficient | | |
+| `ClusterBuilder` | Cluster states | `SimonBuilder` | Simon's algorithm |
+| `RandomCircuitBuilder` | Random circuits | `SwapTestBuilder` | SWAP test (fidelity) |
+| `QFTBuilder` | Fourier transform | `QRNGBuilder` | Random number generator |
+| `GroverBuilder` | Grover's algorithm | `TeleportationBuilder` | Teleportation |
+| `ParameterizedCircuitBuilder` | VQE circuits | `AmplitudeEncodingBuilder` | Amplitude encoding |
+| `QuantumSignatureBuilder` | Quantum signatures | `ZKPBuilder` | Zero-Knowledge Proofs |
+| `TimeLockBuilder` | Time-lock (RSW) | `ObliviousTransferBuilder` | Oblivious transfer |
+| `HardwareEfficientBuilder` | Hardware-efficient ansatz | | |
 
 ### Analyzers (12) — 📖 [Wiki](https://qmc-lab.com/framework/wiki/analyzers)
 
-| Analyzer | Métriques | Analyzer | Métriques |
-|----------|-----------|----------|-----------|
-| `FidelityAnalyzer` | Fidélité + IC95 | `CompressionAnalyzer` | Couverture d'états |
-| `EntropyAnalyzer` | Shannon / Von Neumann | `XEBCrossValidationAnalyzer` | XEB validation croisée |
-| `CorrelationAnalyzer` | Corrélations + σ | `HoneypotAnalyzer` | Détection d'attaques |
-| `XEBAnalyzer` | XEB + barres d'erreur | `QuantumAdvantageAnalyzer` | Avantage quantique (gaté) |
-| `BellAnalyzer` | CHSH (S, σ binomial) | `RandomnessAnalyzer` | Tests style NIST |
+| Analyzer | Metrics | Analyzer | Metrics |
+|----------|---------|----------|---------|
+| `FidelityAnalyzer` | Fidelity + 95% CI | `CompressionAnalyzer` | State coverage |
+| `EntropyAnalyzer` | Shannon / Von Neumann | `XEBCrossValidationAnalyzer` | XEB cross-validation |
+| `CorrelationAnalyzer` | Correlations + σ | `HoneypotAnalyzer` | Attack detection |
+| `XEBAnalyzer` | XEB + error bars | `QuantumAdvantageAnalyzer` | Quantum-behavior indicators (gated) |
+| `BellAnalyzer` | CHSH (S, binomial σ) | `RandomnessAnalyzer` | NIST-style tests |
 
-### Fonctionnalités avancées
-- **Fractional Gates** (RX/RZZ natives) · **Gen3 Turbo** · **Dynamic Circuits**
-- **Error Mitigation** : M3, ZNE, Twirling, DD, PEA
-- **Transpilation parallèle multi-CPU + cache** (lots identiques réutilisés)
-- **Multi-job avec reprise** · **Cryptographie réelle** (AES-GCM / HKDF / ZK) · **Modules externes** chargés à la demande
+### Advanced features
+- **Fractional Gates** (native RX/RZZ) · **Gen3 Turbo** · **Dynamic Circuits**
+- **Error Mitigation**: M3, ZNE, Twirling, DD, PEA
+- **Parallel multi-CPU transpilation + cache** (identical batches reused)
+- **Multi-job with resume** · **Real cryptography** (AES-GCM / HKDF / ZK) · **External modules** loaded on demand
 
 ---
 
 ## 🧩 API Reference
 
-📖 **Référence complète → [Wiki / API](https://qmc-lab.com/framework/wiki/api-reference)**
+📖 **Full reference → [Wiki / API](https://qmc-lab.com/framework/wiki/api-reference)**
 
 ```python
-from qmc_quantum_framework_v2_7_1 import QMCFramework   # classe principale (concrète, complète)
+from qmc_quantum_framework_v2_7_2 import QMCFramework   # main class (concrete, complete)
 
 fw = QMCFramework(backend_name="ibm_fez", project="QMC_Test", shots=4096,
                   use_fractional_gates=False, gen3_turbo=False)
 
 fw.connect()                                  # -> bool
 fw.build_circuit("ghz", n_qubits=5)           # -> QuantumCircuit
-fw.transpile_circuits([circuit])              # transpilation (parallèle + cache)
+fw.transpile_circuits([circuit])              # transpilation (parallel + cache)
 fw.run_on_qpu([circuit], shots=4096)          # -> List[Dict] (counts, shots, …)
-fw.run_multi_job_session(jobs=[...])          # multi-job + reprise
-fw.audit_accounts(window_days=30)             # audit multi-comptes
-fw.estimate_eplg(); fw.estimate_clops()       # addons IBM (M3/EPLG/CLOPS/Trotter)
-fw.last_job_id                                # ID du dernier job soumis
+fw.run_multi_job_session(jobs=[...])          # multi-job + resume
+fw.audit_accounts(window_days=30)             # multi-account audit
+fw.estimate_eplg(); fw.estimate_clops()       # IBM add-ons (M3/EPLG/CLOPS/Trotter)
+fw.last_job_id                                # ID of the last submitted job
 
-module = fw.load_module("nom")                # charge un module externe (brevets fournis séparément)
-module.run(...)                               # QMCModuleNotAvailableError si non disponible
+module = fw.load_module("name")               # load an external module (patented modules provided separately)
+module.run(...)                               # QMCModuleNotAvailableError if not available
 ```
 
-> **Hiérarchie (v2.7.1, linéarisée)** : `QMCFrameworkBase → QMCFrameworkExtended → QMCFramework`,
-> où `QMCFramework` est la **classe concrète publique** (la relique `QMCFrameworkV2_4` a été supprimée).
-> `import` pur, pas d'alias ni de monkey-patch.
+> **Hierarchy (linearized in v2.7.1)**: `QMCFrameworkBase → QMCFrameworkExtended → QMCFramework`,
+> where `QMCFramework` is the **concrete public class** (the legacy `QMCFrameworkV2_4` alias was removed).
+> Pure `import`, no alias, no monkey-patching.
 
 ---
 
 ## 🧪 Tests
 
 ```bash
-# Validation complète sur QPU réel
-python test_qmc_v2_7_1_FULL_VALIDATION.py --backend ibm_torino --shots 100
+# EMBEDDED non-regression suite (single-file, NO dependency or QPU required)
+python qmc_quantum_framework_v2_7_2.py --selftest             # QPE, teleport (Z+X), adversarial crypto, loader…
+pytest qmc_quantum_framework_v2_7_2.py -q                     # same tests, via pytest
 
-# Tests locaux (sans QPU / sans credentials)
-python test_qmc_v2_7_1_FULL_VALIDATION.py --skip-qpu          # API + multi-job + transpilation
-python test_qmc_v2_7_1_FULL_VALIDATION.py --multijob-sim      # exécution AerSimulator
+# Full integration validation on a real QPU
+python test_qmc_v2_7_2_FULL_VALIDATION.py --backend ibm_torino --shots 100
+
+# Local tests (no QPU / no credentials)
+python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu          # API + multi-job + transpilation + loader
+python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim      # AerSimulator execution
 ```
 
-> 💡 Sous Windows, lancez avec `PYTHONUTF8=1` pour l'affichage des emojis/box-drawing.
+> 💡 On Windows, run with `PYTHONUTF8=1` for correct emoji/box-drawing display.
 
 ---
 
-## 📜 Changelog (résumé)
+## 📜 Changelog (summary)
 
-- **v2.7.1 (2026-05)** — Audit complet : **237 correctifs**, cryptographie réelle, sécurité durcie, import pur,
-  hiérarchie linéarisée, cache de transpilation, barres d'erreur. 📖 [Changelog complet](https://qmc-lab.com/framework/wiki/changelog)
-- **v2.7.0 (2026-01)** — Multi-Job Session + Auto-Resume + Transpilation parallèle.
+- **v2.7.2 (2026-06)** — Patented modules **externalized** (loaded on demand), **embedded test suite**
+  (`--selftest` / pytest), scientific rigor (`advantage_indicators_passed`, X-basis teleport), thread-local log,
+  `LICENSE` + `.gitattributes`.
+- **v2.7.1 (2026-05)** — Full audit: **237 fixes**, real cryptography, hardened security, pure import,
+  linearized hierarchy, transpilation cache, error bars. 📖 [Full changelog](https://qmc-lab.com/framework/wiki/changelog)
+- **v2.7.0 (2026-01)** — Multi-Job Session + Auto-Resume + parallel transpilation.
 - **v2.6.3 (2026-01)** — QMC Accounts Audit Module.
-- **v2.6.2 / v2.6.1 / v2.6.0** — Archive Manager, auto-fetch QPU, Fractional Gates / Gen3 Turbo.
+- **v2.6.2 / v2.6.1 / v2.6.0** — Archive Manager, QPU auto-fetch, Fractional Gates / Gen3 Turbo.
 
 ---
 
-## 🔒 Modules propriétaires (brevets)
+## 🔒 Proprietary modules (patents)
 
-Les implémentations brevetées **ne sont pas incluses** dans ce framework public : leur
-fonctionnement n'est **jamais exposé** dans le code. Elles sont distribuées comme **modules
-externes**, chargés **à la demande** via `fw.load_module("<nom>")` (dossier `qmc_modules/`,
-emplacement surchargé par `QMC_MODULES_PATH`) et fournis séparément aux clients autorisés.
-En l'absence du module, le framework lève `QMCModuleNotAvailableError`.
+The patented implementations are **not included** in this public framework: their inner workings are
+**never exposed** in the code. They are distributed as **external modules**, loaded **on demand** via
+`fw.load_module("<name>")` (`qmc_modules/` folder, location overridable via `QMC_MODULES_PATH`) and
+provided separately to authorized clients. If the module is absent, the framework raises
+`QMCModuleNotAvailableError`.
 
-| Référence | Module (fourni séparément) |
-|-----------|----------------------------|
+| Reference | Module (provided separately) |
+|-----------|------------------------------|
 | FR2514352 | QMC Core |
 | FR2514504 | QMC Biometric |
 | FR2514363 | QMC Shield |
@@ -320,22 +349,22 @@ En l'absence du module, le framework lève `QMCModuleNotAvailableError`.
 | FR2515103 | QRPM |
 | FR2515682 | QMC SIP |
 
-> Contrat d'un module et template d'interface : voir [`qmc_modules/README.md`](qmc_modules/README.md).
+> Module contract and interface template: see [`qmc_modules/README.md`](qmc_modules/README.md).
 
 ---
 
 ## 🤝 Contributing & Contact
 
-Projet en développement privé pour QMC Research Lab.
-- 🌐 Site : [qmc-lab.com](https://qmc-lab.com) · 📖 Wiki : [qmc-lab.com/framework/wiki](https://qmc-lab.com/framework/wiki)
-- 📦 GitHub : [@QmcLabOfficial](https://github.com/QmcLabOfficial)
+Privately developed project for QMC Research Lab.
+- 🌐 Website: [qmc-lab.com](https://qmc-lab.com) · 📖 Wiki: [qmc-lab.com/framework/wiki](https://qmc-lab.com/framework/wiki)
+- 📦 GitHub: [@QmcLabOfficial](https://github.com/QmcLabOfficial)
 
 ---
 
 ## 📄 License
 
 **Proprietary** — © 2024-2026 QMC Research Lab, Menton, France.
-Toute reproduction, distribution ou utilisation non autorisée est strictement interdite.
+Any unauthorized reproduction, distribution or use is strictly prohibited.
 
 ---
 

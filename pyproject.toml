@@ -1,0 +1,50 @@
+# [v2.7.2] Packaging compatible MONO-FICHIER : le livrable reste l'unique module
+# `qmc_quantum_framework_v2_7_2.py` (déclaré dans py-modules). Ce pyproject ajoute
+# seulement des métadonnées (dépendances déclarées, point d'entrée console) — il ne
+# fragmente PAS le framework.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qmc-quantum-framework"
+version = "2.7.2"
+description = "QMC Quantum Testing Framework — single-file, runs and analyzes experiments on IBM Quantum"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "QMC Research Lab" }]
+keywords = ["quantum", "qiskit", "ibm-quantum", "qpu", "cryptography"]
+
+# Dépendances déclarées (bornes basses testées). Pour la production, générez un
+# verrouillage avec hashes, p.ex. `pip-compile --generate-hashes` (non fourni ici).
+dependencies = [
+    "qiskit>=2.3",
+    "qiskit-ibm-runtime>=0.40",
+    "qiskit-aer>=0.17",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "cryptography>=44",
+    "python-dotenv>=1.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyflakes>=3", "bandit>=1.7"]
+
+[project.urls]
+Homepage = "https://qmc-lab.com"
+Wiki = "https://qmc-lab.com/framework/wiki"
+Repository = "https://github.com/QmcLabOfficial/QMC_FRAMEWORK"
+
+[project.scripts]
+# Commande console : `qmc --selftest`, `qmc --check`, etc.
+qmc = "qmc_quantum_framework_v2_7_2:main"
+
+[tool.setuptools]
+# MONO-FICHIER : on expose les deux modules top-level (le framework + le shim stable).
+py-modules = ["qmc_quantum_framework_v2_7_2", "qmc"]
+
+[tool.bandit]
+# Le self-test embarqué + assertions de tests ; on garde le seuil MEDIUM en CI.
+skips = []

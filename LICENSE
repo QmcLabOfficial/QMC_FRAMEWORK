@@ -1,0 +1,31 @@
+QMC Quantum Testing Framework — Proprietary License
+Copyright (c) 2026 QMC Research Lab. All rights reserved.
+
+This software, including the file `qmc_quantum_framework_v2_7_2.py`, its test
+suite, and accompanying documentation (the "Software"), is proprietary and
+confidential.
+
+1. GRANT. No license, right, or interest is granted by this document. Use,
+   copying, modification, distribution, sublicensing, public display, or
+   creation of derivative works is permitted ONLY under a separate written
+   agreement signed by QMC Research Lab.
+
+2. PROPRIETARY MODULES. The patented/proprietary modules are NOT included in
+   this repository. They are distributed separately and loaded on demand
+   (see `qmc_modules/README.md`). Their algorithms and patent details are not
+   disclosed by this Software.
+
+3. PATENTS. The proprietary modules may be covered by one or more patents.
+   Nothing herein grants any patent license, express or implied.
+
+4. NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO
+   EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+   OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE.
+
+5. RESEARCH/DEMONSTRATION USE. The cryptographic and quantum-advantage utilities
+   bundled in the public framework are provided for research and demonstration
+   purposes; they are not certified for production security use.
+
+Contact: QMC Research Lab — https://qmc-lab.com
