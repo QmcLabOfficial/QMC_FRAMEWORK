@@ -11,7 +11,7 @@
 
 **Framework de test quantique complet — un seul fichier, fait tout, simple et rapide**
 
-*QMC Research Lab — Menton, France*
+*QMC Research Lab — France*
 
 [⚡ Quick Use](#-quick-use) • [📖 Wiki](https://qmc-lab.com/framework/wiki) • [Installation](#-installation) • [Features](#-features) • [API](#-api-reference)
 
