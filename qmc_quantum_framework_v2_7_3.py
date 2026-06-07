@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║                      QMC QUANTUM TESTING FRAMEWORK v2.7.2                            ║
+║                      QMC QUANTUM TESTING FRAMEWORK v2.7.3                            ║
 ║                           QMC Research Lab - 2026                                    ║
 ╠══════════════════════════════════════════════════════════════════════════════════════╣
 ║  Framework réutilisable et EXTENSIBLE pour tous les tests quantiques QMC             ║
 ║                                                                                      ║
 ║  ████████████████████████████████████████████████████████████████████████████████    ║
-║  █  v2.7.2 (2026-06) - BREVETS EXTERNALISES + SELF-TEST INTEGRE  █                 ║
+║  █  v2.7.3 (2026-06) - AUDIT COMPLET : FIX REPORTING/ARCHIVE + XSS  █              ║
 ║  ████████████████████████████████████████████████████████████████████████████████    ║
 ║                                                                                      ║
 ║  Version issue d'un AUDIT COMPLET multi-agents de v2.7.0 (111 agents, 251 findings, ║
@@ -45,7 +45,7 @@
 ║    session + anti-double-facturation), écritures JSON atomiques (temp+rename).       ║
 ║                                                                                      ║
 ║  ▓ API PUBLIQUE : classe canonique QMCFramework + __all__ (fin de fichier) — ║
-║    `from qmc_quantum_framework_v2_7_2 import QMCFramework` renvoie enfin la classe    ║
+║    `from qmc_quantum_framework_v2_7_3 import QMCFramework` renvoie enfin la classe    ║
 ║    complète (m3, cache, recommender, addons…).                                       ║
 ║                                                                                      ║
 ║  ▓ FIABILITÉ : addons IBM réparés (EPLG, M3 nearest_probability, VF2 ErrorMap,        ║
@@ -3460,7 +3460,7 @@ def ensure_dependencies():
 # VERSION & METADATA
 # =============================================================================
 
-__version__ = "2.7.2"
+__version__ = "2.7.3"
 __author__ = "QMC Research Lab"
 __license__ = "Proprietary"
 __date__ = "2026-01-26"
@@ -3561,7 +3561,7 @@ _load_qmc_env_config()
 # à CHAQUE import et pouvait lancer `pip install` (effet réseau/système, non
 # déterministe, incompatible CI/offline, prompt interactif). Désormais l'import ne
 # fait RIEN. L'auto-install (« drop-and-go ») reste disponible EXPLICITEMENT :
-#   • en CLI :  python qmc_quantum_framework_v2_7_2.py --install   (ou --check-deps)
+#   • en CLI :  python qmc_quantum_framework_v2_7_3.py --install   (ou --check-deps)
 #   • via env :  QMC_AUTO_INSTALL_DEPS=1   (opt-in conscient, p.ex. dans un notebook)
 # La vérification non-installante reste accessible par check_dependencies(verbose=True).
 if os.environ.get("QMC_AUTO_INSTALL_DEPS", "").lower() in ("true", "1", "yes"):
@@ -16125,7 +16125,7 @@ class ReportExporter:
 </head>
 <body>
 """
-        html += f"<h1>QMC Report: {filename}</h1>\n"
+        html += f"<h1>QMC Report: {_qmc_html_escape(str(filename))}</h1>\n"
         html += f"<p class='timestamp'>Generated: {datetime.now()}</p>\n"
         
         # Table des résultats
@@ -16142,7 +16142,9 @@ class ReportExporter:
             return items
         
         for key, value in flatten_dict(data):
-            html += f"<tr><td>{key}</td><td>{value}</td></tr>\n"
+            # [v2.7.2 FIX] Échapper clé ET valeur (data peut contenir des chaînes
+            # externes : bitstrings de counts, messages d'erreur, noms backend) -> anti-XSS.
+            html += f"<tr><td>{_qmc_html_escape(str(key))}</td><td>{_qmc_html_escape(str(value))}</td></tr>\n"
         
         html += "</table>\n</body>\n</html>"
         
@@ -32843,18 +32845,31 @@ class ExecutionArchive:
         # Nom du fichier
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         job_id = run_context.get('job_id', 'local') if run_context else 'local'
-        if job_id:
-            job_id = str(job_id)[:12]
-        else:
-            job_id = 'local'
+        # [v2.7.2 FIX D] Assainir le job_id pour un nom de fichier SÛR : un id
+        # contenant des caractères illégaux (Windows) faisait crasher l'écriture, et
+        # un id avec '/', '\\' ou '..' aurait redirigé le chemin d'écriture.
+        import re as _re
+        job_id = _re.sub(r'[^A-Za-z0-9._-]', '_', str(job_id))[:12] or 'local'
         status = 'ERROR' if error else 'OK'
-        
+
         if self.compress:
             filename = f"archive_{timestamp}_{job_id}_{status}.json.gz"
             filepath = output_dir / filename
+            # [v2.7.2 FIX E] Écriture gzip ATOMIQUE (tmp + os.replace) : un crash en
+            # cours d'écriture ne laisse plus une archive .gz tronquée/corrompue
+            # (le fix atomique v2.7.1 ne couvrait que la branche non compressée).
             import gzip
-            with gzip.open(filepath, 'wt', encoding='utf-8') as f:
-                json.dump(archive, f, indent=2, default=str, ensure_ascii=False)
+            tmp = filepath.with_name(filepath.name + '.tmp')
+            try:
+                with gzip.open(tmp, 'wt', encoding='utf-8') as f:
+                    json.dump(archive, f, indent=2, default=str, ensure_ascii=False)
+                os.replace(tmp, filepath)
+            finally:
+                try:
+                    if tmp.exists():
+                        tmp.unlink()
+                except Exception:
+                    pass
         else:
             filename = f"archive_{timestamp}_{job_id}_{status}.json"
             filepath = output_dir / filename
@@ -37277,7 +37292,10 @@ class AutoReportGenerator:
         # JSON pour charts
         # [v2.7.1 FIX] prevent HTML/script breakout from JSON embedded in <pre>/<script>
         def _json_safe(s: str) -> str:
-            return s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+            # [v2.7.2 FIX F] Neutralise aussi U+2028/U+2029 (séparateurs de ligne JS)
+            # qui, dans un littéral JSON inséré dans <script>, casseraient le script.
+            return (s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+                     .replace(' ', '\\u2028').replace(' ', '\\u2029'))
         charts_data = _json_safe(json.dumps(data.get('charts_data', {}), indent=2))
         full_data = _json_safe(json.dumps({k: v for k, v in data.items()
                                if k not in ['circuit_images', 'qiskit_visualizations']},
@@ -38685,7 +38703,7 @@ code, pre, .mono {
                 <td class="numeric">{c.get('unique_outcomes', 0)}</td>
                 <td class="numeric">{entropy:.2f}</td>
                 <td class="numeric">{uniformity:.1f}%</td>
-                <td style="font-family: monospace;">{c.get('top_bitstring', 'N/A')}</td>
+                <td style="font-family: monospace;">{_qmc_html_escape(str(c.get('top_bitstring', 'N/A')))}</td>
                 <td class="numeric">{top_prob:.1f}%</td>
             </tr>
             '''
@@ -38997,7 +39015,10 @@ code, pre, .mono {
         # Préparer les données JSON pour JavaScript
         # [v2.7.1 FIX] prevent </script> breakout from JSON embedded in <script>
         def _json_safe(s: str) -> str:
-            return s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+            # [v2.7.2 FIX F] Neutralise aussi U+2028/U+2029 (séparateurs de ligne JS)
+            # qui, dans un littéral JSON inséré dans <script>, casseraient le script.
+            return (s.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+                     .replace(' ', '\\u2028').replace(' ', '\\u2029'))
         charts_data_json = _json_safe(json.dumps(data.get('charts_data', {}), indent=2))
         stats_json = _json_safe(json.dumps(data.get('statistics', {}), indent=2))
         full_data_json = _json_safe(json.dumps(data, indent=2, default=str))
@@ -39528,7 +39549,7 @@ code, pre, .mono {
                 </div>
                 <div style="max-height:200px;overflow-y:auto;">
                     <table style="font-size:0.8rem;">
-                        {''.join(f'<tr><td>{k}</td><td><code>{v}</code></td></tr>' for k, v in sorted(data.get('dependencies', {}).items()))}
+                        {''.join(f'<tr><td>{_qmc_html_escape(str(k))}</td><td><code>{_qmc_html_escape(str(v))}</code></td></tr>' for k, v in sorted(data.get('dependencies', {}).items()))}
                     </table>
                 </div>
             </div>
@@ -40809,7 +40830,7 @@ class QMCFramework(QMCFrameworkExtended):
     - BackendRecommender, ResultCache, JobQueueManager
     """
     
-    VERSION = "2.7.2"
+    VERSION = "2.7.3"
     
     def __init__(self, *args, enable_cache: bool = True, 
                  cache_dir: str = '.qmc_cache', **kwargs):
@@ -43296,18 +43317,27 @@ class ArchiveReplayer:
             Données de l'archive
         """
         import json
-        
-        with open(archive_path, 'r', encoding='utf-8') as f:
+        import gzip
+
+        # [v2.7.2 FIX B] Lecture gzip-AWARE : les archives par défaut sont *.json.gz.
+        # On renifle les octets magiques gzip (1f 8b) au lieu d'un open() texte qui
+        # plantait sur UnicodeDecodeError pour le format par défaut du framework.
+        with open(archive_path, 'rb') as fh:
+            _magic = fh.read(2)
+        _opener = gzip.open if _magic == b'\x1f\x8b' else open
+        with _opener(archive_path, 'rt', encoding='utf-8') as f:
             self.archive_data = json.load(f)
-        
+
         self.archive_path = archive_path
-        
+
         if self.logger:
+            # [v2.7.2 FIX C] Lire le projet depuis le schéma v3 (metadata.project).
+            _meta = self.archive_data.get('metadata', {})
             self.logger.info(f"📦 Archive chargée: {archive_path}")
-            self.logger.info(f"   Project: {self.archive_data.get('project', 'unknown')}")
+            self.logger.info(f"   Project: {_meta.get('project', 'unknown')}")
             self.logger.info(f"   Backend original: {self.archive_data.get('backend', {}).get('name', 'unknown')}")
             self.logger.info(f"   Circuits: {len(self.archive_data.get('results', []))}")
-        
+
         return self.archive_data
     
     def get_summary(self) -> Dict[str, Any]:
@@ -43316,16 +43346,20 @@ class ArchiveReplayer:
             raise ValueError("Aucune archive chargée! Utilisez load() d'abord.")
         
         results = self.archive_data.get('results', [])
-        
+        # [v2.7.2 FIX C] Aligné sur le schéma v3 : project/timestamp/job_id dans
+        # `metadata`, timing dans `execution.timing` (les anciennes clés project/
+        # timestamp/job/timing renvoyaient toujours None -> perte silencieuse).
+        meta = self.archive_data.get('metadata', {})
+        execu = self.archive_data.get('execution', {})
         return {
-            'project': self.archive_data.get('project'),
-            'timestamp': self.archive_data.get('timestamp'),
+            'project': meta.get('project'),
+            'timestamp': (meta.get('generated_at') or {}).get('iso'),
             'backend_original': self.archive_data.get('backend', {}).get('name'),
             'n_circuits': len(results),
             'total_shots': sum(r.get('shots', 0) for r in results),
             'n_qubits': results[0].get('n_qubits') if results else None,
-            'job_id': self.archive_data.get('job', {}).get('job_id'),
-            'execution_time': self.archive_data.get('timing', {}).get('total_time_s')
+            'job_id': execu.get('job_id') or meta.get('job_id'),
+            'execution_time': (execu.get('timing') or {}).get('total_time_s'),
         }
     
     def get_circuits_info(self) -> List[Dict]:
@@ -43334,9 +43368,12 @@ class ArchiveReplayer:
             raise ValueError("Aucune archive chargée!")
         
         circuits_info = []
-        transpilation = self.archive_data.get('transpilation', {})
-        circuits_transpiled = transpilation.get('circuits_transpiled', [])
-        
+        # [v2.7.2 FIX C] Schéma v3 : `circuits_transpiled` est une LISTE top-level
+        # (clés `depth`/`num_2q_gates`), pas `transpilation.circuits_transpiled`.
+        circuits_transpiled = self.archive_data.get('circuits_transpiled', [])
+        if isinstance(circuits_transpiled, dict):  # tolérance ascendante
+            circuits_transpiled = circuits_transpiled.get('circuits_transpiled', [])
+
         for i, result in enumerate(self.archive_data.get('results', [])):
             info = {
                 'index': i,
@@ -43344,13 +43381,14 @@ class ArchiveReplayer:
                 'unique_states': result.get('unique_states'),
                 'n_qubits': result.get('n_qubits')
             }
-            
+
             if i < len(circuits_transpiled):
-                info['transpiled_depth'] = circuits_transpiled[i].get('transpiled_depth')
-                info['gates_2q'] = circuits_transpiled[i].get('gates_2q')
-            
+                ct = circuits_transpiled[i]
+                info['transpiled_depth'] = ct.get('depth', ct.get('transpiled_depth'))
+                info['gates_2q'] = ct.get('num_2q_gates', ct.get('gates_2q'))
+
             circuits_info.append(info)
-        
+
         return circuits_info
     
     def reconstruct_circuits(self) -> List:
@@ -43363,22 +43401,29 @@ class ArchiveReplayer:
         if self.archive_data is None:
             raise ValueError("Aucune archive chargée!")
         
-        circuits_data = self.archive_data.get('circuits', [])
-        
+        # [v2.7.2 FIX C] Schéma v3 : circuits sous `circuits_original` (sinon
+        # `circuits_transpiled`), chaque entrée porte un QASM2 sous la clé `qasm`
+        # (placeholder `// SKIPPED` ou tronqué pour les circuits > 40 qubits).
+        circuits_data = (self.archive_data.get('circuits_original')
+                         or self.archive_data.get('circuits_transpiled')
+                         or self.archive_data.get('circuits', []))
+
         if not circuits_data:
             raise ValueError("L'archive ne contient pas de circuits sérialisés. "
                            "Utilisez replay_with_builder() avec un circuit_builder.")
-        
+
         from qiskit import QuantumCircuit
-        
+
         circuits = []
         for cd in circuits_data:
-            if 'qasm' in cd:
-                qc = QuantumCircuit.from_qasm_str(cd['qasm'])
-                circuits.append(qc)
+            qasm = cd.get('qasm') if isinstance(cd, dict) else None
+            if qasm and not cd.get('qasm_truncated') and not qasm.lstrip().startswith('//'):
+                circuits.append(QuantumCircuit.from_qasm_str(qasm))
             else:
-                raise ValueError("Format de circuit non supporté")
-        
+                raise ValueError(
+                    f"Circuit {cd.get('index', '?')} non reconstructible : QASM absent ou "
+                    f"tronqué (circuit > 40 qubits). Utilisez replay_with_builder().")
+
         return circuits
     
     def replay(self,
@@ -43912,11 +43957,18 @@ class GitTracker:
             Dict avec statut de reproductibilité
         """
         import json
+        import gzip
 
-        with open(archive_path, 'r', encoding='utf-8') as f:  # [v2.7.1 FIX] explicit encoding (archive JSON is UTF-8; avoid platform cp1252 mojibake)
+        # [v2.7.2 FIX B] Lecture gzip-aware (format d'archive par défaut *.json.gz).
+        with open(archive_path, 'rb') as fh:
+            _magic = fh.read(2)
+        _opener = gzip.open if _magic == b'\x1f\x8b' else open
+        with _opener(archive_path, 'rt', encoding='utf-8') as f:
             archive = json.load(f)
 
-        archived_git = archive.get('git', {})
+        # [v2.7.2 FIX C] Le git vit dans la section v3 `reproducibility.git`
+        # (repli sur l'ancienne clé top-level `git`).
+        archived_git = (archive.get('reproducibility', {}) or {}).get('git') or archive.get('git', {}) or {}
         current_git = self.get_current_state()
         
         result = {
@@ -47004,7 +47056,7 @@ __all__ = [
 # [v2.7.2] SUITE DE TESTS DE NON-RÉGRESSION INTÉGRÉE (mono-fichier)
 # =============================================================================
 # Tests EMBARQUÉS, exécutables SANS dépendance via `--selftest`, et AUSSI
-# collectables par pytest (`pytest qmc_quantum_framework_v2_7_2.py`). Ils gèlent
+# collectables par pytest (`pytest qmc_quantum_framework_v2_7_3.py`). Ils gèlent
 # les acquis vérifiés des audits (QPE, téléportation base-X, crypto adverse,
 # parsing des résultats, anti-SSRF, chargeur de modules) pour empêcher toute
 # régression. Aucun QPU/credential requis : les circuits tournent sur AerSimulator
@@ -47191,6 +47243,47 @@ def test_process_results_integrity_flag():
     assert out and out[0].get('integrity') == 'degraded', f"flag d'intégrité absent: {out}"
 
 
+def test_report_top_bitstring_escaped():
+    """[v2.7.2] Anti-XSS : un bitstring malveillant (clé de counts) est échappé dans le rapport."""
+    esc = _qmc_html_escape("<img src=x onerror=alert(1)>")
+    assert "<img" not in esc and "&lt;img" in esc, "top_bitstring/HTML non échappé"
+
+
+def test_archive_replayer_v3_roundtrip():
+    """[v2.7.2] ArchiveReplayer lit une archive v3 GZIP et mappe les clés v3 (fixes B+C)."""
+    import gzip as _gz
+    import json as _json
+    import tempfile as _tf
+    import shutil as _sh
+    import os as _os
+    arch = {
+        "_schema": {"version": "3.1.0", "format": "QMC_EXECUTION_ARCHIVE_V3"},
+        "metadata": {"project": "P", "generated_at": {"iso": "2026-01-01T00:00:00"}, "job_id": "J"},
+        "backend": {"name": "ibm_test"},
+        "execution": {"job_id": "J", "timing": {"total_time_s": 1.0}},
+        "results": [{"shots": 100, "n_qubits": 2}],
+        "circuits_original": [{"index": 0, "qasm_truncated": False,
+            "qasm": 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\ncreg c[2];\nh q[0];\ncx q[0],q[1];\nmeasure q[0]->c[0];\nmeasure q[1]->c[1];\n'}],
+        "circuits_transpiled": [{"index": 0, "depth": 3, "num_2q_gates": 1}],
+    }
+    tmp = _tf.mkdtemp(prefix="qmc_self_arch_")
+    try:
+        gz = _os.path.join(tmp, "archive_x_J_OK.json.gz")
+        with _gz.open(gz, "wt", encoding="utf-8") as f:
+            _json.dump(arch, f)
+
+        class _Stub:
+            logger = None
+        rep = ArchiveReplayer(_Stub())
+        rep.load(gz)  # B : ne doit pas lever d'UnicodeDecodeError
+        s = rep.get_summary()
+        assert s["project"] == "P" and s["job_id"] == "J" and s["execution_time"] == 1.0, f"clés v3 KO: {s}"
+        circs = rep.reconstruct_circuits()
+        assert len(circs) == 1 and circs[0].num_qubits == 2, "reconstruct_circuits KO"
+    finally:
+        _sh.rmtree(tmp, ignore_errors=True)
+
+
 def test_external_module_loader():
     """Chargeur de modules externes : charge un module temporaire + erreur si absent."""
     import tempfile
@@ -47198,10 +47291,10 @@ def test_external_module_loader():
     import sys as _sys
     # Le module externe importe QMCModule via le nom canonique : on l'enregistre
     # (utile quand ce fichier tourne en tant que __main__ via --selftest).
-    _sys.modules.setdefault('qmc_quantum_framework_v2_7_2', _sys.modules[__name__])
+    _sys.modules.setdefault('qmc_quantum_framework_v2_7_3', _sys.modules[__name__])
     tmp = tempfile.mkdtemp(prefix="qmc_selftest_")
     pathlib.Path(tmp, "demo_echo.py").write_text(
-        "from qmc_quantum_framework_v2_7_2 import QMCModule\n"
+        "from qmc_quantum_framework_v2_7_3 import QMCModule\n"
         "class DemoEcho(QMCModule):\n"
         "    @classmethod\n"
         "    def get_name(cls): return 'demo_echo'\n"
@@ -47305,8 +47398,8 @@ if __name__ == "__main__":
         main()
     else:
         print(f"QMC Quantum Framework v{__version__}")
-        print("Import : from qmc_quantum_framework_v2_7_2 import QMCFramework  "
+        print("Import : from qmc_quantum_framework_v2_7_3 import QMCFramework  "
               "(classe concrete — classe complète)")
-        print("CLI    : python qmc_quantum_framework_v2_7_2.py --help | --module … | --benchmark | --validate")
-        print("Deps   : python qmc_quantum_framework_v2_7_2.py --check-deps | --install")
+        print("CLI    : python qmc_quantum_framework_v2_7_3.py --help | --module … | --benchmark | --validate")
+        print("Deps   : python qmc_quantum_framework_v2_7_3.py --check-deps | --install")
 

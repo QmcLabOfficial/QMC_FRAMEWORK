@@ -1,5 +1,5 @@
 # [v2.7.2] Packaging compatible MONO-FICHIER : le livrable reste l'unique module
-# `qmc_quantum_framework_v2_7_2.py` (déclaré dans py-modules). Ce pyproject ajoute
+# `qmc_quantum_framework_v2_7_3.py` (déclaré dans py-modules). Ce pyproject ajoute
 # seulement des métadonnées (dépendances déclarées, point d'entrée console) — il ne
 # fragmente PAS le framework.
 [build-system]
@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qmc-quantum-framework"
-version = "2.7.2"
+version = "2.7.3"
 description = "QMC Quantum Testing Framework — single-file, runs and analyzes experiments on IBM Quantum"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,11 +39,11 @@ Repository = "https://github.com/QmcLabOfficial/QMC_FRAMEWORK"
 
 [project.scripts]
 # Commande console : `qmc --selftest`, `qmc --check`, etc.
-qmc = "qmc_quantum_framework_v2_7_2:main"
+qmc = "qmc_quantum_framework_v2_7_3:main"
 
 [tool.setuptools]
 # MONO-FICHIER : on expose les deux modules top-level (le framework + le shim stable).
-py-modules = ["qmc_quantum_framework_v2_7_2", "qmc"]
+py-modules = ["qmc_quantum_framework_v2_7_3", "qmc"]
 
 [tool.bandit]
 # Le self-test embarqué + assertions de tests ; on garde le seuil MEDIUM en CI.

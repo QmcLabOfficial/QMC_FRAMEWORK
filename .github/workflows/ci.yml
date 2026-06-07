@@ -35,24 +35,24 @@ jobs:
                       cryptography python-dotenv matplotlib pytest pyflakes bandit
 
       - name: Syntax (py_compile)
-        run: python -m py_compile qmc_quantum_framework_v2_7_2.py
+        run: python -m py_compile qmc_quantum_framework_v2_7_3.py
 
       - name: Embedded self-test (QPE, teleport, crypto, loader, security)
-        run: python qmc_quantum_framework_v2_7_2.py --selftest
+        run: python qmc_quantum_framework_v2_7_3.py --selftest
 
       - name: Pytest (embedded test_* collected from the single file)
-        run: pytest qmc_quantum_framework_v2_7_2.py -q
+        run: pytest qmc_quantum_framework_v2_7_3.py -q
 
       - name: Integration validation (no QPU / no credentials)
-        run: python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu
+        run: python test_qmc_v2_7_3_FULL_VALIDATION.py --skip-qpu
 
       - name: Lint — pyflakes (zero undefined names is mandatory)
         run: |
-          if pyflakes qmc_quantum_framework_v2_7_2.py | grep -q "undefined name"; then
+          if pyflakes qmc_quantum_framework_v2_7_3.py | grep -q "undefined name"; then
             echo "::error::pyflakes reported undefined name(s)"; exit 1
           else
             echo "0 undefined names"
           fi
 
       - name: Security — bandit (no MEDIUM/HIGH)
-        run: bandit -ll -q qmc_quantum_framework_v2_7_2.py
+        run: bandit -ll -q qmc_quantum_framework_v2_7_3.py

@@ -1,8 +1,8 @@
-# QMC Quantum Framework v2.7.2
+# QMC Quantum Framework v2.7.3
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.7.2-blue.svg)
+![Version](https://img.shields.io/badge/version-2.7.3-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen.svg)
 ![Qiskit](https://img.shields.io/badge/qiskit-2.3%2B-6929C4.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
@@ -21,20 +21,20 @@
 
 ## ⚡ Quick Use
 
-> **Philosophy**: copy **one single file** `qmc_quantum_framework_v2_7_2.py`, import it, and everything works.
+> **Philosophy**: copy **one single file** `qmc_quantum_framework_v2_7_3.py`, import it, and everything works.
 > The `import` is **pure** (no side effects, no installation at load time).
 
 ```bash
 # 1) Dependencies — your choice:
-python qmc_quantum_framework_v2_7_2.py --check-deps          # check (installs nothing)
-python qmc_quantum_framework_v2_7_2.py --install             # install the missing ones
+python qmc_quantum_framework_v2_7_3.py --check-deps          # check (installs nothing)
+python qmc_quantum_framework_v2_7_3.py --install             # install the missing ones
 #   or manually:
 pip install qiskit qiskit-ibm-runtime numpy scipy cryptography python-dotenv matplotlib
 ```
 
 ```python
 # 2) Three lines to run a circuit on IBM Quantum
-from qmc_quantum_framework_v2_7_2 import QMCFramework
+from qmc_quantum_framework_v2_7_3 import QMCFramework
 
 fw = QMCFramework(backend_name="ibm_torino", project="MyExperiment", shots=4096)
 fw.connect()                                   # reads credentials from .env
@@ -49,9 +49,9 @@ print("Outputs in qmc_runs/ (.html report + .json.gz archive)")
 
 ```bash
 # 3) Try it WITHOUT IBM credentials (local Aer simulator)
-python qmc_quantum_framework_v2_7_2.py --selftest          # embedded test suite (no dependency, no QPU)
-python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu       # 15 tests (API, multi-job, transpilation)
-python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim   # real execution on AerSimulator
+python qmc_quantum_framework_v2_7_3.py --selftest          # embedded test suite (no dependency, no QPU)
+python test_qmc_v2_7_3_FULL_VALIDATION.py --skip-qpu       # 15 tests (API, multi-job, transpilation)
+python test_qmc_v2_7_3_FULL_VALIDATION.py --multijob-sim   # real execution on AerSimulator
 ```
 
 📖 **More examples → [Wiki / Quick Start](https://qmc-lab.com/framework/wiki/quick-start)**
@@ -90,13 +90,27 @@ quantum experiments on IBM Quantum processors. Designed to be **simple, fast and
 
 ---
 
-## ✨ What's New in v2.7.2
+## ✨ What's New in v2.7.3
+
+A **reporting/archive hardening** release from a full multi-agent audit of the whole framework (orchestration,
+21 builders + 12 analyzers re-verified on Aer, security/crypto) — **no other confirmed bug**:
+
+- 🛡️ **Stored-XSS closed in HTML reports/exports**: `top_bitstring` (a backend-sourced counts key) and the
+  generic `export_html` (keys/values/filename) are now escaped via `_qmc_html_escape`. No external string field
+  is injected into any HTML path unescaped.
+- 📦 **`ArchiveReplayer` actually works again**: it now reads the default **gzip** archives (was `UnicodeDecodeError`)
+  and maps the **v3 schema keys** (project/job_id/timing/circuits were silently `None`).
+- 💾 **Safer archive writes**: `job_id` sanitized in the filename (no more Windows crash / path injection),
+  **atomic gzip write** (tmp + `os.replace`), and `_json_safe` neutralizes U+2028/U+2029.
+- 🧪 Embedded suite extended → **`--selftest` 20/20** (added XSS + archive round-trip regression tests).
+
+> **Based on v2.7.2**: patented modules externalized + embedded test suite + security/rigor hardening.
 
 - 🧩 **Patented modules externalized**: the inner workings of the inventions are no longer exposed in the
   public file. They are loaded **on demand** via `fw.load_module("<name>")` from `qmc_modules/` (see
   `QMC_MODULES_PATH`), otherwise `QMCModuleNotAvailableError`.
-- 🧪 **EMBEDDED non-regression test suite** (single-file): `python qmc_quantum_framework_v2_7_2.py --selftest`
-  (no dependency) **and** `pytest qmc_quantum_framework_v2_7_2.py`. Covers QPE, teleportation (Z **and X**
+- 🧪 **EMBEDDED non-regression test suite** (single-file): `python qmc_quantum_framework_v2_7_3.py --selftest`
+  (no dependency) **and** `pytest qmc_quantum_framework_v2_7_3.py`. Covers QPE, teleportation (Z **and X**
   basis), adversarial crypto (Schnorr/range/AES-GCM/time-lock), result parsing, anti-SSRF and the module loader.
 - 🔬 **Scientific rigor**: field `quantum_advantage_proven` → **`advantage_indicators_passed`** (no longer
   overclaims a proof of advantage); teleportation of |+⟩/|−⟩ now verifiable in the **X basis** (deterministic);
@@ -133,7 +147,7 @@ cd QMC_FRAMEWORK
 
 # Dependencies (recommended: a virtual environment)
 python -m venv .venv && . .venv/bin/activate          # Windows: .venv\Scripts\activate
-python qmc_quantum_framework_v2_7_2.py --install        # or pip install … (see Quick Use)
+python qmc_quantum_framework_v2_7_3.py --install        # or pip install … (see Quick Use)
 
 # Configuration
 cp .env.example .env       # then edit .env with your credentials
@@ -147,7 +161,7 @@ qmc --selftest                # run the embedded test suite via the console scri
 ```
 ```python
 # Stable import shim (survives version bumps v2_7_2 -> v2_7_3 without touching your scripts):
-from qmc import QMCFramework   # instead of `from qmc_quantum_framework_v2_7_2 import QMCFramework`
+from qmc import QMCFramework   # instead of `from qmc_quantum_framework_v2_7_3 import QMCFramework`
 ```
 
 ### Configuration (`.env`)
@@ -196,7 +210,7 @@ print("Mean 2-qubit error :", calibration["summary"]["gate_2q"]["mean"])
 
 ### Analyzers with error bars
 ```python
-from qmc_quantum_framework_v2_7_2 import FidelityAnalyzer, XEBAnalyzer
+from qmc_quantum_framework_v2_7_3 import FidelityAnalyzer, XEBAnalyzer
 
 counts = results[0]["counts"]
 fid = FidelityAnalyzer().analyze(counts)
@@ -205,7 +219,7 @@ print(f"Fidelity = {fid['fidelity']:.3f} ± {fid['std_error']:.3f}  (95% CI {fid
 
 ### Real cryptography
 ```python
-from qmc_quantum_framework_v2_7_2 import QMCQuantumCrypto, QMCSigmaZK
+from qmc_quantum_framework_v2_7_3 import QMCQuantumCrypto, QMCSigmaZK
 
 key = QMCQuantumCrypto.hkdf_sha256(b"quantum-entropy-seed", length=32)
 enc = QMCQuantumCrypto.aead_encrypt(key, b"secret message")        # AES-256-GCM
@@ -274,7 +288,7 @@ print("Report   :", result["generated_files"]["html"])
 📖 **Full reference → [Wiki / API](https://qmc-lab.com/framework/wiki/api-reference)**
 
 ```python
-from qmc_quantum_framework_v2_7_2 import QMCFramework   # main class (concrete, complete)
+from qmc_quantum_framework_v2_7_3 import QMCFramework   # main class (concrete, complete)
 
 fw = QMCFramework(backend_name="ibm_fez", project="QMC_Test", shots=4096,
                   use_fractional_gates=False, gen3_turbo=False)
@@ -302,15 +316,15 @@ module.run(...)                               # QMCModuleNotAvailableError if no
 
 ```bash
 # EMBEDDED non-regression suite (single-file, NO dependency or QPU required)
-python qmc_quantum_framework_v2_7_2.py --selftest             # QPE, teleport (Z+X), adversarial crypto, loader…
-pytest qmc_quantum_framework_v2_7_2.py -q                     # same tests, via pytest
+python qmc_quantum_framework_v2_7_3.py --selftest             # QPE, teleport (Z+X), adversarial crypto, loader…
+pytest qmc_quantum_framework_v2_7_3.py -q                     # same tests, via pytest
 
 # Full integration validation on a real QPU
-python test_qmc_v2_7_2_FULL_VALIDATION.py --backend ibm_torino --shots 100
+python test_qmc_v2_7_3_FULL_VALIDATION.py --backend ibm_torino --shots 100
 
 # Local tests (no QPU / no credentials)
-python test_qmc_v2_7_2_FULL_VALIDATION.py --skip-qpu          # API + multi-job + transpilation + loader
-python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim      # AerSimulator execution
+python test_qmc_v2_7_3_FULL_VALIDATION.py --skip-qpu          # API + multi-job + transpilation + loader
+python test_qmc_v2_7_3_FULL_VALIDATION.py --multijob-sim      # AerSimulator execution
 ```
 
 > 💡 On Windows, run with `PYTHONUTF8=1` for correct emoji/box-drawing display.
@@ -319,6 +333,8 @@ python test_qmc_v2_7_2_FULL_VALIDATION.py --multijob-sim      # AerSimulator exe
 
 ## 📜 Changelog (summary)
 
+- **v2.7.3 (2026-06)** — Full-framework audit: closed stored-XSS in HTML reports/`export_html`, fixed `ArchiveReplayer`
+  (gzip + v3 schema keys), atomic gzip archive write + sanitized filename. `--selftest` 20/20.
 - **v2.7.2 (2026-06)** — Patented modules **externalized** (loaded on demand), **embedded test suite**
   (`--selftest` / pytest), scientific rigor (`advantage_indicators_passed`, X-basis teleport), thread-local log,
   `LICENSE` + `.gitattributes`.
